@@ -512,11 +512,10 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
-        } catch let error as URLError where error.isNetworkConnectionError {
+        } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
-            // Offline: persist locally and queue pending change
             try await handleOfflineAdd(
                 encryptedCipher: cipherEncryptionContext.cipher,
                 userId: cipherEncryptionContext.encryptedFor
@@ -640,8 +639,7 @@ extension DefaultVaultRepository: VaultRepository {
     func deleteCipher(_ id: String) async throws {
         do {
             try await cipherService.deleteCipherWithServer(id: id)
-        } catch let error as URLError where error.isNetworkConnectionError {
-            // Offline: soft-delete locally and queue pending change
+        } catch {
             try await handleOfflineDelete(cipherId: id)
         }
     }
@@ -897,7 +895,7 @@ extension DefaultVaultRepository: VaultRepository {
         let encryptedCipher = try await encryptAndUpdateCipher(softDeletedCipher)
         do {
             try await cipherService.softDeleteCipherWithServer(id: id, encryptedCipher)
-        } catch let error as URLError where error.isNetworkConnectionError {
+        } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
@@ -924,7 +922,7 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
-        } catch let error as URLError where error.isNetworkConnectionError {
+        } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
@@ -943,7 +941,7 @@ extension DefaultVaultRepository: VaultRepository {
 
     // MARK: Offline Helpers
 
-    /// Handles saving a new cipher when the API call fails due to a network error.
+    /// Handles saving a new cipher when the server API call fails.
     ///
     /// - Parameters:
     ///   - encryptedCipher: The encrypted cipher to persist locally.
@@ -981,7 +979,7 @@ extension DefaultVaultRepository: VaultRepository {
         )
     }
 
-    /// Handles updating a cipher when the API call fails due to a network error.
+    /// Handles updating a cipher when the server API call fails.
     ///
     /// - Parameters:
     ///   - cipherView: The decrypted cipher view (used for password change detection).
@@ -1041,7 +1039,7 @@ extension DefaultVaultRepository: VaultRepository {
         )
     }
 
-    /// Handles deleting a cipher when the API call fails due to a network error.
+    /// Handles deleting a cipher when the server API call fails.
     ///
     /// - Parameter cipherId: The ID of the cipher to soft-delete.
     ///
@@ -1072,7 +1070,7 @@ extension DefaultVaultRepository: VaultRepository {
         )
     }
 
-    /// Handles soft-deleting a cipher when the API call fails due to a network error.
+    /// Handles soft-deleting a cipher when the server API call fails.
     ///
     /// - Parameters:
     ///   - cipherId: The ID of the cipher to soft-delete.

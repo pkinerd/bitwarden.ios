@@ -53,9 +53,7 @@ Add support for saving vault items locally while offline, with automatic syncing
 │       │                                                         │
 │       ├── Vault locked? ──► Yes ──► Skip resolution, sync       │
 │       │                                                         │
-│       ├── Any pending changes? ──► No ──► Normal sync           │
-│       │                                                         │
-│       └── Yes ──► processPendingChanges()                       │
+│       └── processPendingChanges() (handles empty case internally)│
 │                       │                                         │
 │                       ├── All resolved ──► Normal sync           │
 │                       │                                         │
@@ -70,35 +68,35 @@ Add support for saving vault items locally while offline, with automatic syncing
 
 ### Approach
 
-Offline state is detected by **actual API call failure**, not by the network monitor alone. This correctly handles captive portals, server outages, and firewall-blocked scenarios.
+**[Updated]** Offline state is detected by **actual API call failure**. The VaultRepository catch blocks use plain `catch` — any server API call failure triggers offline save. The `URLError+NetworkConnection` extension (which classified specific `URLError` codes as network errors) has been removed.
+
+**Rationale for simplification:** The networking stack separates transport errors (`URLError`) from HTTP errors (`ServerError`, `ResponseValidationError`) at a different layer. The fine-grained URLError classification was solving a problem that doesn't exist: there is no realistic scenario where the server is online and reachable but a pending change is permanently invalid. If the server is unreachable, the entire sync fails naturally. If the server is reachable, pending changes will resolve. The encrypt step happens outside the do-catch, so SDK errors propagate normally.
 
 ### Modified File: `BitwardenShared/Core/Vault/Repositories/VaultRepository.swift`
 
-**Changes to `updateCipher()`:**
+**Changes to `updateCipher()`: [Updated]**
 
 ```
 1. Check if cipher is organisation-owned
-   → If yes AND offline: show error "Organisation items cannot be edited offline"
+   → If yes AND API fails: show error "Organisation items cannot be edited offline"
    → If yes AND online: proceed with normal flow (unchanged)
 
 2. Attempt normal flow: encrypt → API call → local persist
    SECURITY NOTE: Encryption via clientService.vault().ciphers().encrypt()
-   occurs BEFORE the API call attempt. The encrypted Cipher object is
-   available regardless of whether the API call succeeds or fails.
+   occurs BEFORE the API call attempt (outside the do-catch block). The
+   encrypted Cipher object is available regardless of whether the API call
+   succeeds or fails. SDK encryption errors propagate normally.
 
-3. If API call fails with a network/connectivity error:
+3. If API call fails (any error — plain catch):
    a. Persist the ENCRYPTED Cipher locally via updateCipherWithLocalStorage()
    b. Queue a PendingCipherChange record with the ENCRYPTED cipher data (see Section 3)
    c. Return success to the UI (user sees their edit applied locally)
-
-4. If API call fails with a non-network error (auth, validation, etc.):
-   → Surface error to user as normal (unchanged behaviour)
 ```
 
-**Changes to `addCipher()`:**
+**Changes to `addCipher()`: [Updated]**
 
 ```
-1. If offline (API call fails with network error):
+1. If API call fails (any error — plain catch):
    a. Generate a client-side temporary UUID for the cipher (Swift UUID() uses /dev/urandom)
    b. Encrypt the CipherView via SDK, then persist encrypted cipher locally
    c. Queue a PendingCipherChange with changeType = .create
@@ -114,10 +112,10 @@ Offline state is detected by **actual API call failure**, not by the network mon
    d. Delete pending change record
 ```
 
-**Changes to `deleteCipher()`:**
+**Changes to `deleteCipher()`: [Updated]**
 
 ```
-1. If offline (API call fails with network error):
+1. If API call fails (any error — plain catch):
    a. Soft-delete locally (move to trash in local storage)
    b. Queue a PendingCipherChange with changeType = .softDelete
    c. Return success to the UI
@@ -224,20 +222,20 @@ This ensures accurate tracking of offline password change count even across vaul
 
 Offline change resolution is embedded directly in `fetchSync()`, so all existing sync triggers (periodic sync, foreground sync, pull-to-refresh) automatically attempt to resolve pending changes before syncing.
 
-**Trigger flow within `fetchSync()`:**
+**Trigger flow within `fetchSync()`: [Updated]**
 
 ```
 1. Guard: Is the vault unlocked? (SDK crypto context available)
    → If vault is locked: skip resolution, proceed to normal sync
    → This prevents sync resolution from failing due to inability to decrypt/encrypt
-2. Check pendingCipherChangeDataStore.pendingChangeCount(userId:)
-3. If count == 0 → proceed to normal fetchSync()
-4. If count > 0:
-   a. Call offlineSyncResolver.processPendingChanges()
-   b. Check remaining pending count
-   c. If remaining > 0 → abort sync (early return to protect local offline edits)
-   d. If remaining == 0 → proceed to normal fetchSync()
+2. Call offlineSyncResolver.processPendingChanges()
+   → Resolver handles the empty case internally (no pre-count check needed)
+3. Check remaining pending count (post-resolution)
+   a. If remaining > 0 → abort sync (early return to protect local offline edits)
+   b. If remaining == 0 → proceed to normal fetchSync()
 ```
+
+**[Updated]** The pre-count check was removed. The resolver is now always called when the vault is unlocked; it handles the empty case internally. Only the post-resolution count check remains as a guard before `replaceCiphers`.
 
 This approach leverages existing sync mechanisms rather than introducing a separate connectivity monitor. The tradeoff is that sync resolution may be delayed by up to one sync interval (~30 minutes) compared to an immediate connectivity-based trigger, but this is acceptable given that users can always trigger resolution via pull-to-refresh.
 

@@ -24,18 +24,20 @@ A new dependency `pendingCipherChangeDataStore: PendingCipherChangeDataStore` is
 encrypt(cipherView) → addCipherWithServer(encrypted) → done
 ```
 
-**After:**
+**After: [Updated]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
 2. encrypt(cipherView) → try addCipherWithServer(encrypted)
-3. catch URLError where isNetworkConnectionError:
+3. catch (any error):
    a. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
    b. Otherwise → handleOfflineAdd(encryptedCipher, userId)
 ```
 
+**[Updated]** The catch block was simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`. Any server API call failure now triggers offline save. The encrypt step occurs outside the do-catch, so SDK errors propagate normally.
+
 **Security Flow:** The encryption step (`clientService.vault().ciphers().encrypt(cipherView:)`) occurs BEFORE the server call attempt. The encrypted cipher is available in the catch block, so no additional encryption is needed for offline storage. This preserves the encrypt-before-queue invariant.
 
-**Organization Guard:** The org check captures `isOrgCipher` before the API call but only evaluates it in the catch block. This means org ciphers will still attempt the API call first, and only fail with the offline error if the network is unavailable. When online, org ciphers proceed normally through `addCipherWithServer`.
+**Organization Guard:** The org check captures `isOrgCipher` before the API call but only evaluates it in the catch block. This means org ciphers will still attempt the API call first, and only fail with the offline error if the API call fails. When online, org ciphers proceed normally through `addCipherWithServer`.
 
 ### 2. Modified Method: `updateCipher(_ cipherView: CipherView)`
 
@@ -44,14 +46,16 @@ encrypt(cipherView) → addCipherWithServer(encrypted) → done
 encrypt(cipherView) → updateCipherWithServer(encrypted) → done
 ```
 
-**After:**
+**After: [Updated]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
 2. encrypt(cipherView) → try updateCipherWithServer(encrypted)
-3. catch URLError where isNetworkConnectionError:
+3. catch (any error):
    a. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
    b. Otherwise → handleOfflineUpdate(cipherView, encryptedCipher, userId)
 ```
+
+**[Updated]** Simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`.
 
 **Notable:** `handleOfflineUpdate` receives both the decrypted `cipherView` (for password change detection) and the encrypted cipher (for local storage). The decrypted view is never persisted — it's used only for an in-memory comparison.
 
@@ -62,12 +66,14 @@ encrypt(cipherView) → updateCipherWithServer(encrypted) → done
 deleteCipherWithServer(id:) → done
 ```
 
-**After:**
+**After: [Updated]**
 ```
 1. try deleteCipherWithServer(id:)
-2. catch URLError where isNetworkConnectionError:
+2. catch (any error):
    → handleOfflineDelete(cipherId: id)
 ```
+
+**[Updated]** Simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`.
 
 **Notable:** Unlike the other methods, `deleteCipher` does not have the encrypted cipher available in the catch block (the original method only takes an `id` parameter). The `handleOfflineDelete` helper must fetch the cipher from local storage to get the encrypted data for the pending change record.
 
@@ -78,15 +84,17 @@ deleteCipherWithServer(id:) → done
 create softDeletedCipher (with deletedDate) → encrypt → softDeleteCipherWithServer(id, encrypted) → done
 ```
 
-**After:**
+**After: [Updated]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
 2. create softDeletedCipher (with deletedDate) → encrypt
 3. try softDeleteCipherWithServer(id, encrypted)
-4. catch URLError where isNetworkConnectionError:
+4. catch (any error):
    a. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
    b. Otherwise → handleOfflineSoftDelete(cipherId, encryptedCipher)
 ```
+
+**[Updated]** Simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`.
 
 ### 5. New Helper: `handleOfflineAdd`
 
@@ -205,7 +213,7 @@ This creates an inconsistency: add, update, delete, and soft-delete work offline
 | DocC documentation | **Pass** | All four private helper methods have DocC with parameter docs |
 | Guard clauses for early returns | **Pass** | Used in `handleOfflineAdd` (cipherId guard), `handleOfflineDelete` (nil guard, org guard) |
 | American English | **Pass** | "organization" used consistently |
-| Error handling pattern | **Pass** | `catch let error as URLError where error.isNetworkConnectionError` is specific and clear |
+| Error handling pattern | **Pass** | **[Updated]** Plain `catch` blocks — simplified from URLError filtering. The encrypt step occurs outside the do-catch, so SDK errors propagate normally. |
 
 ### Security Compliance
 
@@ -226,7 +234,7 @@ This creates an inconsistency: add, update, delete, and soft-delete work offline
 | `test_deleteCipher_offlineFallback_orgCipher_throws` | Org cipher + network error → throws, no local delete |
 | `test_updateCipher_offlineFallback` | Network error → local save + pending change created |
 | `test_updateCipher_offlineFallback_orgCipher_throws` | Org cipher + network error → throws, no local save |
-| `test_updateCipher_nonNetworkError_rethrows` | Non-network error → rethrown, no offline fallback |
+| ~~`test_updateCipher_nonNetworkError_rethrows`~~ | **[Removed]** No longer applicable — all errors trigger offline save. |
 | `test_softDeleteCipher_offlineFallback` | Network error → local save + pending change |
 | `test_softDeleteCipher_offlineFallback_orgCipher_throws` | Org cipher + network error → throws |
 

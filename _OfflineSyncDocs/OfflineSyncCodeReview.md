@@ -4,7 +4,7 @@
 
 This changeset implements a client-side offline sync feature for the Bitwarden iOS vault. When network connectivity is unavailable during cipher operations (add, update, delete, soft-delete), the app persists changes locally and queues them for resolution when connectivity is restored. A conflict resolution engine detects server-side changes made while offline and creates backup copies rather than silently discarding data.
 
-**Scope:** 24 files changed (+3,558 lines, -11 lines) across multiple commits on `claude/plan-offline-sync-JDSOl`, with subsequent simplification commits on `claude/review-offline-sync-changes-Tiv2i`.
+**Scope:** 24 files changed (+3,558 lines, -11 lines) across multiple commits on `claude/plan-offline-sync-JDSOl`, with subsequent simplification commits on `claude/review-offline-sync-changes-Tiv2i`. **[Updated]** Further simplification removed `URLError+NetworkConnection.swift` (26 lines) and its tests (39 lines), simplified VaultRepository catch blocks to plain `catch`, simplified SyncService pre-sync flow, and removed `test_updateCipher_nonNetworkError_rethrows`.
 
 **Guidelines Referenced:**
 - Project architecture: `Docs/Architecture.md`, `Docs/Testing.md`
@@ -16,13 +16,13 @@ This changeset implements a client-side offline sync feature for the Bitwarden i
 - [ReviewSection_OfflineSyncResolver.md](ReviewSection_OfflineSyncResolver.md) — Conflict resolution engine
 - [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) — Offline fallback handlers in repository
 - [ReviewSection_SyncService.md](ReviewSection_SyncService.md) — Pre-sync resolution and early-abort logic
-- [ReviewSection_SupportingExtensions.md](ReviewSection_SupportingExtensions.md) — URLError detection, Cipher copy helpers
+- [ReviewSection_SupportingExtensions.md](ReviewSection_SupportingExtensions.md) — ~~URLError detection~~ (removed), Cipher copy helpers
 - [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) — ServiceContainer, Services.swift, DataStore cleanup
 
 ### High-Level Architecture
 
 ```
-User Action → VaultRepository (catch URLError) → Offline Handler → PendingCipherChangeDataStore
+User Action → VaultRepository (catch any API error) → Offline Handler → PendingCipherChangeDataStore
                                                                             ↓
 Existing sync triggers (periodic, pull-to-refresh, foreground) → SyncService.fetchSync()
                                                                             ↓
@@ -43,8 +43,8 @@ The offline sync feature introduces two new data flows:
 2. Processor calls VaultRepository.updateCipher(cipherView)
 3. VaultRepository encrypts the CipherView via SDK → encrypted Cipher
 4. VaultRepository attempts cipherService.updateCipherWithServer(encrypted)
-5. API call fails with URLError (network connectivity issue)
-6. VaultRepository catches the URLError:
+5. API call fails (any error — network, server, etc.)
+6. VaultRepository catches the error:
    a. Checks cipher is not org-owned (throws if it is)
    b. Saves encrypted cipher to local Core Data (cipherService.updateCipherWithLocalStorage)
    c. Encodes encrypted cipher as JSON (CipherDetailsResponseModel)
@@ -59,9 +59,8 @@ The offline sync feature introduces two new data flows:
 2. SyncService.fetchSync() called
 3. Pre-sync check:
    a. Is vault locked? → Yes: skip resolution
-   b. Any pending changes? → No: proceed to normal sync
-   c. Attempt resolution: offlineSyncResolver.processPendingChanges(userId)
-   d. Check remaining count → If > 0: ABORT sync (protect local data)
+   b. Attempt resolution: offlineSyncResolver.processPendingChanges(userId) — **[Updated]** resolver is always called; it handles the empty case internally. The pre-count check was removed.
+   c. Check remaining count → If > 0: ABORT sync (protect local data)
 4. For each pending change, resolver:
    a. .create: push new cipher to server, delete pending record
    b. .update: fetch server version, detect conflicts by comparing revisionDates
@@ -153,11 +152,11 @@ The `OfflineSyncResolver` has the highest dependency count (7 injected services)
 |-----------|-----------|-------|
 | American English spelling | **Pass** | "organization" used consistently (was "organisation" originally, fixed in review commit) |
 | Type naming (UpperCamelCase) | **Pass** | `DefaultOfflineSyncResolver`, `PendingCipherChangeData`, `PendingCipherChangeType` |
-| Property/method naming (lowerCamelCase) | **Pass** | `pendingCipherChangeDataStore`, `handleOfflineUpdate`, `isNetworkConnectionError` |
+| Property/method naming (lowerCamelCase) | **Pass** | `pendingCipherChangeDataStore`, `handleOfflineUpdate`, `handleOfflineAdd` |
 | Protocol naming (`Has*` for DI) | **Pass** | `HasOfflineSyncResolver`, `HasPendingCipherChangeDataStore` |
 | Test naming (`test_method_scenario`) | **Pass** | `test_fetchSync_preSyncResolution_skipsWhenVaultLocked`, `test_processPendingChanges_update_noConflict` |
 | Mock naming (`Mock*`) | **Pass** | `MockOfflineSyncResolver`, `MockPendingCipherChangeDataStore` |
-| File naming (CamelCase of primary type) | **Pass** | `PendingCipherChangeData.swift`, `OfflineSyncResolver.swift`, `URLError+NetworkConnection.swift` |
+| File naming (CamelCase of primary type) | **Pass** | `PendingCipherChangeData.swift`, `OfflineSyncResolver.swift`, `CipherView+OfflineSync.swift` |
 | Verb phrases for side-effect methods | **Pass** | `handleOfflineAdd`, `resolveConflict`, `createBackupCipher` |
 | "Tapped" over "Pressed" | **N/A** | No button interaction naming in this change |
 | Acronym casing per API guidelines | **Pass** | `URL`, `API`, `ID`, `NFC` follow Apple conventions |
@@ -180,6 +179,8 @@ The `OfflineSyncResolver` has the highest dependency count (7 injected services)
 
 **Issue CS-1 — Stray blank line in `Services.swift` typealias.** A blank line is introduced between `& HasConfigService` and `& HasDeviceAPIService` at `Services.swift:22`. The existing code does not have blank lines between entries. **Severity: Cosmetic.**
 
+**[Updated note]** The `URLError+NetworkConnection.swift` file (previously listed in section 2.1 file naming) has been deleted. The error handling pattern in section 2.2 (`catch let error as URLError where error.isNetworkConnectionError`) has been simplified to plain `catch` blocks.
+
 ---
 
 ## 3. Compilation Safety
@@ -191,7 +192,7 @@ The `OfflineSyncResolver` has the highest dependency count (7 injected services)
 | `PendingCipherChangeType` raw values | **Safe** | Backed by `Int16` with explicit raw values. `changeTypeRaw` stored in Core Data. Computed property provides typed access. |
 | `CipherDetailsResponseModel` Codable | **Safe** | JSON encode/decode used for cipher data persistence. Model is well-established in codebase. |
 | `Cipher(responseModel:)` init | **Safe** | Uses existing SDK init that maps from response model. |
-| `URLError` pattern matching | **Safe** | `catch let error as URLError where error.isNetworkConnectionError` — type-safe and specific. |
+| Error catch pattern | **Safe** | **[Updated]** Plain `catch` blocks used in all four offline fallback methods. The `URLError+NetworkConnection` extension was removed; any server API failure now triggers offline save. The encrypt step occurs outside the do-catch, so SDK errors propagate normally. |
 | `CipherView.update(name:folderId:)` | **Fragile** | Manually copies all 24 properties. See Issue CS-2. |
 | `Cipher.withTemporaryId(_:)` | **Fragile** | Manually copies all 26 properties. See Issue CS-2. |
 
@@ -229,14 +230,13 @@ The removal of the `ConnectivityMonitor` (from a previous iteration) actually **
 
 | Component | Test File | Test Count | Coverage Quality |
 |-----------|-----------|-----------|-----------------|
-| `URLError+NetworkConnection` | `URLError+NetworkConnectionTests.swift` | 5 | Adequate — tests 3 of 10 positive cases and 2 negative cases |
 | `CipherView+OfflineSync` | `CipherViewOfflineSyncTests.swift` | 7 | Good — verifies property preservation, ID/key nullification, attachment exclusion |
 | `PendingCipherChangeDataStore` | `PendingCipherChangeDataStoreTests.swift` | 10 | Good — full CRUD coverage, user isolation, upsert idempotency, `originalRevisionDate` preservation |
 | `OfflineSyncResolver` | `OfflineSyncResolverTests.swift` | 11 | Good — all change types, conflict resolution paths, backup naming, folder creation |
-| `VaultRepository` (offline) | `VaultRepositoryTests.swift` | +10 new | Good — offline fallback for add/update/delete/softDelete + org cipher rejection + non-network error rethrow |
+| `VaultRepository` (offline) | `VaultRepositoryTests.swift` | +9 new | Good — offline fallback for add/update/delete/softDelete + org cipher rejection. **[Updated]** `test_updateCipher_nonNetworkError_rethrows` removed (no longer applicable since all errors trigger offline save). |
 | `SyncService` (offline) | `SyncServiceTests.swift` | +4 new | Good — pre-sync trigger, skip on locked vault, skip on zero pending, abort on remaining |
 
-**Total new test count: 47 tests**
+**Total new test count: 41 tests** **[Updated]** Reduced from 47: removed 5 `URLError+NetworkConnection` tests (extension deleted) and 1 `test_updateCipher_nonNetworkError_rethrows` (no longer applicable).
 
 ### 5.2 Notable Test Gaps
 
@@ -247,7 +247,7 @@ The removal of the `ConnectivityMonitor` (from a previous iteration) actually **
 | T3 | `VaultRepository` | `handleOfflineUpdate` password change detection not directly tested — counting logic involves decrypt+compare | Medium |
 | T4 | `VaultRepository` | `handleOfflineDelete` cipher-not-found path not tested — `fetchCipher(withId:)` returning nil leads to silent return | Low |
 | T5 | `OfflineSyncResolverTests` | Inline `MockCipherAPIServiceForOfflineSync` implements full protocol with `fatalError()` stubs for 15 unused methods — fragile against protocol changes | Low |
-| T6 | `URLError+NetworkConnection` | Only 3 of 10 positive error codes tested individually | Low |
+| ~~T6~~ | ~~`URLError+NetworkConnection`~~ | ~~Only 3 of 10 positive error codes tested individually~~ **[Resolved]** Extension and tests deleted as part of error handling simplification. | ~~Low~~ N/A |
 | T7 | `VaultRepository` | No test for `handleOfflineUpdate` with existing pending record (subsequent offline edit scenario) | Low |
 | T8 | `SyncService` | No test for pre-sync resolution where the resolver throws a hard error (not a per-item failure) | Low |
 
@@ -328,7 +328,7 @@ This prevents unauthorized client-side modifications to shared organization data
 
 ### 6.6 Security Issues and Observations
 
-**Issue SEC-1 (Medium) — `.secureConnectionFailed` classified as network error.** `URLError+NetworkConnection.swift` includes `.secureConnectionFailed` in the `isNetworkConnectionError` set. While this can indicate connectivity issues (captive portal), it can also be triggered by TLS certificate failures, MITM attacks, or certificate pinning violations. Classifying it as a "network connection error" means cipher operations that fail due to a genuine TLS security issue silently fall back to offline mode rather than alerting the user. No data is sent to the compromised server (the offline fallback saves locally only), but the user receives no security warning.
+**~~Issue SEC-1 (Medium)~~ [Superseded]** — `.secureConnectionFailed` classified as network error. This issue is superseded by the error handling simplification. The `URLError+NetworkConnection.swift` extension has been deleted. The VaultRepository catch blocks now use plain `catch` instead of filtering by `URLError.isNetworkConnectionError`. The fine-grained URLError classification was solving a problem that doesn't exist: the networking stack separates transport errors (`URLError`) from HTTP errors (`ServerError`, `ResponseValidationError`) at a different layer, and the encrypt step occurs outside the do-catch so SDK errors propagate normally. Any server API call failure now triggers offline save, which is the correct behavior since there is no realistic scenario where the server is online and reachable but a pending change is permanently invalid.
 
 **Observation SEC-2 — Pending data survives vault lock.** `PendingCipherChangeData` is stored in Core Data alongside other vault data. The `cipherData` field contains SDK-encrypted JSON, so it's protected by the vault encryption key. The metadata fields are unencrypted, consistent with existing `CipherData`.
 
@@ -342,8 +342,8 @@ This prevents unauthorized client-side modifications to shared organization data
 
 | Scenario | Handling | Assessment |
 |---------|---------|-----------|
-| Network error during cipher operation | Catches `URLError` with `isNetworkConnectionError`, falls back to offline | **Good** — Specific error matching avoids catching unrelated errors |
-| Non-network error during cipher operation | Rethrows normally | **Good** — Tested in `test_updateCipher_nonNetworkError_rethrows` |
+| Any server API failure during cipher operation | **[Updated]** Plain `catch` falls back to offline save | **Good** — The encrypt step occurs outside the do-catch, so SDK encryption errors propagate normally. Only server API call failures are caught. The networking stack separates transport errors from HTTP errors at a different layer, so fine-grained URLError filtering was unnecessary. |
+| ~~Non-network error during cipher operation~~ | ~~Rethrows normally~~ | **[Superseded]** No longer applicable — all API errors trigger offline save. There is no realistic scenario where the server is reachable but a pending change is permanently invalid. |
 | Single pending change resolution fails | `OfflineSyncResolver` logs error via `Logger.application`, continues to next | **Good** — One failure doesn't block others |
 | Unresolved pending changes after resolution | SyncService aborts sync, returns early | **Good** — Prevents `replaceCiphers` from overwriting local offline edits |
 | Resolver `processPendingChanges` throws hard error | Error propagates through `fetchSync` — entire sync fails | **Acceptable** — If the store is unreadable, sync should not proceed |
@@ -462,12 +462,12 @@ The entity is added to the existing `Bitwarden.xcdatamodel` without creating a n
 
 ## 11. New and Modified File Inventory
 
-### New Files (11 source + 3 docs)
+### New Files (9 source + 3 docs)
+
+**[Updated]** `URLError+NetworkConnection.swift` (26 lines) and `URLError+NetworkConnectionTests.swift` (39 lines) were deleted as part of the error handling simplification. The `isNetworkConnectionError` computed property is no longer needed since all API failures now trigger offline save.
 
 | File | Type | Lines | Purpose |
 |------|------|-------|---------|
-| `URLError+NetworkConnection.swift` | Extension | 26 | Identifies network connectivity errors |
-| `URLError+NetworkConnectionTests.swift` | Tests | 39 | Tests for above |
 | `CipherView+OfflineSync.swift` | Extension | 95 | Cipher copy helpers for offline/backup |
 | `CipherViewOfflineSyncTests.swift` | Tests | 128 | Tests for above |
 | `PendingCipherChangeData.swift` | Model | 192 | Core Data entity + predicates |
@@ -487,19 +487,21 @@ The entity is added to the existing `Bitwarden.xcdatamodel` without creating a n
 | `DataStore.swift` | +1 line: Add `PendingCipherChangeData` to `deleteDataForUser` batch delete | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
 | `Bitwarden.xcdatamodel/contents` | +17 lines: Add `PendingCipherChangeData` entity with 9 attributes and uniqueness constraint | [ReviewSection_PendingCipherChangeDataStore.md](ReviewSection_PendingCipherChangeDataStore.md) |
 | `VaultRepository.swift` | +225 lines: Add `pendingCipherChangeDataStore` dependency; offline fallback handlers; org cipher guards | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
-| `VaultRepositoryTests.swift` | +145 lines: 10 new tests for offline fallback and org cipher rejection | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
+| `VaultRepositoryTests.swift` | +130 lines: 9 new tests for offline fallback and org cipher rejection. **[Updated]** `test_updateCipher_nonNetworkError_rethrows` removed. | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
 | `SyncService.swift` | +30 lines: Add `offlineSyncResolver`, `pendingCipherChangeDataStore`; pre-sync resolution with early-abort | [ReviewSection_SyncService.md](ReviewSection_SyncService.md) |
 | `SyncServiceTests.swift` | +69 lines: 4 new tests for pre-sync resolution conditions | [ReviewSection_SyncService.md](ReviewSection_SyncService.md) |
 | `ServiceContainer+Mocks.swift` | +6 lines: Add mock defaults for 2 new services | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
 | `AppProcessor.swift` | +1 line: Whitespace only (blank line added) | N/A |
 
-### Deleted Files (from previous iteration, not in current diff)
+### Deleted Files
 
 | File | Reason |
 |------|--------|
-| `ConnectivityMonitor.swift` | Removed — existing sync triggers suffice |
+| `ConnectivityMonitor.swift` | Removed (previous iteration) — existing sync triggers suffice |
 | `ConnectivityMonitorTests.swift` | Tests for removed service |
 | `MockConnectivityMonitor.swift` | Mock for removed service |
+| `URLError+NetworkConnection.swift` | **[Removed in simplification]** — `isNetworkConnectionError` property no longer needed; plain `catch` replaces URLError filtering |
+| `URLError+NetworkConnectionTests.swift` | **[Removed in simplification]** — Tests for deleted extension |
 
 ### Documentation Files (3)
 
@@ -552,11 +554,11 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 
 | ID | Component | Issue | Detailed Section |
 |----|-----------|-------|-----------------|
-| SEC-1 | `URLError+NetworkConnection` | `.secureConnectionFailed` may mask TLS security issues by triggering offline fallback | [EXT-2](ReviewSection_SupportingExtensions.md) |
+| ~~SEC-1~~ | ~~`URLError+NetworkConnection`~~ | ~~`.secureConnectionFailed` may mask TLS security issues~~ **[Superseded]** Extension deleted; plain `catch` replaces URLError filtering. | ~~[EXT-2](ReviewSection_SupportingExtensions.md)~~ |
 | S6 | `VaultRepositoryTests` | `handleOfflineUpdate` password change counting not directly tested | [VR](ReviewSection_VaultRepository.md) |
 | S7 | `VaultRepositoryTests` | `handleOfflineDelete` cipher-not-found path not tested | [VR-5](ReviewSection_VaultRepository.md) |
 | S8 | Feature | Consider adding a feature flag for production safety | Section 12.3 |
-| EXT-1 | `URLError+NetworkConnection` | `.timedOut` may trigger offline save for temporarily slow (but online) servers | [EXT-1](ReviewSection_SupportingExtensions.md) |
+| ~~EXT-1~~ | ~~`URLError+NetworkConnection`~~ | ~~`.timedOut` may trigger offline save for temporarily slow servers~~ **[Superseded]** Extension deleted; all API errors now trigger offline save by design. | ~~[EXT-1](ReviewSection_SupportingExtensions.md)~~ |
 
 ### Low Priority
 
@@ -570,7 +572,7 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 | R3 | `OfflineSyncResolver` | No retry backoff for permanently failing resolution items | Section 7.3 |
 | R4 | `SyncService` | Silent sync abort (no logging) | [SS-3](ReviewSection_SyncService.md) |
 | DI-1 | `Services.swift` | `HasPendingCipherChangeDataStore` exposes data store to UI layer (broader than needed) | [DI-1](ReviewSection_DIWiring.md) |
-| T6 | `URLError+NetworkConnectionTests` | Only 3 of 10 positive error codes tested individually | [EXT-4](ReviewSection_SupportingExtensions.md) |
+| ~~T6~~ | ~~`URLError+NetworkConnectionTests`~~ | ~~Only 3 of 10 positive error codes tested~~ **[Resolved]** Extension and tests deleted. | ~~[EXT-4](ReviewSection_SupportingExtensions.md)~~ |
 
 ### Informational / Future Considerations
 
@@ -615,7 +617,7 @@ The most significant design choice — the early-abort sync pattern — is the c
 
 **Primary areas for improvement:**
 1. Additional test coverage for batch processing and error paths in the resolver (S3, S4)
-2. Evaluation of whether `.secureConnectionFailed` should trigger offline mode (SEC-1)
+2. ~~Evaluation of whether `.secureConnectionFailed` should trigger offline mode (SEC-1)~~ **[Superseded]** — resolved by error handling simplification
 3. Consider a feature flag for production safety (S8)
 
-None of these are blocking issues. The implementation is ready for merge consideration with the understanding that the identified test gaps and security observation should be tracked.
+None of these are blocking issues. The implementation is ready for merge consideration with the understanding that the identified test gaps should be tracked. **[Updated]** The SEC-1 security observation has been superseded by the error handling simplification that removed the `URLError+NetworkConnection` extension entirely.

@@ -22,24 +22,23 @@ Both are injected via the initializer and documented with DocC parameter docs.
 
 ### 2. Pre-Sync Resolution Logic in `fetchSync()`
 
-The core change is a 15-line block inserted at the top of `fetchSync(forceSync:isPeriodic:)`, just after obtaining the `userId`, before the `needsSync()` check:
+The core change is a block inserted at the top of `fetchSync(forceSync:isPeriodic:)`, just after obtaining the `userId`, before the `needsSync()` check:
+
+**[Updated]** The pre-count check (`pendingChangeCount > 0`) was removed. The resolver is now always called when the vault is unlocked; it handles the empty case internally. Only the post-resolution count check remains as a guard before `replaceCiphers`.
 
 ```swift
 // Process any pending offline changes before syncing.
 let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
 if !isVaultLocked {
-    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-    if pendingCount > 0 {
-        try await offlineSyncResolver.processPendingChanges(userId: userId)
-        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-        if remainingCount > 0 {
-            return   // ← Abort sync to prevent data loss
-        }
+    try await offlineSyncResolver.processPendingChanges(userId: userId)
+    let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+    if remainingCount > 0 {
+        return   // ← Abort sync to prevent data loss
     }
 }
 ```
 
-**Flow diagram:**
+**Flow diagram: [Updated]**
 
 ```
 fetchSync() called
@@ -49,13 +48,11 @@ fetchSync() called
 ├── Check vault lock state
 │   └── If locked → skip resolution (can't decrypt/resolve)
 │
-├── Check pending change count
-│   └── If 0 → skip resolution (nothing to do)
-│
 ├── Attempt resolution: offlineSyncResolver.processPendingChanges(userId:)
+│   (resolver handles empty case internally — no pre-count check needed)
 │
 ├── Check remaining pending count
-│   ├── If 0 → continue to normal sync (all resolved)
+│   ├── If 0 → continue to normal sync (all resolved, or nothing was pending)
 │   └── If > 0 → ABORT SYNC (return early)
 │
 └── Continue to normal sync: needsSync check → API call → replace data
@@ -79,12 +76,12 @@ A blank line is added at line 381 (before `try await checkVaultTimeoutPolicy()`)
 
 | Test | Scenario | Verification |
 |------|----------|-------------|
-| `test_fetchSync_preSyncResolution_triggersPendingChanges` | 2 pending → resolve → 0 remaining | Resolver called, sync proceeds (1 API request) |
+| `test_fetchSync_preSyncResolution_triggersPendingChanges` | Pending changes exist → resolve → 0 remaining | Resolver called, sync proceeds (1 API request) |
 | `test_fetchSync_preSyncResolution_skipsWhenVaultLocked` | Vault locked + pending changes | Resolver NOT called |
-| `test_fetchSync_preSyncResolution_skipsWhenNoPendingChanges` | 0 pending changes | Resolver NOT called, sync proceeds normally |
-| `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain` | 3 pending → resolve → 2 remaining | Resolver called, sync ABORTED (0 API requests) |
+| `test_fetchSync_preSyncResolution_skipsWhenNoPendingChanges` | 0 pending changes | Resolver called (handles empty internally), sync proceeds normally |
+| `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain` | Pending changes → resolve → some remaining | Resolver called, sync ABORTED (0 API requests) |
 
-**Test technique note:** The tests use `MockPendingCipherChangeDataStore.pendingChangeCountResults: [Int]?` to return different counts on sequential calls (e.g., first call returns 2, second call returns 0). This models the scenario where resolution succeeds and the count drops.
+**[Updated]** The `pendingChangeCountResults` sequential-return pattern was removed from `MockPendingCipherChangeDataStore` since the sync flow now only calls `pendingChangeCount` once (post-resolution). The pre-count check was removed; the resolver is always called and handles the empty case internally.
 
 ---
 

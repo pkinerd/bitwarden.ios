@@ -2,20 +2,22 @@
 
 ## Files Covered
 
-| File | Type | Lines |
-|------|------|-------|
-| `BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnection.swift` | Extension | 26 |
-| `BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnectionTests.swift` | Tests | 39 |
-| `BitwardenShared/Core/Vault/Extensions/CipherView+OfflineSync.swift` | Extension | 95 |
-| `BitwardenShared/Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` | Tests | 128 |
+| File | Type | Lines | Status |
+|------|------|-------|--------|
+| ~~`BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnection.swift`~~ | ~~Extension~~ | ~~26~~ | **[Deleted]** |
+| ~~`BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnectionTests.swift`~~ | ~~Tests~~ | ~~39~~ | **[Deleted]** |
+| `BitwardenShared/Core/Vault/Extensions/CipherView+OfflineSync.swift` | Extension | 95 | Active |
+| `BitwardenShared/Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` | Tests | 128 | Active |
 
 ---
 
-## 1. URLError+NetworkConnection
+## 1. URLError+NetworkConnection — **[Superseded / Deleted]**
 
-### Purpose
+> **Update:** This entire section is superseded. `URLError+NetworkConnection.swift` and `URLError+NetworkConnectionTests.swift` have been deleted as part of an error handling simplification. The `isNetworkConnectionError` computed property is no longer needed. VaultRepository catch blocks now use plain `catch` instead of filtering by URLError type. The rationale: the networking stack separates transport errors (`URLError`) from HTTP errors (`ServerError`, `ResponseValidationError`) at a different layer, and the encrypt step occurs outside the do-catch so SDK errors propagate normally. There is no realistic scenario where the server is online and reachable but a pending change is permanently invalid. Issues EXT-1, EXT-2, and EXT-4 are all resolved by this deletion.
 
-Provides a computed property `isNetworkConnectionError` on `URLError` that distinguishes network connectivity failures from other URL loading errors. This is the gating mechanism that determines whether an API failure should trigger offline save behavior.
+### Purpose (Historical)
+
+Provides a computed property `isNetworkConnectionError` on `URLError` that distinguishes network connectivity failures from other URL loading errors. This was the gating mechanism that determined whether an API failure should trigger offline save behavior.
 
 ### Implementation
 
@@ -130,7 +132,7 @@ Similar pattern: creates a full copy of the `CipherView` by calling the initiali
 
 | Guideline | Status | Details |
 |-----------|--------|---------|
-| Extensions organized by domain | **Pass** | `URLError+` in Platform/Extensions, `CipherView+` in Vault/Extensions |
+| Extensions organized by domain | **Pass** | ~~`URLError+` in Platform/Extensions~~ (deleted), `CipherView+` in Vault/Extensions |
 | File naming convention | **Pass** | `URLError+NetworkConnection.swift`, `CipherView+OfflineSync.swift` |
 | Test co-location | **Pass** | Tests in same directory as implementation |
 | MARK comments | **Pass** | `// MARK: - Cipher + OfflineSync`, `// MARK: - CipherView + OfflineSync` |
@@ -154,7 +156,7 @@ Similar pattern: creates a full copy of the `CipherView` by calling the initiali
 
 ## Issues and Observations
 
-### Issue EXT-1: `.timedOut` May Be Overly Broad for Offline Detection (Medium)
+### ~~Issue EXT-1~~ [Superseded]: `.timedOut` May Be Overly Broad for Offline Detection
 
 `URLError.timedOut` occurs when a request exceeds the timeout interval. This can happen for:
 - Network connectivity issues (no route to server)
@@ -165,7 +167,7 @@ In the second case, the user IS online — the server is just slow. Triggering o
 
 **Mitigation:** The retry semantics of the offline system handle this correctly: if the server was just temporarily slow, the next sync will resolve the pending change successfully. No data is lost. The false-positive rate is likely low in practice.
 
-### Issue EXT-2: `.secureConnectionFailed` May Mask Security Issues (Medium)
+### ~~Issue EXT-2~~ [Superseded]: `.secureConnectionFailed` May Mask Security Issues
 
 `URLError.secureConnectionFailed` occurs when TLS negotiation fails. This can indicate:
 - Network issues (e.g., captive portal intercepting TLS)
@@ -182,6 +184,6 @@ Both methods manually copy all properties of `Cipher`/`CipherView` by calling th
 
 **Recommendation:** Add a comment noting that these methods must be updated when `Cipher`/`CipherView` types change, or consider using a more generic copy mechanism if the SDK provides one.
 
-### Issue EXT-4: Missing URLError Test Coverage for 7 of 10 Cases (Low)
+### ~~Issue EXT-4~~ [Resolved]: Missing URLError Test Coverage for 7 of 10 Cases
 
 Only 3 of the 10 `isNetworkConnectionError == true` cases are tested (`notConnectedToInternet`, `networkConnectionLost`, `timedOut`). While the switch statement is simple, having tests for all cases would improve coverage and catch accidental removals during future edits.

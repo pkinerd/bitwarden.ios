@@ -139,7 +139,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         }
     }
 
-    /// `addCipher()` falls back to offline save when the API call fails with a network error.
+    /// `addCipher()` falls back to offline save when the server API call fails.
     func test_addCipher_offlineFallback() async throws {
         cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
@@ -153,7 +153,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .create)
     }
 
-    /// `addCipher()` throws for organization ciphers when the API call fails with a network error.
+    /// `addCipher()` throws for organization ciphers when the server API call fails.
     func test_addCipher_offlineFallback_orgCipher_throws() async throws {
         cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
@@ -720,7 +720,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(cipherService.deleteCipherId, "123")
     }
 
-    /// `deleteCipher()` falls back to offline save when the API call fails with a network error.
+    /// `deleteCipher()` falls back to offline save when the server API call fails.
     func test_deleteCipher_offlineFallback() async throws {
         stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
@@ -736,7 +736,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .softDelete)
     }
 
-    /// `deleteCipher()` throws for organization ciphers when the API call fails with a network error.
+    /// `deleteCipher()` throws for organization ciphers when the server API call fails.
     func test_deleteCipher_offlineFallback_orgCipher_throws() async throws {
         stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
@@ -1508,7 +1508,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(cipherService.updateCipherWithServerEncryptedFor, "1")
     }
 
-    /// `updateCipher()` falls back to offline save when the API call fails with a network error.
+    /// `updateCipher()` falls back to offline save when the server API call fails.
     func test_updateCipher_offlineFallback() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
@@ -1525,7 +1525,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .update)
     }
 
-    /// `updateCipher()` throws for organization ciphers when the API call fails with a network error.
+    /// `updateCipher()` throws for organization ciphers when the server API call fails.
     func test_updateCipher_offlineFallback_orgCipher_throws() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
@@ -1536,19 +1536,6 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         }
 
         // Should NOT save locally or queue a pending change.
-        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
-        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
-    }
-
-    /// `updateCipher()` rethrows non-network errors normally.
-    func test_updateCipher_nonNetworkError_rethrows() async throws {
-        cipherService.updateCipherWithServerResult = .failure(BitwardenTestError.example)
-
-        await assertAsyncThrows(error: BitwardenTestError.example) {
-            try await subject.updateCipher(.fixture(id: "1"))
-        }
-
-        // Should NOT fall back to offline.
         XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
@@ -1727,7 +1714,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(cipherService.updateCipherWithServerCiphers, [cipher])
     }
 
-    /// `softDeleteCipher()` falls back to offline save when the API call fails with a network error.
+    /// `softDeleteCipher()` falls back to offline save when the server API call fails.
     func test_softDeleteCipher_offlineFallback() async throws {
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()
@@ -1746,7 +1733,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .softDelete)
     }
 
-    /// `softDeleteCipher()` throws for organization ciphers when the API call fails with a network error.
+    /// `softDeleteCipher()` throws for organization ciphers when the server API call fails.
     func test_softDeleteCipher_offlineFallback_orgCipher_throws() async throws {
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()

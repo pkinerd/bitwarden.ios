@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The offline sync feature code review identified **30 distinct issues** across the implementation. None are critical blockers — the feature is architecturally sound, secure, and well-tested. The issues range from test gaps (highest priority) through reliability improvements to UX enhancements (future considerations).
+The offline sync feature code review identified **30 distinct issues** across the implementation. None are critical blockers — the feature is architecturally sound, secure, and well-tested. The issues range from test gaps (highest priority) through reliability improvements to UX enhancements (future considerations). **[Updated]** A subsequent error handling simplification resolved/superseded 3 issues (SEC-1, EXT-1, T6) by deleting `URLError+NetworkConnection.swift` and simplifying VaultRepository catch blocks to plain `catch`.
 
 This document summarizes the recommended approach for each issue and proposes an implementation order.
 
@@ -39,8 +39,8 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 |-------|---------------|--------|------|
 | **S6** — Password change test | Add dedicated tests (Option A) | ~100-150 lines | Very low |
 | **S7** — Cipher-not-found test | Add single targeted test (Option A) | ~30-40 lines | Very low |
-| **SEC-1** — secureConnectionFailed | Add logging for TLS triggers (Option B) | ~10-15 lines | Low |
-| **EXT-1** — timedOut | Accept current behavior (Option B) | 0 lines | None |
+| ~~**SEC-1** — secureConnectionFailed~~ | ~~Add logging for TLS triggers~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted; plain `catch` replaces URLError filtering. | ~~10-15 lines~~ 0 | N/A |
+| ~~**EXT-1** — timedOut~~ | ~~Accept current behavior~~ **[Superseded]** — Extension deleted; all API errors now trigger offline save by design. | 0 lines | N/A |
 | **S8** — Feature flag | Server-controlled flag (Option A) | ~20-30 lines | Low |
 | **A3** — Unused timeProvider | Remove dependency (Option A) | ~-10 lines | Very low |
 | **CS-1** — Stray blank line | Remove blank line (Option A) | 1 line | None |
@@ -56,7 +56,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | **R3** — Retry backoff | TTL + retry count (Options A+B) | ~30-50 lines | Low-Medium |
 | **R1** — Data format versioning | Add version field (Option A) | ~15-20 lines | Low |
 | **CS-2** — Fragile SDK copies | Add review comments (Option A) | ~6 lines | None |
-| **T6** — URLError test coverage | Add individual tests (Option A) | ~35 lines | None |
+| ~~**T6** — URLError test coverage~~ | ~~Add individual tests~~ **[Resolved]** — Extension and tests deleted. | ~~35 lines~~ 0 | N/A |
 | **T7** — Subsequent edit test | Add dedicated test (Option A) | ~50-80 lines | Very low |
 | **T8** — Hard error test | Add single test (Option A) | ~30-40 lines | Very low |
 | **T5** — Inline mock fragility | Add `@AutoMockable` to CipherAPIService (Option A) | ~5 lines | Very low |
@@ -88,7 +88,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 1. **A3** — Remove unused `timeProvider` (3 files, ~-10 lines)
 2. **CS-1** — Remove stray blank line (1 file, 1 line)
 3. **R4** — Add sync abort log line (1 file, 2 lines)
-4. **SEC-1** — Add TLS fallback logging (1-2 files, ~15 lines)
+4. ~~**SEC-1** — Add TLS fallback logging~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted
 
 ### Batch 2: Test Coverage (1-2 hours)
 5. **T5** — Evaluate/replace inline mock (1 file)
@@ -96,7 +96,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 7. **S6 + T7** — Password counting + subsequent edit tests (1 file, ~150-230 lines)
 8. **S7** — Cipher-not-found test (1 file, ~30-40 lines)
 9. **T8** — Hard error in pre-sync test (1-2 files, ~30-40 lines)
-10. **T6** — Complete URLError test coverage (1 file, ~35 lines)
+10. ~~**T6** — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 
 ### Batch 3: Reliability Improvements (2-3 hours)
 11. **R2** — Convert resolver to actor (1-2 files)
@@ -124,11 +124,11 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 ### 3. Actor Conversion (R2) — Worth the migration?
 **Recommendation: Implement.** The project already uses actors for 7 services (DefaultPolicyService, DefaultStateService, DefaultClientService, DefaultTokenService, etc.). Converting `DefaultOfflineSyncResolver` from `class` to `actor` is a single keyword change that follows established project conventions and provides compile-time thread safety.
 
-### 4. `.secureConnectionFailed` (SEC-1) — Remove from offline triggers?
-**Recommendation: Keep but log.** Removing it risks losing user changes in captive-portal scenarios. Adding a `Logger.application.warning()` line (same pattern as 22+ other files) provides auditability without changing behavior.
+### 4. ~~`.secureConnectionFailed` (SEC-1) — Remove from offline triggers?~~ **[Superseded]**
+~~**Recommendation: Keep but log.**~~ This decision point is superseded. The `URLError+NetworkConnection` extension has been deleted. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save. The fine-grained URLError classification was solving a problem that doesn't exist.
 
-### 5. `.timedOut` (EXT-1) — Remove from offline triggers?
-**Recommendation: Keep.** False positives (slow server) are benign — the change resolves on the next sync. False negatives (genuine timeout-offline) would lose user changes.
+### 5. ~~`.timedOut` (EXT-1) — Remove from offline triggers?~~ **[Superseded]**
+~~**Recommendation: Keep.**~~ This decision point is superseded. The `URLError+NetworkConnection` extension has been deleted. All API errors now trigger offline save by design.
 
 ### 6. Inline Mock (T5) — Keep, replace, or auto-generate?
 **Recommendation: Add `// sourcery: AutoMockable` to `CipherAPIService`.** The project uses Sourcery for mock generation (`Sourcery/Templates/AutoMockable.stencil`). Annotating `CipherAPIService` (at `CipherAPIService.swift:17`) auto-generates a mock that updates when the protocol changes, eliminating the inline mock's maintenance burden. This is especially important since S3/S4 batch tests will add more weight to the mock.
@@ -180,7 +180,7 @@ After completing a detailed code-level review of all 30 individual action plans 
 |-------|-----------|
 | **S8** — Feature flag | When the flag is off, the entire pre-sync pending-changes block should be skipped (both resolution AND abort check), not just the resolution. Otherwise, pending changes accumulate and permanently block sync. Two-tier approach: Tier 1 gates SyncService (simple); Tier 2 also gates VaultRepository catch blocks (requires adding `configService` dependency). |
 | **R1** — Data format versioning | Priority should be deprioritized if R3 (retry backoff/TTL) is implemented, since R3 provides a more general solution for permanently stuck items. If R3 is deferred, R1 becomes important as the only graceful degradation path for format mismatches. |
-| **SEC-1** — secureConnectionFailed | Security analysis actually STRENGTHENS the case for keeping `.secureConnectionFailed`: the offline fallback prevents data from being sent to potentially compromised servers. The logging should be centralized (e.g., a separate `isTLSConnectionError` property) rather than duplicated across 4 catch blocks. |
+| ~~**SEC-1** — secureConnectionFailed~~ | **[Superseded]** Extension deleted. The entire URLError classification approach was removed in favor of plain `catch` blocks. |
 | **CS-2** — Fragile SDK copies | Mirror-based reflection testing (originally mentioned as Option B) should be explicitly NOT recommended — Rust FFI-generated Swift structs may not accurately reflect properties via `Mirror`. |
 | **A3** vs **R3** interaction | If R3 is implemented, `timeProvider` could be repurposed. However, YAGNI applies — remove it per A3, re-add with clear purpose if R3 is implemented. This is the correct sequence. |
 
@@ -197,7 +197,7 @@ The following 11 issues were confirmed as correct to accept without code changes
 - **PCDS-2** — dates optional type: Core Data constraint, nil fallback chain handles it safely
 - **SS-2** — TOCTOU race: microsecond window, pending record survives, next sync resolves
 - **DI-1** — DataStore UI exposure: consistent with project conventions, enables future U3 feature
-- **EXT-1** — timedOut classification: false-positive cost is far lower than false-negative cost
+- ~~**EXT-1** — timedOut classification~~ **[Superseded]** — Extension deleted; issue no longer exists
 
 ### Key Cross-Cutting Findings from Code Review
 
@@ -215,19 +215,19 @@ The following 11 issues were confirmed as correct to accept without code changes
 
 Based on the code review, the recommended implementation order is refined:
 
-**Batch 1: Quick Wins** (unchanged)
+**Batch 1: Quick Wins** (updated)
 1. A3 — Remove unused timeProvider
 2. CS-1 — Remove stray blank line
 3. R4 — Add sync abort log line
-4. SEC-1 — Add TLS fallback logging
+4. ~~SEC-1 — Add TLS fallback logging~~ **[Superseded]** — Extension deleted
 
-**Batch 2: Critical Test Coverage** (unchanged)
+**Batch 2: Critical Test Coverage** (updated)
 5. T5 — Evaluate/replace inline mock
 6. S3 + S4 — Batch + API failure tests
 7. S6 + T7 — Password counting + subsequent edit tests
 8. S7 — Cipher-not-found test
 9. T8 — Hard error in pre-sync test
-10. T6 — Complete URLError test coverage
+10. ~~T6 — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 
 **Batch 3: Reliability (R3 elevated)** (updated)
 11. R2 — Convert resolver to actor

@@ -326,18 +326,16 @@ extension DefaultSyncService {
         let account = try await stateService.getActiveAccount()
         let userId = account.profile.userId
 
-        // Process any pending offline changes before syncing.
-        // If pending changes remain after resolution (e.g. server unreachable),
-        // abort the sync to prevent replaceCiphers from overwriting local offline edits.
+        // Resolve any pending offline changes before syncing. If pending changes
+        // remain after resolution, abort to prevent replaceCiphers from overwriting
+        // local offline edits. Resolution is skipped when the vault is locked since
+        // the SDK crypto context is needed for conflict resolution.
         let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
         if !isVaultLocked {
-            let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-            if pendingCount > 0 {
-                try await offlineSyncResolver.processPendingChanges(userId: userId)
-                let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-                if remainingCount > 0 {
-                    return
-                }
+            try await offlineSyncResolver.processPendingChanges(userId: userId)
+            let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+            if remainingCount > 0 {
+                return
             }
         }
 

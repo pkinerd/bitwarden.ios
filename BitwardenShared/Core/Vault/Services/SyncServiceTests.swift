@@ -1095,14 +1095,12 @@ class SyncServiceTests: BitwardenTestCase {
 
     // MARK: - Offline Sync Resolution Tests
 
-    /// `fetchSync()` triggers pre-sync resolution when there are pending changes
-    /// and the vault is unlocked.
+    /// `fetchSync()` resolves pending changes and proceeds with sync when all are resolved.
     func test_fetchSync_preSyncResolution_triggersPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        pendingCipherChangeDataStore.pendingChangeCountResult = 2
-        // After processing, pending count returns 0 (all resolved).
-        pendingCipherChangeDataStore.pendingChangeCountResults = [2, 0]
+        // After resolution, pending count returns 0 (all resolved).
+        pendingCipherChangeDataStore.pendingChangeCountResult = 0
 
         try await subject.fetchSync(forceSync: false)
 
@@ -1111,27 +1109,27 @@ class SyncServiceTests: BitwardenTestCase {
         XCTAssertEqual(client.requests.count, 1)
     }
 
-    /// `fetchSync()` skips pre-sync resolution when the vault is locked.
+    /// `fetchSync()` skips resolution when the vault is locked.
     func test_fetchSync_preSyncResolution_skipsWhenVaultLocked() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
         vaultTimeoutService.isClientLocked["1"] = true
-        pendingCipherChangeDataStore.pendingChangeCountResult = 2
 
         try await subject.fetchSync(forceSync: false)
 
         XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
     }
 
-    /// `fetchSync()` skips pre-sync resolution when there are no pending changes.
-    func test_fetchSync_preSyncResolution_skipsWhenNoPendingChanges() async throws {
+    /// `fetchSync()` proceeds with sync when there are no pending changes after resolution.
+    func test_fetchSync_preSyncResolution_noPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
         pendingCipherChangeDataStore.pendingChangeCountResult = 0
 
         try await subject.fetchSync(forceSync: false)
 
-        XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
+        // Resolver is always called; it handles the empty case internally.
+        XCTAssertEqual(offlineSyncResolver.processPendingChangesCalledWith, ["1"])
         // Sync should proceed normally.
         XCTAssertEqual(client.requests.count, 1)
     }
@@ -1141,9 +1139,8 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        pendingCipherChangeDataStore.pendingChangeCountResult = 3
-        // After processing, pending count still > 0 (resolution failed for some).
-        pendingCipherChangeDataStore.pendingChangeCountResults = [3, 2]
+        // After resolution, pending count still > 0 (resolution failed for some).
+        pendingCipherChangeDataStore.pendingChangeCountResult = 2
 
         try await subject.fetchSync(forceSync: false)
 
