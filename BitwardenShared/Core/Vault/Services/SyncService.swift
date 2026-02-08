@@ -153,8 +153,14 @@ class DefaultSyncService: SyncService {
     /// The service used by the application to manage Key Connector.
     private let keyConnectorService: KeyConnectorService
 
+    /// The service used to resolve pending offline cipher changes.
+    private let offlineSyncResolver: OfflineSyncResolver
+
     /// The service for managing the organizations for the user.
     private let organizationService: OrganizationService
+
+    /// The data store for managing pending cipher changes.
+    private let pendingCipherChangeDataStore: PendingCipherChangeDataStore
 
     /// The service for managing the polices for the user.
     private let policyService: PolicyService
@@ -196,7 +202,9 @@ class DefaultSyncService: SyncService {
     ///   - configService: The service to get server-specified configuration.
     ///   - folderService: The service for managing the folders for the user.
     ///   - keyConnectorService: The service used by the application to manage Key Connector.
+    ///   - offlineSyncResolver: The service used to resolve pending offline cipher changes.
     ///   - organizationService: The service for managing the organizations for the user.
+    ///   - pendingCipherChangeDataStore: The data store for managing pending cipher changes.
     ///   - policyService: The service for managing the polices for the user.
     ///   - sendService: The service for managing the sends for the user.
     ///   - settingsService: The service for managing the organizations for the user.
@@ -215,7 +223,9 @@ class DefaultSyncService: SyncService {
         configService: ConfigService,
         folderService: FolderService,
         keyConnectorService: KeyConnectorService,
+        offlineSyncResolver: OfflineSyncResolver,
         organizationService: OrganizationService,
+        pendingCipherChangeDataStore: PendingCipherChangeDataStore,
         policyService: PolicyService,
         sendService: SendService,
         settingsService: SettingsService,
@@ -233,7 +243,9 @@ class DefaultSyncService: SyncService {
         self.configService = configService
         self.folderService = folderService
         self.keyConnectorService = keyConnectorService
+        self.offlineSyncResolver = offlineSyncResolver
         self.organizationService = organizationService
+        self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.policyService = policyService
         self.sendService = sendService
         self.settingsService = settingsService
@@ -314,6 +326,21 @@ extension DefaultSyncService {
         let account = try await stateService.getActiveAccount()
         let userId = account.profile.userId
 
+        // Process any pending offline changes before syncing.
+        // If pending changes remain after resolution (e.g. server unreachable),
+        // abort the sync to prevent replaceCiphers from overwriting local offline edits.
+        let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
+        if !isVaultLocked {
+            let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+            if pendingCount > 0 {
+                try await offlineSyncResolver.processPendingChanges(userId: userId)
+                let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+                if remainingCount > 0 {
+                    return
+                }
+            }
+        }
+
         guard try await needsSync(forceSync: forceSync, isPeriodic: isPeriodic, userId: userId) else {
             return
         }
@@ -328,7 +355,7 @@ extension DefaultSyncService {
         }
 
         if let organizations = response.profile?.organizations {
-            if await !vaultTimeoutService.isLocked(userId: userId) {
+            if !isVaultLocked {
                 try await organizationService.initializeOrganizationCrypto(
                     organizations: organizations.compactMap(Organization.init),
                 )
@@ -351,6 +378,7 @@ extension DefaultSyncService {
         try await settingsService.replaceEquivalentDomains(response.domains, userId: userId)
         try await policyService.replacePolicies(response.policies, userId: userId)
         try await stateService.setLastSyncTime(timeProvider.presentTime, userId: userId)
+
         try await checkVaultTimeoutPolicy()
         try await checkUserNeedsVaultMigration()
 

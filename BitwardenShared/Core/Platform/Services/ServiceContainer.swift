@@ -130,11 +130,17 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
     /// The service used by the application to handle notifications.
     let notificationService: NotificationService
 
+    /// The service used to resolve pending offline cipher changes against server state.
+    let offlineSyncResolver: OfflineSyncResolver
+
     /// The service used by the application for sharing data with other apps.
     let pasteboardService: PasteboardService
 
     /// The mediator to execute pending `AppIntent` actions.
     let pendingAppIntentActionMediator: PendingAppIntentActionMediator
+
+    /// The data store for managing pending cipher changes queued during offline editing.
+    let pendingCipherChangeDataStore: PendingCipherChangeDataStore
 
     /// The service for managing the polices for the user.
     let policyService: PolicyService
@@ -248,10 +254,12 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
     ///   - nfcReaderService: The service used by the application to read NFC tags.
     ///   - notificationCenterService: The service used by the application to access the system's notification center.
     ///   - notificationService: The service used by the application to handle notifications.
+    ///   - offlineSyncResolver: The service used to resolve pending offline cipher changes against server state.
     ///   - pasteboardService: The service used by the application for sharing data with other apps.
     ///   - rehydrationHelper: The helper used for app rehydration.
     ///   - reviewPromptService: The service used by the application to manage app review prompts related data.
     ///   - pendingAppIntentActionMediator: The mediator to execute pending `AppIntent` actions.
+    ///   - pendingCipherChangeDataStore: The data store for managing pending cipher changes queued during offline editing.
     ///   - policyService: The service for managing the polices for the user.
     ///   - searchProcessorMediatorFactory: The factory to make `SearchProcessorMediator`s.
     ///   - sendRepository: The repository used by the application to manage send data for the UI layer.
@@ -310,8 +318,10 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
         nfcReaderService: NFCReaderService,
         notificationCenterService: NotificationCenterService,
         notificationService: NotificationService,
+        offlineSyncResolver: OfflineSyncResolver,
         pasteboardService: PasteboardService,
         pendingAppIntentActionMediator: PendingAppIntentActionMediator,
+        pendingCipherChangeDataStore: PendingCipherChangeDataStore,
         policyService: PolicyService,
         rehydrationHelper: RehydrationHelper,
         reviewPromptService: ReviewPromptService,
@@ -370,8 +380,10 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
         self.nfcReaderService = nfcReaderService
         self.notificationCenterService = notificationCenterService
         self.notificationService = notificationService
+        self.offlineSyncResolver = offlineSyncResolver
         self.pasteboardService = pasteboardService
         self.pendingAppIntentActionMediator = pendingAppIntentActionMediator
+        self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.policyService = policyService
         self.rehydrationHelper = rehydrationHelper
         self.reviewPromptService = reviewPromptService
@@ -622,6 +634,16 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             stateService: stateService,
         )
 
+        let preSyncOfflineSyncResolver = DefaultOfflineSyncResolver(
+            cipherAPIService: apiService,
+            cipherService: cipherService,
+            clientService: clientService,
+            folderService: folderService,
+            pendingCipherChangeDataStore: dataStore,
+            stateService: stateService,
+            timeProvider: timeProvider,
+        )
+
         let syncService = DefaultSyncService(
             accountAPIService: apiService,
             appContextHelper: appContextHelper,
@@ -631,7 +653,9 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             configService: configService,
             folderService: folderService,
             keyConnectorService: keyConnectorService,
+            offlineSyncResolver: preSyncOfflineSyncResolver,
             organizationService: organizationService,
+            pendingCipherChangeDataStore: dataStore,
             policyService: policyService,
             sendService: sendService,
             settingsService: settingsService,
@@ -823,6 +847,7 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             errorReporter: errorReporter,
             folderService: folderService,
             organizationService: organizationService,
+            pendingCipherChangeDataStore: dataStore,
             policyService: policyService,
             settingsService: settingsService,
             stateService: stateService,
@@ -831,6 +856,8 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             vaultListDirectorStrategyFactory: vaultListDirectorStrategyFactory,
             vaultTimeoutService: vaultTimeoutService,
         )
+
+        let offlineSyncResolver: OfflineSyncResolver = preSyncOfflineSyncResolver
 
         #if DEBUG
         let fido2CredentialStore = DebuggingFido2CredentialStoreService(
@@ -996,8 +1023,10 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             nfcReaderService: nfcReaderService ?? NoopNFCReaderService(),
             notificationCenterService: notificationCenterService,
             notificationService: notificationService,
+            offlineSyncResolver: offlineSyncResolver,
             pasteboardService: pasteboardService,
             pendingAppIntentActionMediator: pendingAppIntentActionMediator,
+            pendingCipherChangeDataStore: dataStore,
             policyService: policyService,
             rehydrationHelper: rehydrationHelper,
             reviewPromptService: reviewPromptService,

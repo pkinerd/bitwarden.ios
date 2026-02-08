@@ -1,0 +1,621 @@
+# Offline Sync Feature - Comprehensive Code Review
+
+## Summary
+
+This changeset implements a client-side offline sync feature for the Bitwarden iOS vault. When network connectivity is unavailable during cipher operations (add, update, delete, soft-delete), the app persists changes locally and queues them for resolution when connectivity is restored. A conflict resolution engine detects server-side changes made while offline and creates backup copies rather than silently discarding data.
+
+**Scope:** 24 files changed (+3,558 lines, -11 lines) across multiple commits on `claude/plan-offline-sync-JDSOl`, with subsequent simplification commits on `claude/review-offline-sync-changes-Tiv2i`.
+
+**Guidelines Referenced:**
+- Project architecture: `Docs/Architecture.md`, `Docs/Testing.md`
+- Contribution guidelines: [bitwarden.contributing-docs](https://github.com/pkinerd/bitwarden.contributing-docs) — specifically Swift code style, iOS architecture, security principles (zero-knowledge, cryptography), and general contributing guidelines
+- Project-specific: `.claude/CLAUDE.md`
+
+**Detailed section documents (per-component deep dives):**
+- [ReviewSection_PendingCipherChangeDataStore.md](ReviewSection_PendingCipherChangeDataStore.md) — Core Data entity, data store, schema changes
+- [ReviewSection_OfflineSyncResolver.md](ReviewSection_OfflineSyncResolver.md) — Conflict resolution engine
+- [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) — Offline fallback handlers in repository
+- [ReviewSection_SyncService.md](ReviewSection_SyncService.md) — Pre-sync resolution and early-abort logic
+- [ReviewSection_SupportingExtensions.md](ReviewSection_SupportingExtensions.md) — URLError detection, Cipher copy helpers
+- [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) — ServiceContainer, Services.swift, DataStore cleanup
+
+### High-Level Architecture
+
+```
+User Action → VaultRepository (catch URLError) → Offline Handler → PendingCipherChangeDataStore
+                                                                            ↓
+Existing sync triggers (periodic, pull-to-refresh, foreground) → SyncService.fetchSync()
+                                                                            ↓
+                                                          OfflineSyncResolver.processPendingChanges()
+                                                                            ↓
+                                                          Conflict Detection → API Upload / Backup Creation
+                                                                            ↓
+                                                          Early-abort if unresolved → else Full Sync
+```
+
+### End-to-End Data Flow
+
+The offline sync feature introduces two new data flows:
+
+**Flow 1: Offline Save (user edits while disconnected)**
+```
+1. User edits a cipher in the UI
+2. Processor calls VaultRepository.updateCipher(cipherView)
+3. VaultRepository encrypts the CipherView via SDK → encrypted Cipher
+4. VaultRepository attempts cipherService.updateCipherWithServer(encrypted)
+5. API call fails with URLError (network connectivity issue)
+6. VaultRepository catches the URLError:
+   a. Checks cipher is not org-owned (throws if it is)
+   b. Saves encrypted cipher to local Core Data (cipherService.updateCipherWithLocalStorage)
+   c. Encodes encrypted cipher as JSON (CipherDetailsResponseModel)
+   d. Detects password changes (decrypt + compare, in-memory only)
+   e. Upserts PendingCipherChangeData record (cipherId, userId, encrypted JSON, revision date)
+7. Operation returns success to UI — user sees their edit applied locally
+```
+
+**Flow 2: Sync Resolution (connectivity restored)**
+```
+1. Existing sync trigger fires (periodic timer, app foreground, pull-to-refresh)
+2. SyncService.fetchSync() called
+3. Pre-sync check:
+   a. Is vault locked? → Yes: skip resolution
+   b. Any pending changes? → No: proceed to normal sync
+   c. Attempt resolution: offlineSyncResolver.processPendingChanges(userId)
+   d. Check remaining count → If > 0: ABORT sync (protect local data)
+4. For each pending change, resolver:
+   a. .create: push new cipher to server, delete pending record
+   b. .update: fetch server version, detect conflicts by comparing revisionDates
+      - No conflict, <4 pw changes: push local to server
+      - No conflict, ≥4 pw changes: push local, create backup of server version
+      - Conflict, local newer: push local, backup server version
+      - Conflict, server newer: keep server, backup local version
+   c. .softDelete: fetch server version, backup if conflict, then soft-delete on server
+5. All pending changes resolved → proceed to normal full sync (replaceCiphers, etc.)
+```
+
+---
+
+## 1. Architecture Compliance
+
+**Reference:** `Docs/Architecture.md`, [contributing-docs/architecture/mobile-clients/ios](https://github.com/pkinerd/bitwarden.contributing-docs/docs/architecture/mobile-clients/ios/index.md)
+
+### 1.1 Layering
+
+| Principle | Compliance | Notes |
+|-----------|-----------|-------|
+| Core layer: Services have single responsibilities | **Pass** | `OfflineSyncResolver` owns conflict resolution; `PendingCipherChangeDataStore` owns persistence |
+| Core layer: Repositories synthesize data from services | **Pass** | `VaultRepository` orchestrates cipher services, pending store, and encryption |
+| DI via `ServiceContainer` + `HasService` protocols | **Pass** | Two new protocols (`HasOfflineSyncResolver`, `HasPendingCipherChangeDataStore`) added to `Services` typealias |
+| UI layer has no direct service access | **Pass** | Offline sync is triggered via existing sync mechanisms, no new UI-layer service dependencies |
+| Protocol-based service abstractions | **Pass** | All new services have protocol + default implementation pairs |
+| Data stores extend `DataStore` | **Pass** | `PendingCipherChangeDataStore` extends `DataStore` via protocol + extension |
+| No new top-level Core/UI subfolders | **Pass** | All new files placed within existing `Vault` and `Platform` domains |
+| Unidirectional data flow preserved | **Pass** | No new UI components; offline save is transparent to the existing Coordinator/Processor/View pattern |
+
+### 1.2 Dependency Flow
+
+```
+VaultRepository [modified]
+  └─ cipherService (CipherService) [existing]
+  └─ clientService (ClientService) [existing]
+  └─ pendingCipherChangeDataStore (PendingCipherChangeDataStore) [NEW]
+  └─ stateService (StateService) [existing]
+
+SyncService [modified]
+  └─ offlineSyncResolver (OfflineSyncResolver) [NEW]
+  └─ pendingCipherChangeDataStore (PendingCipherChangeDataStore) [NEW]
+  └─ vaultTimeoutService (VaultTimeoutService) [existing]
+
+OfflineSyncResolver (DefaultOfflineSyncResolver) [NEW]
+  └─ cipherAPIService (CipherAPIService) [existing]
+  └─ cipherService (CipherService) [existing]
+  └─ clientService (ClientService) [existing]
+  └─ folderService (FolderService) [existing]
+  └─ pendingCipherChangeDataStore (PendingCipherChangeDataStore) [NEW]
+  └─ stateService (StateService) [existing]
+  └─ timeProvider (TimeProvider) [existing]
+```
+
+No circular dependencies detected. All new services flow into the existing service graph correctly.
+
+### 1.3 Cross-Domain/Cross-Component Dependencies
+
+**Assessment: No problematic new cross-domain dependencies introduced.**
+
+| New Dependency | From | To | Assessment |
+|----------------|------|-----|-----------|
+| `PendingCipherChangeDataStore` | `VaultRepository` | `DataStore` | Same domain (Vault → Platform/Stores) — follows existing patterns (e.g., CipherData) |
+| `PendingCipherChangeDataStore` | `SyncService` | `DataStore` | Same domain — follows existing SyncService-to-DataStore pattern |
+| `OfflineSyncResolver` → `FolderService` | Vault/Services | Vault/Services | Same domain — creating a folder for conflict backups |
+| `OfflineSyncResolver` → `CipherAPIService` | Vault/Services | Vault/Services | Same domain — fetching server cipher state |
+
+The `OfflineSyncResolver` has the highest dependency count (7 injected services), but these are all within the Vault/Platform domain and are cohesive with the resolver's responsibility. No cross-domain coupling is introduced (e.g., Auth ↔ Vault, Tools ↔ Vault).
+
+**Removed cross-domain dependency (positive):** The simplification removed a `ConnectivityMonitor` dependency that would have imported `Network.framework` and an `AccountAPIService` dependency for health checking, both of which were cross-cutting.
+
+### 1.4 Architectural Observations
+
+**Observation A1 — Early-abort sync pattern:** SyncService uses an early-abort pattern: if pending offline changes exist, it attempts to resolve them first. If any remain unresolved (e.g. server unreachable), the sync is aborted entirely to prevent `replaceCiphers` from overwriting local offline edits. This is simpler and safer than the alternative of proceeding with sync and re-applying changes afterward.
+
+**Observation A2 — `OfflineSyncResolver` has 7 dependencies:** This is on the higher end for service dependencies in the codebase. It reflects the resolver's cross-cutting responsibility (reading ciphers, creating folders, uploading to API, managing pending state). The responsibility is cohesive, so the dependency count is acceptable. Note: `timeProvider` is injected but unused — see Issue A3.
+
+**Issue A3 — `timeProvider` unused in `DefaultOfflineSyncResolver`.** The `timeProvider` dependency is injected and stored but never referenced. The backup cipher name uses `DateFormatter` with the cipher's own timestamp, not the time provider. This is a dead dependency that should be removed. **Severity: Low.**
+
+---
+
+## 2. Code Style Compliance
+
+**Reference:** [contributing-docs/contributing/code-style/swift.md](https://github.com/pkinerd/bitwarden.contributing-docs/docs/contributing/code-style/swift.md)
+
+### 2.1 Naming Conventions
+
+| Guideline | Compliance | Notes |
+|-----------|-----------|-------|
+| American English spelling | **Pass** | "organization" used consistently (was "organisation" originally, fixed in review commit) |
+| Type naming (UpperCamelCase) | **Pass** | `DefaultOfflineSyncResolver`, `PendingCipherChangeData`, `PendingCipherChangeType` |
+| Property/method naming (lowerCamelCase) | **Pass** | `pendingCipherChangeDataStore`, `handleOfflineUpdate`, `isNetworkConnectionError` |
+| Protocol naming (`Has*` for DI) | **Pass** | `HasOfflineSyncResolver`, `HasPendingCipherChangeDataStore` |
+| Test naming (`test_method_scenario`) | **Pass** | `test_fetchSync_preSyncResolution_skipsWhenVaultLocked`, `test_processPendingChanges_update_noConflict` |
+| Mock naming (`Mock*`) | **Pass** | `MockOfflineSyncResolver`, `MockPendingCipherChangeDataStore` |
+| File naming (CamelCase of primary type) | **Pass** | `PendingCipherChangeData.swift`, `OfflineSyncResolver.swift`, `URLError+NetworkConnection.swift` |
+| Verb phrases for side-effect methods | **Pass** | `handleOfflineAdd`, `resolveConflict`, `createBackupCipher` |
+| "Tapped" over "Pressed" | **N/A** | No button interaction naming in this change |
+| Acronym casing per API guidelines | **Pass** | `URL`, `API`, `ID`, `NFC` follow Apple conventions |
+
+### 2.2 Code Organization
+
+| Guideline | Compliance | Notes |
+|-----------|-----------|-------|
+| MARK comments for sections | **Pass** | `// MARK: Properties`, `// MARK: Initialization`, `// MARK: Private`, `// MARK: Constants` used throughout |
+| MARK enforcement order (properties → initializers → methods) | **Pass** | Consistent across all new files |
+| File co-location (tests with impl) | **Pass** | All test files in same directory as implementation |
+| Extension-based protocol conformance | **Pass** | `DataStore` extension for `PendingCipherChangeDataStore` conformance |
+| Guard clauses for early returns | **Pass** | Used consistently in `handleOfflineDelete`, `resolveCreate`, `processPendingChanges` |
+| Alphabetization within MARK sections | **Pass** | Properties and methods alphabetically ordered |
+| DocC documentation on all public symbols | **Pass** | All protocols, classes, methods, and properties have DocC |
+| DocC skipped for protocol implementations | **Pass** | `DataStore` extension methods (implementing `PendingCipherChangeDataStore`) not redundantly documented |
+| DocC skipped for mocks | **Pass** | Mock classes do not have DocC |
+
+### 2.3 Style Issues
+
+**Issue CS-1 — Stray blank line in `Services.swift` typealias.** A blank line is introduced between `& HasConfigService` and `& HasDeviceAPIService` at `Services.swift:22`. The existing code does not have blank lines between entries. **Severity: Cosmetic.**
+
+---
+
+## 3. Compilation Safety
+
+### 3.1 Type Safety
+
+| Area | Assessment | Details |
+|------|-----------|---------|
+| `PendingCipherChangeType` raw values | **Safe** | Backed by `Int16` with explicit raw values. `changeTypeRaw` stored in Core Data. Computed property provides typed access. |
+| `CipherDetailsResponseModel` Codable | **Safe** | JSON encode/decode used for cipher data persistence. Model is well-established in codebase. |
+| `Cipher(responseModel:)` init | **Safe** | Uses existing SDK init that maps from response model. |
+| `URLError` pattern matching | **Safe** | `catch let error as URLError where error.isNetworkConnectionError` — type-safe and specific. |
+| `CipherView.update(name:folderId:)` | **Fragile** | Manually copies all 24 properties. See Issue CS-2. |
+| `Cipher.withTemporaryId(_:)` | **Fragile** | Manually copies all 26 properties. See Issue CS-2. |
+
+**Issue CS-2 — `withTemporaryId` and `update` are fragile against SDK type changes.** Both methods manually copy all properties by calling the full initializer. If `Cipher`/`CipherView` from the BitwardenSdk package gain new properties with default values, these methods will compile but silently drop the new property's value. If new required parameters are added, compilation will break (which is the safer outcome). **Severity: Low.** **Recommendation:** Add a comment noting these methods must be reviewed when the SDK is updated.
+
+### 3.2 Import Statements
+
+All new files have appropriate imports. No new external framework imports. Test files correctly use `@testable import BitwardenShared`. `OfflineSyncResolverTests` correctly imports `Networking` for `EmptyResponse` and `BitwardenKitMocks` for `MockErrorReporter`.
+
+---
+
+## 4. New External Libraries and Dependencies
+
+**None.** The changeset introduces zero new external libraries, packages, or framework dependencies. All imports are from existing project targets or Apple system frameworks:
+
+| Import | Source | Status |
+|--------|--------|--------|
+| `Foundation` | Apple | Existing |
+| `CoreData` | Apple | Existing (used by DataStore already) |
+| `BitwardenSdk` | Project | Existing |
+| `OSLog` | Apple | Existing (used by Logger.application already) |
+| `XCTest` | Apple | Test target only |
+| `BitwardenKitMocks` | Project test target | Existing |
+| `Networking` | Project local package | Existing |
+
+The removal of the `ConnectivityMonitor` (from a previous iteration) actually **eliminated** a potential new dependency on Apple's `Network.framework`.
+
+---
+
+## 5. Test Coverage
+
+**Reference:** `Docs/Testing.md`, [contributing-docs/architecture/mobile-clients/ios testing section](https://github.com/pkinerd/bitwarden.contributing-docs/docs/architecture/mobile-clients/ios/index.md)
+
+### 5.1 Coverage by Component
+
+| Component | Test File | Test Count | Coverage Quality |
+|-----------|-----------|-----------|-----------------|
+| `URLError+NetworkConnection` | `URLError+NetworkConnectionTests.swift` | 5 | Adequate — tests 3 of 10 positive cases and 2 negative cases |
+| `CipherView+OfflineSync` | `CipherViewOfflineSyncTests.swift` | 7 | Good — verifies property preservation, ID/key nullification, attachment exclusion |
+| `PendingCipherChangeDataStore` | `PendingCipherChangeDataStoreTests.swift` | 10 | Good — full CRUD coverage, user isolation, upsert idempotency, `originalRevisionDate` preservation |
+| `OfflineSyncResolver` | `OfflineSyncResolverTests.swift` | 11 | Good — all change types, conflict resolution paths, backup naming, folder creation |
+| `VaultRepository` (offline) | `VaultRepositoryTests.swift` | +10 new | Good — offline fallback for add/update/delete/softDelete + org cipher rejection + non-network error rethrow |
+| `SyncService` (offline) | `SyncServiceTests.swift` | +4 new | Good — pre-sync trigger, skip on locked vault, skip on zero pending, abort on remaining |
+
+**Total new test count: 47 tests**
+
+### 5.2 Notable Test Gaps
+
+| ID | Component | Gap | Severity |
+|----|-----------|-----|----------|
+| T1 | `OfflineSyncResolver` | No batch processing test — all tests use single pending change | Medium |
+| T2 | `OfflineSyncResolver` | No API failure during resolution tested — `addCipherWithServer`/`updateCipherWithServer` throwing is catch-and-continue but untested | Medium |
+| T3 | `VaultRepository` | `handleOfflineUpdate` password change detection not directly tested — counting logic involves decrypt+compare | Medium |
+| T4 | `VaultRepository` | `handleOfflineDelete` cipher-not-found path not tested — `fetchCipher(withId:)` returning nil leads to silent return | Low |
+| T5 | `OfflineSyncResolverTests` | Inline `MockCipherAPIServiceForOfflineSync` implements full protocol with `fatalError()` stubs for 15 unused methods — fragile against protocol changes | Low |
+| T6 | `URLError+NetworkConnection` | Only 3 of 10 positive error codes tested individually | Low |
+| T7 | `VaultRepository` | No test for `handleOfflineUpdate` with existing pending record (subsequent offline edit scenario) | Low |
+| T8 | `SyncService` | No test for pre-sync resolution where the resolver throws a hard error (not a per-item failure) | Low |
+
+### 5.3 Test Pattern Compliance (`Docs/Testing.md`)
+
+| Guideline | Compliance |
+|-----------|-----------|
+| Every type containing logic must be tested | **Pass** — All new types have tests |
+| Test file naming: `<Type>Tests.swift` | **Pass** |
+| Co-located with implementation | **Pass** |
+| Extends `BitwardenTestCase` | **Pass** — All test classes |
+| Uses `ServiceContainer.withMocks()` where applicable | **Pass** — New mocks added to `ServiceContainer+Mocks.swift` |
+| Mocks follow `Mock<Name>` naming | **Pass** |
+| Alphabetical test ordering | **Pass** |
+| Properties → Setup & Teardown → Tests MARK order | **Pass** |
+| setUp creates all mocks, tearDown nils them | **Pass** |
+
+---
+
+## 6. Security Considerations
+
+**Reference:** [contributing-docs/architecture/security/principles/01-servers-are-zero-knowledge.mdx](https://github.com/pkinerd/bitwarden.contributing-docs/docs/architecture/security/principles/01-servers-are-zero-knowledge.mdx), [contributing-docs/architecture/security/definitions.mdx](https://github.com/pkinerd/bitwarden.contributing-docs/docs/architecture/security/definitions.mdx), [contributing-docs/architecture/cryptography/crypto-guide.md](https://github.com/pkinerd/bitwarden.contributing-docs/docs/architecture/cryptography/crypto-guide.md)
+
+### 6.1 Zero-Knowledge Architecture Preservation
+
+| Principle | Compliance | Analysis |
+|-----------|-----------|---------|
+| Encrypt before persist | **Pass** | All offline handlers receive already-encrypted `Cipher` objects from `clientService.vault().ciphers().encrypt()`. The `CipherDetailsResponseModel` stored in Core Data contains only encrypted fields. |
+| No plaintext secrets in storage | **Pass** | `cipherData` in `PendingCipherChangeData` stores JSON-encoded encrypted cipher snapshots. Login passwords, notes, and custom fields are encrypted by the SDK before reaching the offline handler. |
+| Attackers cannot retrieve decrypted vault data | **Pass** | Pending change records store the same encrypted format as existing `CipherData`. No reduction in protection. |
+| Attackers cannot retrieve user encryption keys | **Pass** | No new key storage introduced. Relies on existing encryption key management via iOS Keychain. |
+| No new crypto code in Swift | **Pass** | All encryption/decryption uses existing SDK primitives (Rust). No new cryptographic code written in Swift. |
+| Per-user data isolation | **Pass** | All pending change queries scoped by `userId`. Core Data uniqueness constraint is `(userId, cipherId)`. |
+
+### 6.2 Are Temporary Offline Items Protected to the Same Level as the Offline Vault Copy?
+
+**Yes.** The pending offline items stored in `PendingCipherChangeData.cipherData` are protected to the **identical level** as the existing offline vault copy stored in `CipherData.modelData`:
+
+| Protection Layer | Existing `CipherData` | New `PendingCipherChangeData` | Same? |
+|-----------------|----------------------|-------------------------------|-------|
+| Content encryption | SDK-encrypted `CipherDetailsResponseModel` JSON | SDK-encrypted `CipherDetailsResponseModel` JSON | **Yes** |
+| Core Data store location | `{AppGroupContainer}/Bitwarden.sqlite` | Same database, same SQLite file | **Yes** |
+| iOS file protection | Complete Until First User Authentication (iOS default) | Same (same file) | **Yes** |
+| App sandbox | App security group container | Same container | **Yes** |
+| User data cleanup | Included in `deleteDataForUser` batch | Included in `deleteDataForUser` batch | **Yes** |
+| Metadata exposure | `id`, `userId` stored unencrypted | `id`, `userId`, `cipherId`, `changeTypeRaw`, dates stored unencrypted | **Comparable** |
+
+The metadata fields on `PendingCipherChangeData` (`offlinePasswordChangeCount`, `originalRevisionDate`, `changeTypeRaw`, `createdDate`, `updatedDate`) reveal activity patterns (timing and nature of offline edits) but no sensitive vault content. This is comparable to metadata already exposed by `CipherData` (which stores `id`, `userId` unencrypted alongside encrypted `modelData`).
+
+### 6.3 Encryption Flow Verification
+
+The encrypt-before-queue invariant is correctly maintained across all four operations:
+
+```
+addCipher:     encrypt(cipherView) → addCipherWithServer (may throw) → handleOfflineAdd(encryptedCipher)
+updateCipher:  encrypt(cipherView) → updateCipherWithServer (may throw) → handleOfflineUpdate(encryptedCipher)
+softDelete:    encrypt(softDeleted) → softDeleteWithServer (may throw) → handleOfflineSoftDelete(encryptedCipher)
+deleteCipher:  N/A (ID only) → deleteCipherWithServer (may throw) → handleOfflineDelete(cipherId)
+```
+
+In all paths, `clientService.vault().ciphers().encrypt(cipherView:)` is called **before** the server request. The catch block receives the already-encrypted cipher, so no additional encryption is needed for offline storage.
+
+For `deleteCipher`, the method only receives an ID (no cipher data). The `handleOfflineDelete` helper fetches the existing encrypted cipher from local storage to include in the pending record.
+
+### 6.4 Password Change Detection
+
+`VaultRepository.handleOfflineUpdate` (lines ~1012-1030) decrypts both the existing pending cipher and the new cipher to compare plaintext passwords in-memory. The decrypted values are ephemeral and not persisted. This is necessary for the soft conflict threshold feature (≥4 password changes triggers a backup).
+
+### 6.5 Organization Cipher Restriction
+
+Organization ciphers are correctly blocked from offline editing in all four operations:
+- `addCipher` — checked before offline fallback
+- `updateCipher` — checked before offline fallback
+- `softDeleteCipher` — checked before offline fallback
+- `deleteCipher` — checked inside `handleOfflineDelete` (after fetching cipher to determine org ownership)
+
+This prevents unauthorized client-side modifications to shared organization data where permissions, collection access, and policies could change while offline.
+
+### 6.6 Security Issues and Observations
+
+**Issue SEC-1 (Medium) — `.secureConnectionFailed` classified as network error.** `URLError+NetworkConnection.swift` includes `.secureConnectionFailed` in the `isNetworkConnectionError` set. While this can indicate connectivity issues (captive portal), it can also be triggered by TLS certificate failures, MITM attacks, or certificate pinning violations. Classifying it as a "network connection error" means cipher operations that fail due to a genuine TLS security issue silently fall back to offline mode rather than alerting the user. No data is sent to the compromised server (the offline fallback saves locally only), but the user receives no security warning.
+
+**Observation SEC-2 — Pending data survives vault lock.** `PendingCipherChangeData` is stored in Core Data alongside other vault data. The `cipherData` field contains SDK-encrypted JSON, so it's protected by the vault encryption key. The metadata fields are unencrypted, consistent with existing `CipherData`.
+
+**Observation SEC-3 — Pending changes cleaned up on user data deletion.** `DataStore.deleteDataForUser(userId:)` includes `PendingCipherChangeData.deleteByUserIdRequest` in the batch delete, ensuring pending changes are properly removed on logout or account deletion.
+
+---
+
+## 7. Reliability Considerations
+
+### 7.1 Error Handling
+
+| Scenario | Handling | Assessment |
+|---------|---------|-----------|
+| Network error during cipher operation | Catches `URLError` with `isNetworkConnectionError`, falls back to offline | **Good** — Specific error matching avoids catching unrelated errors |
+| Non-network error during cipher operation | Rethrows normally | **Good** — Tested in `test_updateCipher_nonNetworkError_rethrows` |
+| Single pending change resolution fails | `OfflineSyncResolver` logs error via `Logger.application`, continues to next | **Good** — One failure doesn't block others |
+| Unresolved pending changes after resolution | SyncService aborts sync, returns early | **Good** — Prevents `replaceCiphers` from overwriting local offline edits |
+| Resolver `processPendingChanges` throws hard error | Error propagates through `fetchSync` — entire sync fails | **Acceptable** — If the store is unreadable, sync should not proceed |
+
+### 7.2 Data Loss Prevention
+
+The architecture provides multiple layers of protection against data loss:
+
+1. **Encrypt-before-queue:** Cipher data is encrypted before any network attempt, ensuring it's always available for offline storage
+2. **Local persistence on failure:** The encrypted cipher is saved to local Core Data immediately on network failure
+3. **Early-abort sync:** `fetchSync` will not call `replaceCiphers` while pending changes exist
+4. **Conflict backup:** When conflicts are detected, both server and local versions are preserved as separate ciphers
+5. **Soft conflict threshold:** Even without server conflicts, ≥4 password changes trigger a backup of the server version
+6. **Organization cipher exclusion:** Prevents complex shared-item conflicts that could lead to data loss
+
+**Potential data loss scenario (low probability):**
+
+If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server but the subsequent local storage update fails, the pending record is NOT deleted. On retry, the resolver creates a duplicate cipher on the server. The user sees a duplicate but loses no data. See `ReviewSection_OfflineSyncResolver.md` Issue RES-1.
+
+### 7.3 Reliability Issues
+
+**Issue R1 (Low) — Pending change data format versioning:** Pending changes store `CipherDetailsResponseModel` as JSON. If the model evolves in a future app update, old pending changes might fail to decode. Severity is low since pending changes are short-lived (resolved on next successful sync).
+
+**Issue R2 (Low) — `conflictFolderId` thread safety:** `DefaultOfflineSyncResolver.conflictFolderId` is a mutable `var` on a class with no `actor` isolation. Currently safe due to sequential calling pattern, but fragile if ever called concurrently.
+
+**Issue R3 (Low) — No retry backoff for failed resolution items:** Failed items are retried on every subsequent sync with no backoff. If a cipher consistently fails to resolve (e.g., server returns 404), the resolver will attempt it every sync indefinitely. Consider adding a retry count or expiry mechanism.
+
+**Issue R4 (Low) — Silent sync abort:** When sync is aborted due to remaining pending changes, there's no logging. Consider adding `Logger.application.info()` to aid debugging.
+
+---
+
+## 8. Usability Considerations
+
+### 8.1 User Experience During Offline Operations
+
+| Scenario | Behavior | Assessment |
+|---------|---------|-----------|
+| Save cipher while offline | Saves silently, queues for sync | **Good** — Transparent to user |
+| Save org cipher while offline | Throws `organizationCipherOfflineEditNotSupported` | **Needs attention** — Error appears after network timeout delay |
+| Next sync after connectivity restored | Resolves pending changes, then syncs | **Good** — No manual action needed |
+| Conflict detected (server changed) | Backup created in "Offline Sync Conflicts" folder | **Good** — No data loss |
+| Multiple password changes offline | Extra backup when ≥4 changes | **Good** — Soft conflict protects against accumulated drift |
+| Archive/unarchive cipher while offline | Fails with generic network error | **Gap** — Inconsistent with add/update/delete offline support |
+| Update cipher collections while offline | Fails with generic network error | **Gap** — Inconsistent |
+| Restore cipher from trash while offline | Fails with generic network error | **Gap** — Inconsistent |
+| Viewing pending changes status | No UI indicator | **Gap** — User has no awareness of unsynced changes |
+| Conflict folder discovery | "Offline Sync Conflicts" folder appears in vault | **Acceptable** — Clear name, but English-only |
+
+### 8.2 Usability Observations
+
+**Observation U1 — Org cipher error timing.** The organization check happens after the network request fails, so the user must wait for the network timeout before seeing the error. Proactive checking would require knowing connectivity state before the API call.
+
+**Observation U2 — Inconsistent offline support across operations.** Add, update, delete, and soft-delete work offline. Archive, unarchive, collection assignment, and restore do not. Users performing unsupported operations offline get generic errors rather than offline-specific messages.
+
+**Observation U3 — No user-visible pending changes indicator.** Users have no way to see pending offline changes. If resolution continues to fail, the user is unaware their changes haven't been uploaded.
+
+**Observation U4 — Conflict folder name in English only.** "Offline Sync Conflicts" is hardcoded in English, not localized. Non-English users see an English folder name. Localization is complex since the encrypted folder name syncs across devices with potentially different locales.
+
+---
+
+## 9. Simplification Opportunities
+
+### 9.1 Ways to Reduce Code Change Extent Without Reducing Functionality
+
+| Opportunity | Estimated Savings | Trade-off |
+|-------------|-------------------|-----------|
+| Remove `timeProvider` from `DefaultOfflineSyncResolver` | ~5 lines | None — it's unused |
+| Merge `handleOfflineDelete` and `handleOfflineSoftDelete` | ~30 lines | Slight increase in complexity of one method; both queue `.softDelete` changes |
+| Use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON | ~20 lines per handler | Would require a different serialization approach for `cipherData`; the current JSON approach matches existing `CipherData` patterns |
+| Remove `CipherView.update(name:folderId:)` and inline the `CipherView(...)` init call in the resolver | ~20 lines | Reduces abstraction but couples resolver to SDK init signature |
+| Use existing project-level mock for `CipherAPIService` (if one exists) instead of inline `MockCipherAPIServiceForOfflineSync` | ~40 lines | Depends on whether a project mock exists with `fatalError` stubs for unused methods |
+
+**Assessment:** The code is already reasonably compact. The most impactful simplification is removing the unused `timeProvider` dependency. The other opportunities offer modest savings with tradeoffs.
+
+### 9.2 Simplifications Already Applied
+
+The implementation has already been simplified significantly from the original plan:
+
+1. **ConnectivityMonitor removed** — Saved ~500 lines and eliminated `Network.framework` dependency
+2. **Health check removed** — Saved ~50 lines and eliminated `AccountAPIService` dependency
+3. **Post-sync re-application replaced with early-abort** — Simplified sync logic significantly
+4. **`AddEditItemProcessor` not modified** — Errors propagate through existing UI error handling
+5. **No changes to `CipherService` or `FolderService`** — Existing protocol methods sufficient
+
+---
+
+## 10. Core Data Model
+
+### 10.1 `PendingCipherChangeData` Entity
+
+```
+PendingCipherChangeData
+├── id: String (required)
+├── cipherId: String (required)
+├── userId: String (required)
+├── changeTypeRaw: Integer 16 (required, default 0)
+├── cipherData: Binary (optional)
+├── originalRevisionDate: Date (optional)
+├── createdDate: Date (optional)
+├── updatedDate: Date (optional)
+├── offlinePasswordChangeCount: Integer 16 (required, default 0)
+└── Uniqueness: (userId, cipherId)
+```
+
+The uniqueness constraint ensures at most one pending change per cipher per user. Subsequent offline edits update the existing record.
+
+### 10.2 Core Data Model Versioning
+
+The entity is added to the existing `Bitwarden.xcdatamodel` without creating a new model version. Core Data's lightweight migration handles new entity additions automatically. Future modifications to this entity (renamed/removed attributes) would require explicit model versioning.
+
+### 10.3 User Data Cleanup
+
+`DataStore.deleteDataForUser(userId:)` correctly includes `PendingCipherChangeData.deleteByUserIdRequest(userId:)` in the batch delete.
+
+---
+
+## 11. New and Modified File Inventory
+
+### New Files (11 source + 3 docs)
+
+| File | Type | Lines | Purpose |
+|------|------|-------|---------|
+| `URLError+NetworkConnection.swift` | Extension | 26 | Identifies network connectivity errors |
+| `URLError+NetworkConnectionTests.swift` | Tests | 39 | Tests for above |
+| `CipherView+OfflineSync.swift` | Extension | 95 | Cipher copy helpers for offline/backup |
+| `CipherViewOfflineSyncTests.swift` | Tests | 128 | Tests for above |
+| `PendingCipherChangeData.swift` | Model | 192 | Core Data entity + predicates |
+| `PendingCipherChangeDataStore.swift` | Store | 155 | Data access layer protocol + impl |
+| `PendingCipherChangeDataStoreTests.swift` | Tests | 286 | Full CRUD tests |
+| `MockPendingCipherChangeDataStore.swift` | Mock | 77 | Test helper |
+| `OfflineSyncResolver.swift` | Service | 360 | Conflict resolution engine |
+| `OfflineSyncResolverTests.swift` | Tests | 517 | Conflict scenarios |
+| `MockOfflineSyncResolver.swift` | Mock | 11 | Test helper |
+
+### Modified Files (10)
+
+| File | Changes | Detailed Review |
+|------|---------|-----------------|
+| `ServiceContainer.swift` | +29 lines: Register 2 new services, add init params and DocC, wire in `defaultServices()` | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
+| `Services.swift` | +17 lines: Add `HasOfflineSyncResolver`, `HasPendingCipherChangeDataStore` protocols, compose into `Services` typealias | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
+| `DataStore.swift` | +1 line: Add `PendingCipherChangeData` to `deleteDataForUser` batch delete | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
+| `Bitwarden.xcdatamodel/contents` | +17 lines: Add `PendingCipherChangeData` entity with 9 attributes and uniqueness constraint | [ReviewSection_PendingCipherChangeDataStore.md](ReviewSection_PendingCipherChangeDataStore.md) |
+| `VaultRepository.swift` | +225 lines: Add `pendingCipherChangeDataStore` dependency; offline fallback handlers; org cipher guards | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
+| `VaultRepositoryTests.swift` | +145 lines: 10 new tests for offline fallback and org cipher rejection | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
+| `SyncService.swift` | +30 lines: Add `offlineSyncResolver`, `pendingCipherChangeDataStore`; pre-sync resolution with early-abort | [ReviewSection_SyncService.md](ReviewSection_SyncService.md) |
+| `SyncServiceTests.swift` | +69 lines: 4 new tests for pre-sync resolution conditions | [ReviewSection_SyncService.md](ReviewSection_SyncService.md) |
+| `ServiceContainer+Mocks.swift` | +6 lines: Add mock defaults for 2 new services | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
+| `AppProcessor.swift` | +1 line: Whitespace only (blank line added) | N/A |
+
+### Deleted Files (from previous iteration, not in current diff)
+
+| File | Reason |
+|------|--------|
+| `ConnectivityMonitor.swift` | Removed — existing sync triggers suffice |
+| `ConnectivityMonitorTests.swift` | Tests for removed service |
+| `MockConnectivityMonitor.swift` | Mock for removed service |
+
+### Documentation Files (3)
+
+| File | Purpose |
+|------|---------|
+| `_OfflineSyncDocs/OfflineSyncPlan.md` | Implementation plan |
+| `_OfflineSyncDocs/OfflineSyncReviewActionPlan.md` | Review action plan with issue tracking |
+| `_OfflineSyncDocs/OfflineSyncCodeReview.md` | This review document |
+
+---
+
+## 12. Implementation Plan Deviations
+
+### 12.1 `AddEditItemProcessor` Not Modified
+
+The plan (Section 9) lists `AddEditItemProcessor.swift` as a modified file. In the implementation, **no changes were made**. `OfflineSyncError.organizationCipherOfflineEditNotSupported` propagates through existing generic error handling. This is a reasonable deviation.
+
+### 12.2 `CipherService` and `FolderService` Not Directly Modified
+
+The plan lists both as modified files. In the implementation, they were not modified — the resolver uses existing methods on their protocols.
+
+### 12.3 No Feature Flag
+
+The feature has no feature flag or kill switch. If issues are discovered in production, the only mitigation is a code change and app update.
+
+### 12.4 Simplifications Applied
+
+1. **ConnectivityMonitor removed** — ~500 lines and `Network.framework` dependency eliminated
+2. **Health check removed** — ~50 lines and `AccountAPIService` dependency eliminated
+3. **Early-abort replaces re-application** — Simpler, safer sync protection
+
+---
+
+## 13. Critical Issues (Must Address)
+
+**None identified.** No blocking issues that would prevent merge from a correctness, security, or architecture standpoint.
+
+---
+
+## 14. All Issues Summary (Prioritized)
+
+### High Priority
+
+| ID | Component | Issue | Detailed Section |
+|----|-----------|-------|-----------------|
+| S3 | `OfflineSyncResolverTests` | No batch processing test (multiple pending changes, mixed success/failure) | [RES-3](ReviewSection_OfflineSyncResolver.md) |
+| S4 | `OfflineSyncResolverTests` | No API failure during resolution test | [RES-4](ReviewSection_OfflineSyncResolver.md) |
+
+### Medium Priority
+
+| ID | Component | Issue | Detailed Section |
+|----|-----------|-------|-----------------|
+| SEC-1 | `URLError+NetworkConnection` | `.secureConnectionFailed` may mask TLS security issues by triggering offline fallback | [EXT-2](ReviewSection_SupportingExtensions.md) |
+| S6 | `VaultRepositoryTests` | `handleOfflineUpdate` password change counting not directly tested | [VR](ReviewSection_VaultRepository.md) |
+| S7 | `VaultRepositoryTests` | `handleOfflineDelete` cipher-not-found path not tested | [VR-5](ReviewSection_VaultRepository.md) |
+| S8 | Feature | Consider adding a feature flag for production safety | Section 12.3 |
+| EXT-1 | `URLError+NetworkConnection` | `.timedOut` may trigger offline save for temporarily slow (but online) servers | [EXT-1](ReviewSection_SupportingExtensions.md) |
+
+### Low Priority
+
+| ID | Component | Issue | Detailed Section |
+|----|-----------|-------|-----------------|
+| A3 | `OfflineSyncResolver` | `timeProvider` dependency injected but never used | Section 1.4 |
+| CS-1 | `Services.swift` | Stray blank line in typealias | Section 2.3 |
+| CS-2 | `CipherView+OfflineSync` | `withTemporaryId`/`update` fragile against SDK type changes | Section 3.1 |
+| R1 | `PendingCipherChangeData` | No data format versioning for `cipherData` JSON | Section 7.3 |
+| R2 | `OfflineSyncResolver` | `conflictFolderId` thread safety (class with mutable var, no actor isolation) | [RES-2](ReviewSection_OfflineSyncResolver.md) |
+| R3 | `OfflineSyncResolver` | No retry backoff for permanently failing resolution items | Section 7.3 |
+| R4 | `SyncService` | Silent sync abort (no logging) | [SS-3](ReviewSection_SyncService.md) |
+| DI-1 | `Services.swift` | `HasPendingCipherChangeDataStore` exposes data store to UI layer (broader than needed) | [DI-1](ReviewSection_DIWiring.md) |
+| T6 | `URLError+NetworkConnectionTests` | Only 3 of 10 positive error codes tested individually | [EXT-4](ReviewSection_SupportingExtensions.md) |
+
+### Informational / Future Considerations
+
+| ID | Component | Observation | Detailed Section |
+|----|-----------|-------------|-----------------|
+| U1 | UX | Org cipher error appears after network timeout delay | Section 8.2 |
+| U2 | UX | Archive/unarchive/collections/restore not offline-aware (inconsistent) | Section 8.2 |
+| U3 | UX | No user-visible indicator for pending offline changes | Section 8.2 |
+| U4 | UX | Conflict folder name is English-only | Section 8.2 |
+| VR-2 | `VaultRepository` | `deleteCipher` (permanent) converted to soft delete offline | [VR-2](ReviewSection_VaultRepository.md) |
+| RES-1 | `OfflineSyncResolver` | Potential duplicate cipher on create retry after partial failure | [RES-1](ReviewSection_OfflineSyncResolver.md) |
+| RES-7 | `OfflineSyncResolver` | Backup ciphers don't include attachments | [RES-7](ReviewSection_OfflineSyncResolver.md) |
+
+---
+
+## 15. Good Practices Observed
+
+- **Encrypt-before-queue invariant** correctly maintained across all offline paths — sensitive data never stored unencrypted
+- **Same protection level** as existing vault cache — pending offline items use identical encryption and storage
+- **Protocol-based abstractions** with comprehensive mocks for every new service
+- **Conflict resolution preserves both versions** — no silent data loss in any scenario
+- **Organization cipher restriction** consistently enforced across all four operations
+- **Core Data entity has proper uniqueness constraints** — `(userId, cipherId)` prevents duplicates
+- **Early-abort sync pattern** prevents `replaceCiphers` from overwriting unsynced local data
+- **DocC documentation** is complete on all public APIs per project guidelines
+- **All test files follow `BitwardenTestCase` patterns** with proper setUp/tearDown lifecycle
+- **Pending changes cleaned up on user data deletion** via `DataStore.deleteDataForUser`
+- **`originalRevisionDate` preserved across upserts** — ensures conflict detection baseline is never accidentally overwritten
+- **`conflictFolderId` caching** avoids redundant folder lookups/creation within a sync batch
+- **No new external dependencies** — zero new libraries, packages, or framework imports
+- **No problematic cross-domain dependencies** — all new relationships are within Vault/Platform domains
+- **Simplification from original design** — ConnectivityMonitor, health check, and post-sync re-application all removed for cleaner architecture
+- **`softConflictPasswordChangeThreshold` extracted as named constant** — avoids magic number
+
+---
+
+## 16. Conclusion
+
+The offline sync implementation is architecturally sound, follows project conventions, maintains the zero-knowledge security model, and provides robust data loss prevention. The code is well-documented, well-tested (47 new tests), and introduces no new external dependencies or problematic cross-domain coupling.
+
+The most significant design choice — the early-abort sync pattern — is the correct tradeoff: it prioritizes data safety (never overwriting unsynced local edits) over freshness (users with unresolvable pending changes won't receive server updates until those are cleared). This is consistent with Bitwarden's security-first philosophy.
+
+**Primary areas for improvement:**
+1. Additional test coverage for batch processing and error paths in the resolver (S3, S4)
+2. Evaluation of whether `.secureConnectionFailed` should trigger offline mode (SEC-1)
+3. Consider a feature flag for production safety (S8)
+
+None of these are blocking issues. The implementation is ready for merge consideration with the understanding that the identified test gaps and security observation should be tracked.
