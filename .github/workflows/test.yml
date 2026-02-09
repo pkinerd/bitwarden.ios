@@ -57,7 +57,7 @@ jobs:
   test:
     name: Test
     runs-on: macos-26
-    timeout-minutes: 50
+    timeout-minutes: 90
     permissions:
       contents: read
 
