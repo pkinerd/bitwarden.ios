@@ -1110,6 +1110,7 @@ class SyncServiceTests: BitwardenTestCase {
     }
 
     /// `fetchSync()` skips resolution when the vault is locked.
+    @MainActor
     func test_fetchSync_preSyncResolution_skipsWhenVaultLocked() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
