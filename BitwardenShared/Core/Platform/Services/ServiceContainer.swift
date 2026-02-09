@@ -641,7 +641,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             folderService: folderService,
             pendingCipherChangeDataStore: dataStore,
             stateService: stateService,
-            timeProvider: timeProvider,
         )
 
         let syncService = DefaultSyncService(

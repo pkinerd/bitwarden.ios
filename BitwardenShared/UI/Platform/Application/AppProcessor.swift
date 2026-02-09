@@ -133,7 +133,6 @@ public class AppProcessor {
                 await services.pendingAppIntentActionMediator.executePendingAppIntentActions()
             }
         }
-
     }
 
     // MARK: Methods

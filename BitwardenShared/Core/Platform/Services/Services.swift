@@ -19,7 +19,6 @@ typealias Services = HasAPIService
     & HasChangeKdfService
     & HasClientService
     & HasConfigService
-
     & HasDeviceAPIService
     & HasEnvironmentService
     & HasErrorReportBuilder

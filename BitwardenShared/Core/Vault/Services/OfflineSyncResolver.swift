@@ -79,9 +79,6 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
     /// The service for managing account state.
     private let stateService: StateService
 
-    /// The time provider.
-    private let timeProvider: TimeProvider
-
     /// Cached folder ID for the "Offline Sync Conflicts" folder during a sync batch.
     private var conflictFolderId: String?
 
@@ -96,7 +93,6 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
     ///   - folderService: The service for managing folders.
     ///   - pendingCipherChangeDataStore: The data store for pending cipher changes.
     ///   - stateService: The service for managing account state.
-    ///   - timeProvider: The time provider.
     ///
     init(
         cipherAPIService: CipherAPIService,
@@ -104,8 +100,7 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
         clientService: ClientService,
         folderService: FolderService,
         pendingCipherChangeDataStore: PendingCipherChangeDataStore,
-        stateService: StateService,
-        timeProvider: TimeProvider
+        stateService: StateService
     ) {
         self.cipherAPIService = cipherAPIService
         self.cipherService = cipherService
@@ -113,7 +108,6 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
         self.folderService = folderService
         self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.stateService = stateService
-        self.timeProvider = timeProvider
     }
 
     // MARK: OfflineSyncResolver
