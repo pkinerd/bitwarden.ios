@@ -3,6 +3,10 @@ name: Debug Build, Test & Simulator Artifact
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'dev'
       app:
         description: "App to build"
         required: true
