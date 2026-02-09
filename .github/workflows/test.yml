@@ -6,6 +6,7 @@ on:
       - "main"
       - "rc"
       - "hotfix-rc"
+      - "dev"
   pull_request:
     types: [opened, synchronize]
     paths-ignore:
