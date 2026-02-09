@@ -6,6 +6,7 @@ on:
       - "main"
       - "rc"
       - "hotfix-rc"
+      - "dev"
   pull_request:
     types: [opened, synchronize]
     paths-ignore:
@@ -143,6 +144,13 @@ jobs:
               -resultBundlePath "$_BUILD_RESULT_BUNDLE_PATH" \
               -quiet
             kill "$PYEETD_PID"
+
+      - name: Upload simulator build artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: Bitwarden-Simulator-Debug.app
+          path: build/DerivedData/Build/Products/Debug-iphonesimulator/Bitwarden.app
+          if-no-files-found: error
 
       - name: Test
         env:

@@ -102,6 +102,7 @@ class DataStore {
                     PolicyData.deleteByUserIdRequest(userId: userId),
                     SendData.deleteByUserIdRequest(userId: userId),
                     DomainData.deleteByUserIdRequest(userId: userId),
+                    PendingCipherChangeData.deleteByUserIdRequest(userId: userId),
                 ],
             )
         }

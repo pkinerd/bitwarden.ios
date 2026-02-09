@@ -349,6 +349,9 @@ class DefaultVaultRepository {
     /// The service used to manage syncing and updates to the user's organizations.
     private let organizationService: OrganizationService
 
+    /// The data store for managing pending cipher changes queued during offline editing.
+    private let pendingCipherChangeDataStore: PendingCipherChangeDataStore
+
     /// The service for managing the polices for the user.
     private let policyService: PolicyService
 
@@ -384,6 +387,7 @@ class DefaultVaultRepository {
     ///   - errorReporter: The service used by the application to report non-fatal errors.
     ///   - folderService: The service used to manage syncing and updates to the user's folders.
     ///   - organizationService: The service used to manage syncing and updates to the user's organizations.
+    ///   - pendingCipherChangeDataStore: The data store for pending cipher changes.
     ///   - policyService: The service for managing the polices for the user.
     ///   - settingsService: The service used by the application to manage user settings.
     ///   - stateService: The service used by the application to manage account state.
@@ -402,6 +406,7 @@ class DefaultVaultRepository {
         errorReporter: ErrorReporter,
         folderService: FolderService,
         organizationService: OrganizationService,
+        pendingCipherChangeDataStore: PendingCipherChangeDataStore,
         policyService: PolicyService,
         settingsService: SettingsService,
         stateService: StateService,
@@ -419,6 +424,7 @@ class DefaultVaultRepository {
         self.errorReporter = errorReporter
         self.folderService = folderService
         self.organizationService = organizationService
+        self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.policyService = policyService
         self.settingsService = settingsService
         self.stateService = stateService
@@ -497,11 +503,24 @@ extension DefaultVaultRepository: VaultRepository {
     // MARK: Data Methods
 
     func addCipher(_ cipher: CipherView) async throws {
+        // Organization ciphers cannot be created offline
+        let isOrgCipher = cipher.organizationId != nil
+
         let cipherEncryptionContext = try await clientService.vault().ciphers().encrypt(cipherView: cipher)
-        try await cipherService.addCipherWithServer(
-            cipherEncryptionContext.cipher,
-            encryptedFor: cipherEncryptionContext.encryptedFor,
-        )
+        do {
+            try await cipherService.addCipherWithServer(
+                cipherEncryptionContext.cipher,
+                encryptedFor: cipherEncryptionContext.encryptedFor,
+            )
+        } catch {
+            guard !isOrgCipher else {
+                throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+            }
+            try await handleOfflineAdd(
+                encryptedCipher: cipherEncryptionContext.cipher,
+                userId: cipherEncryptionContext.encryptedFor
+            )
+        }
     }
 
     func archiveCipher(_ cipher: BitwardenSdk.CipherView) async throws {
@@ -618,7 +637,11 @@ extension DefaultVaultRepository: VaultRepository {
     }
 
     func deleteCipher(_ id: String) async throws {
-        try await cipherService.deleteCipherWithServer(id: id)
+        do {
+            try await cipherService.deleteCipherWithServer(id: id)
+        } catch {
+            try await handleOfflineDelete(cipherId: id)
+        }
     }
 
     func fetchFolder(withId id: String) async throws -> FolderView? {
@@ -865,9 +888,19 @@ extension DefaultVaultRepository: VaultRepository {
 
     func softDeleteCipher(_ cipher: CipherView) async throws {
         guard let id = cipher.id else { throw CipherAPIServiceError.updateMissingId }
+        // Organization ciphers cannot be soft-deleted offline
+        let isOrgCipher = cipher.organizationId != nil
+
         let softDeletedCipher = cipher.update(deletedDate: timeProvider.presentTime)
         let encryptedCipher = try await encryptAndUpdateCipher(softDeletedCipher)
-        try await cipherService.softDeleteCipherWithServer(id: id, encryptedCipher)
+        do {
+            try await cipherService.softDeleteCipherWithServer(id: id, encryptedCipher)
+        } catch {
+            guard !isOrgCipher else {
+                throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+            }
+            try await handleOfflineSoftDelete(cipherId: id, encryptedCipher: encryptedCipher)
+        }
     }
 
     func unarchiveCipher(_ cipher: BitwardenSdk.CipherView) async throws {
@@ -880,16 +913,186 @@ extension DefaultVaultRepository: VaultRepository {
     }
 
     func updateCipher(_ cipherView: CipherView) async throws {
+        // Organization ciphers cannot be edited offline
+        let isOrgCipher = cipherView.organizationId != nil
+
         let cipherEncryptionContext = try await clientService.vault().ciphers().encrypt(cipherView: cipherView)
-        try await cipherService.updateCipherWithServer(
-            cipherEncryptionContext.cipher,
-            encryptedFor: cipherEncryptionContext.encryptedFor,
-        )
+        do {
+            try await cipherService.updateCipherWithServer(
+                cipherEncryptionContext.cipher,
+                encryptedFor: cipherEncryptionContext.encryptedFor,
+            )
+        } catch {
+            guard !isOrgCipher else {
+                throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+            }
+            try await handleOfflineUpdate(
+                cipherView: cipherView,
+                encryptedCipher: cipherEncryptionContext.cipher,
+                userId: cipherEncryptionContext.encryptedFor
+            )
+        }
     }
 
     func updateCipherCollections(_ cipherView: CipherView) async throws {
         let cipher = try await encryptAndUpdateCipher(cipherView)
         try await cipherService.updateCipherCollectionsWithServer(cipher)
+    }
+
+    // MARK: Offline Helpers
+
+    /// Handles saving a new cipher when the server API call fails.
+    ///
+    /// - Parameters:
+    ///   - encryptedCipher: The encrypted cipher to persist locally.
+    ///   - userId: The user ID.
+    ///
+    private func handleOfflineAdd(encryptedCipher: Cipher, userId: String) async throws {
+        // Assign a temporary client-side ID if the cipher doesn't have one yet.
+        // New ciphers haven't been assigned a server ID; this temp ID allows
+        // local Core Data storage. The server assigns the real ID during sync.
+        let cipher: Cipher
+        if encryptedCipher.id != nil {
+            cipher = encryptedCipher
+        } else {
+            cipher = encryptedCipher.withTemporaryId(UUID().uuidString)
+        }
+
+        try await cipherService.updateCipherWithLocalStorage(cipher)
+
+        let cipherResponseModel = try CipherDetailsResponseModel(cipher: cipher)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        // cipher.id is guaranteed non-nil: either it was already set, or
+        // withTemporaryId assigned one above.
+        guard let cipherId = cipher.id else {
+            throw CipherAPIServiceError.updateMissingId
+        }
+
+        try await pendingCipherChangeDataStore.upsertPendingChange(
+            cipherId: cipherId,
+            userId: userId,
+            changeType: .create,
+            cipherData: cipherData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+    }
+
+    /// Handles updating a cipher when the server API call fails.
+    ///
+    /// - Parameters:
+    ///   - cipherView: The decrypted cipher view (used for password change detection).
+    ///   - encryptedCipher: The encrypted cipher to persist locally.
+    ///   - userId: The user ID.
+    ///
+    private func handleOfflineUpdate(
+        cipherView: CipherView,
+        encryptedCipher: Cipher,
+        userId: String
+    ) async throws {
+        guard let cipherId = encryptedCipher.id else {
+            throw CipherAPIServiceError.updateMissingId
+        }
+
+        // Persist locally
+        try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
+
+        let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        // Check for existing pending change to determine password change count
+        let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
+            cipherId: cipherId,
+            userId: userId
+        )
+
+        var passwordChangeCount: Int16 = existing?.offlinePasswordChangeCount ?? 0
+
+        // Detect password change by comparing with the previous version
+        if let existingData = existing?.cipherData {
+            let existingModel = try JSONDecoder().decode(CipherDetailsResponseModel.self, from: existingData)
+            let existingCipher = Cipher(responseModel: existingModel)
+            let existingDecrypted = try await clientService.vault().ciphers().decrypt(cipher: existingCipher)
+            if existingDecrypted.login?.password != cipherView.login?.password {
+                passwordChangeCount += 1
+            }
+        } else {
+            // First offline edit: check if password changed from the pre-offline version
+            if let localCipher = try await cipherService.fetchCipher(withId: cipherId) {
+                let localDecrypted = try await clientService.vault().ciphers().decrypt(cipher: localCipher)
+                if localDecrypted.login?.password != cipherView.login?.password {
+                    passwordChangeCount += 1
+                }
+            }
+        }
+
+        let originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
+
+        try await pendingCipherChangeDataStore.upsertPendingChange(
+            cipherId: cipherId,
+            userId: userId,
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: passwordChangeCount
+        )
+    }
+
+    /// Handles deleting a cipher when the server API call fails.
+    ///
+    /// - Parameter cipherId: The ID of the cipher to soft-delete.
+    ///
+    private func handleOfflineDelete(cipherId: String) async throws {
+        let userId = try await stateService.getActiveAccountId()
+
+        // Fetch the current cipher to preserve its data
+        guard let cipher = try await cipherService.fetchCipher(withId: cipherId) else { return }
+
+        // Organization ciphers cannot be deleted offline
+        guard cipher.organizationId == nil else {
+            throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+        }
+
+        // Soft-delete locally
+        try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
+
+        let cipherResponseModel = try CipherDetailsResponseModel(cipher: cipher)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        try await pendingCipherChangeDataStore.upsertPendingChange(
+            cipherId: cipherId,
+            userId: userId,
+            changeType: .softDelete,
+            cipherData: cipherData,
+            originalRevisionDate: cipher.revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+    }
+
+    /// Handles soft-deleting a cipher when the server API call fails.
+    ///
+    /// - Parameters:
+    ///   - cipherId: The ID of the cipher to soft-delete.
+    ///   - encryptedCipher: The encrypted cipher with `deletedDate` already set.
+    ///
+    private func handleOfflineSoftDelete(cipherId: String, encryptedCipher: Cipher) async throws {
+        let userId = try await stateService.getActiveAccountId()
+
+        // Persist the soft-deleted cipher locally so it appears in trash
+        try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
+
+        let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        try await pendingCipherChangeDataStore.upsertPendingChange(
+            cipherId: cipherId,
+            userId: userId,
+            changeType: .softDelete,
+            cipherData: cipherData,
+            originalRevisionDate: encryptedCipher.revisionDate,
+            offlinePasswordChangeCount: 0
+        )
     }
 
     // MARK: Publishers

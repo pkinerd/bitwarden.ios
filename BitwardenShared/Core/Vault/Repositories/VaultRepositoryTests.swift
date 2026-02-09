@@ -27,6 +27,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     var now: Date!
     var premiumAccount = Account.fixture(profile: .fixture(hasPremiumPersonally: true))
     var organizationService: MockOrganizationService!
+    var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
     var policyService: MockPolicyService!
     var stateService: MockStateService!
     var subject: DefaultVaultRepository!
@@ -55,6 +56,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         folderService = MockFolderService()
         now = Date(year: 2024, month: 1, day: 18)
         organizationService = MockOrganizationService()
+        pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
         policyService = MockPolicyService()
         syncService = MockSyncService()
         timeProvider = MockTimeProvider(.mockTime(now))
@@ -78,6 +80,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             errorReporter: errorReporter,
             folderService: folderService,
             organizationService: organizationService,
+            pendingCipherChangeDataStore: pendingCipherChangeDataStore,
             policyService: policyService,
             settingsService: MockSettingsService(),
             stateService: stateService,
@@ -103,6 +106,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         fido2UserInterfaceHelper = nil
         folderService = nil
         organizationService = nil
+        pendingCipherChangeDataStore = nil
         policyService = nil
         now = nil
         stateService = nil
@@ -133,6 +137,35 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         await assertAsyncThrows(error: BitwardenTestError.example) {
             try await subject.addCipher(.fixture())
         }
+    }
+
+    /// `addCipher()` falls back to offline save when the server API call fails.
+    func test_addCipher_offlineFallback() async throws {
+        cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        let cipher = CipherView.fixture()
+        try await subject.addCipher(cipher)
+
+        // Should save locally and queue a pending change.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.changeType, .create)
+    }
+
+    /// `addCipher()` throws for organization ciphers when the server API call fails.
+    func test_addCipher_offlineFallback_orgCipher_throws() async throws {
+        cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        let cipher = CipherView.fixture(organizationId: "org-1")
+
+        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+            try await subject.addCipher(cipher)
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `archiveCipher()` throws on id errors.
@@ -685,6 +718,37 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         cipherService.deleteCipherWithServerResult = .success(())
         try await subject.deleteCipher("123")
         XCTAssertEqual(cipherService.deleteCipherId, "123")
+    }
+
+    /// `deleteCipher()` falls back to offline save when the server API call fails.
+    func test_deleteCipher_offlineFallback() async throws {
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+        cipherService.fetchCipherResult = .success(.fixture(id: "123"))
+
+        try await subject.deleteCipher("123")
+
+        // Should delete locally and queue a pending change.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "123")
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `deleteCipher()` throws for organization ciphers when the server API call fails.
+    func test_deleteCipher_offlineFallback_orgCipher_throws() async throws {
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+        cipherService.fetchCipherResult = .success(.fixture(id: "123", organizationId: "org-1"))
+
+        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+            try await subject.deleteCipher("123")
+        }
+
+        // Should NOT delete locally or queue a pending change.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `doesActiveAccountHavePremium()` returns whether the active account has access to premium features.
@@ -1444,6 +1508,38 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(cipherService.updateCipherWithServerEncryptedFor, "1")
     }
 
+    /// `updateCipher()` falls back to offline save when the server API call fails.
+    func test_updateCipher_offlineFallback() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        let cipher = CipherView.fixture(id: "123")
+        try await subject.updateCipher(cipher)
+
+        // Should save locally instead of failing.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+
+        // Should queue a pending change.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .update)
+    }
+
+    /// `updateCipher()` throws for organization ciphers when the server API call fails.
+    func test_updateCipher_offlineFallback_orgCipher_throws() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        let cipher = CipherView.fixture(id: "123", organizationId: "org-1")
+
+        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+            try await subject.updateCipher(cipher)
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
     /// `cipherDetailsPublisher(id:)` returns a publisher for the details of a cipher in the vault.
     func test_cipherDetailsPublisher() async throws {
         cipherService.ciphersSubject.send([.fixture(id: "123", name: "Apple")])
@@ -1616,6 +1712,42 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
         XCTAssertEqual(cipherService.softDeleteCipher, cipher)
         XCTAssertEqual(cipherService.updateCipherWithServerCiphers, [cipher])
+    }
+
+    /// `softDeleteCipher()` falls back to offline save when the server API call fails.
+    func test_softDeleteCipher_offlineFallback() async throws {
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        cipherService.softDeleteWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        let cipherView: CipherView = .fixture(id: "123")
+        try await subject.softDeleteCipher(cipherView)
+
+        // Should save locally instead of failing.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+
+        // Should queue a pending change.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `softDeleteCipher()` throws for organization ciphers when the server API call fails.
+    func test_softDeleteCipher_offlineFallback_orgCipher_throws() async throws {
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        cipherService.softDeleteWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        let cipherView: CipherView = .fixture(id: "123", organizationId: "org-1")
+
+        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+            try await subject.softDeleteCipher(cipherView)
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `vaultListPublisher(filter:)` makes a strategy and builds the vault list sections.
