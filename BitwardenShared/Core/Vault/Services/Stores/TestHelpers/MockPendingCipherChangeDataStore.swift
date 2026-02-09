@@ -1,5 +1,7 @@
 import Foundation
 
+@testable import BitwardenShared
+
 class MockPendingCipherChangeDataStore: PendingCipherChangeDataStore {
     var fetchPendingChangesResult: [PendingCipherChangeData] = []
     var fetchPendingChangesCalledWith = [String]()
