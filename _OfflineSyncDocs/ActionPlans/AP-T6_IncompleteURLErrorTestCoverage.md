@@ -1,14 +1,16 @@
 # Action Plan: T6 (EXT-4) — Incomplete URLError Test Coverage
 
+> **Status: [RESOLVED]** — The `URLError+NetworkConnection.swift` extension and `URLError+NetworkConnectionTests.swift` test file have both been deleted. The test coverage gap no longer exists because the code it would have tested no longer exists.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | T6 / EXT-4 |
-| **Component** | `URLError+NetworkConnectionTests` |
-| **Severity** | Low |
+| **Component** | ~~`URLError+NetworkConnectionTests`~~ **[Deleted]** |
+| **Severity** | ~~Low~~ **Resolved** |
 | **Type** | Test Gap |
-| **File** | `BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnectionTests.swift` |
+| **File** | ~~`BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnectionTests.swift`~~ **[Deleted]** |
 
 ## Description
 

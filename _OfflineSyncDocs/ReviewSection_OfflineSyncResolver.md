@@ -41,7 +41,7 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 
 ### 3. Implementation (`DefaultOfflineSyncResolver`)
 
-**Dependencies (7 total):**
+**Dependencies (6 total):** **[Updated]** `timeProvider` removed in commit `a52d379` (was unused — see resolved Issue RES-5/A3).
 
 | Dependency | Used For |
 |------------|----------|
@@ -51,7 +51,6 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 | `folderService: FolderService` | Creating/fetching the "Offline Sync Conflicts" folder |
 | `pendingCipherChangeDataStore: PendingCipherChangeDataStore` | Fetching/deleting pending change records |
 | `stateService: StateService` | Managing account state |
-| `timeProvider: TimeProvider` | Time provider (declared but not actively used in current code) |
 
 **Instance State:**
 
@@ -253,9 +252,9 @@ All tests process a single pending change. No test verifies behavior when the ba
 
 No test verifies what happens when `addCipherWithServer` or `updateCipherWithServer` throws during resolution. The implementation catches errors and continues, but this path is untested.
 
-### Issue RES-5: `timeProvider` Dependency Unused (Low)
+### ~~Issue RES-5: `timeProvider` Dependency Unused~~ [Resolved]
 
-The `timeProvider` is injected but never referenced in the implementation. The backup cipher name uses `DateFormatter` with the cipher's timestamp, not the time provider. This is an unused dependency.
+~~The `timeProvider` is injected but never referenced in the implementation.~~ **[Resolved]** — The unused `timeProvider` dependency was removed in commit `a52d379`. Dependency count reduced from 7 to 6.
 
 ### Issue RES-6: Inline `MockCipherAPIServiceForOfflineSync` is Fragile (Low)
 

@@ -42,11 +42,11 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | ~~**SEC-1** — secureConnectionFailed~~ | ~~Add logging for TLS triggers~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted; plain `catch` replaces URLError filtering. | ~~10-15 lines~~ 0 | N/A |
 | ~~**EXT-1** — timedOut~~ | ~~Accept current behavior~~ **[Superseded]** — Extension deleted; all API errors now trigger offline save by design. | 0 lines | N/A |
 | **S8** — Feature flag | Server-controlled flag (Option A) | ~20-30 lines | Low |
-| **A3** — Unused timeProvider | Remove dependency (Option A) | ~-10 lines | Very low |
-| **CS-1** — Stray blank line | Remove blank line (Option A) | 1 line | None |
+| ~~**A3** — Unused timeProvider~~ | ~~Remove dependency (Option A)~~ **[Resolved]** — Removed in commit `a52d379`. | ~~-10 lines~~ 0 | N/A |
+| ~~**CS-1** — Stray blank line~~ | ~~Remove blank line (Option A)~~ **[Resolved]** — Removed in commit `a52d379`. | ~~1 line~~ 0 | N/A |
 | **R4** — Silent sync abort | Add log line (Option A) | 1-2 lines | None |
 
-**Rationale:** Test gaps (S6, S7) are low-effort, high-value. SEC-1 logging and R4 logging are trivial. A3 and CS-1 are cleanup. S8 (feature flag) is the most impactful medium-priority item for production safety. EXT-1 is accept-as-is.
+**Rationale:** Test gaps (S6, S7) are low-effort, high-value. R4 logging is trivial. S8 (feature flag) is the most impactful medium-priority item for production safety. A3, CS-1, SEC-1, and EXT-1 are all resolved/superseded.
 
 ### Phase 3: Nice-to-Have (Low Priority)
 
@@ -85,8 +85,8 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 ## Implementation Order
 
 ### Batch 1: Quick Wins (< 1 hour)
-1. **A3** — Remove unused `timeProvider` (3 files, ~-10 lines)
-2. **CS-1** — Remove stray blank line (1 file, 1 line)
+1. ~~**A3** — Remove unused `timeProvider`~~ **[Resolved]** — Removed in commit `a52d379`
+2. ~~**CS-1** — Remove stray blank line~~ **[Resolved]** — Removed in commit `a52d379`
 3. **R4** — Add sync abort log line (1 file, 2 lines)
 4. ~~**SEC-1** — Add TLS fallback logging~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted
 
@@ -119,7 +119,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 **Recommendation: Implement now.** The project already has 9 server-controlled feature flags and `SyncService` already uses `configService.getFeatureFlag(.migrateMyVaultToMyItems)` at line 560 — a direct precedent. Adding `static let offlineSync = FeatureFlag(rawValue: "offline-sync")` to `FeatureFlag.swift` and a guard in `SyncService.fetchSync()` is a ~10-line change.
 
 ### 2. Retry Backoff (R3) — Essential or nice-to-have?
-**Recommendation: Implement before wide rollout.** Without retry backoff, a single permanently failing item blocks ALL syncing for the user (due to the early-abort at `SyncService.swift:339`). This is the most impactful reliability issue. The unused `timeProvider` in the resolver (A3) could be repurposed for TTL-based expiry rather than removed, providing testable time control via `MockTimeProvider`.
+**Recommendation: Implement before wide rollout.** Without retry backoff, a single permanently failing item blocks ALL syncing for the user (due to the early-abort at `SyncService.swift:339`). This is the most impactful reliability issue. **[Updated]** The `timeProvider` has been removed (A3 resolved). If R3 is implemented, `timeProvider` can be re-added with a clear purpose for TTL-based expiry.
 
 ### 3. Actor Conversion (R2) — Worth the migration?
 **Recommendation: Implement.** The project already uses actors for 7 services (DefaultPolicyService, DefaultStateService, DefaultClientService, DefaultTokenService, etc.). Converting `DefaultOfflineSyncResolver` from `class` to `actor` is a single keyword change that follows established project conventions and provides compile-time thread safety.
@@ -182,7 +182,7 @@ After completing a detailed code-level review of all 30 individual action plans 
 | **R1** — Data format versioning | Priority should be deprioritized if R3 (retry backoff/TTL) is implemented, since R3 provides a more general solution for permanently stuck items. If R3 is deferred, R1 becomes important as the only graceful degradation path for format mismatches. |
 | ~~**SEC-1** — secureConnectionFailed~~ | **[Superseded]** Extension deleted. The entire URLError classification approach was removed in favor of plain `catch` blocks. |
 | **CS-2** — Fragile SDK copies | Mirror-based reflection testing (originally mentioned as Option B) should be explicitly NOT recommended — Rust FFI-generated Swift structs may not accurately reflect properties via `Mirror`. |
-| **A3** vs **R3** interaction | If R3 is implemented, `timeProvider` could be repurposed. However, YAGNI applies — remove it per A3, re-add with clear purpose if R3 is implemented. This is the correct sequence. |
+| ~~**A3** vs **R3** interaction~~ | **[Resolved]** — `timeProvider` has been removed per A3 (commit `a52d379`). If R3 is implemented, `timeProvider` can be re-added with a clear purpose. |
 
 #### Confirmed Accept-as-Is (No Changes)
 
@@ -216,8 +216,8 @@ The following 11 issues were confirmed as correct to accept without code changes
 Based on the code review, the recommended implementation order is refined:
 
 **Batch 1: Quick Wins** (updated)
-1. A3 — Remove unused timeProvider
-2. CS-1 — Remove stray blank line
+1. ~~A3 — Remove unused timeProvider~~ **[Resolved]** — Commit `a52d379`
+2. ~~CS-1 — Remove stray blank line~~ **[Resolved]** — Commit `a52d379`
 3. R4 — Add sync abort log line
 4. ~~SEC-1 — Add TLS fallback logging~~ **[Superseded]** — Extension deleted
 

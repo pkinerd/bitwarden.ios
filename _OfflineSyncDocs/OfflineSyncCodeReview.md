@@ -112,7 +112,6 @@ OfflineSyncResolver (DefaultOfflineSyncResolver) [NEW]
   └─ folderService (FolderService) [existing]
   └─ pendingCipherChangeDataStore (PendingCipherChangeDataStore) [NEW]
   └─ stateService (StateService) [existing]
-  └─ timeProvider (TimeProvider) [existing]
 ```
 
 No circular dependencies detected. All new services flow into the existing service graph correctly.
@@ -128,7 +127,7 @@ No circular dependencies detected. All new services flow into the existing servi
 | `OfflineSyncResolver` → `FolderService` | Vault/Services | Vault/Services | Same domain — creating a folder for conflict backups |
 | `OfflineSyncResolver` → `CipherAPIService` | Vault/Services | Vault/Services | Same domain — fetching server cipher state |
 
-The `OfflineSyncResolver` has the highest dependency count (7 injected services), but these are all within the Vault/Platform domain and are cohesive with the resolver's responsibility. No cross-domain coupling is introduced (e.g., Auth ↔ Vault, Tools ↔ Vault).
+The `OfflineSyncResolver` has the highest dependency count (6 injected services), which are all within the Vault/Platform domain and are cohesive with the resolver's responsibility. No cross-domain coupling is introduced (e.g., Auth ↔ Vault, Tools ↔ Vault).
 
 **Removed cross-domain dependency (positive):** The simplification removed a `ConnectivityMonitor` dependency that would have imported `Network.framework` and an `AccountAPIService` dependency for health checking, both of which were cross-cutting.
 
@@ -136,9 +135,9 @@ The `OfflineSyncResolver` has the highest dependency count (7 injected services)
 
 **Observation A1 — Early-abort sync pattern:** SyncService uses an early-abort pattern: if pending offline changes exist, it attempts to resolve them first. If any remain unresolved (e.g. server unreachable), the sync is aborted entirely to prevent `replaceCiphers` from overwriting local offline edits. This is simpler and safer than the alternative of proceeding with sync and re-applying changes afterward.
 
-**Observation A2 — `OfflineSyncResolver` has 7 dependencies:** This is on the higher end for service dependencies in the codebase. It reflects the resolver's cross-cutting responsibility (reading ciphers, creating folders, uploading to API, managing pending state). The responsibility is cohesive, so the dependency count is acceptable. Note: `timeProvider` is injected but unused — see Issue A3.
+**Observation A2 — `OfflineSyncResolver` has 6 dependencies:** This reflects the resolver's cross-cutting responsibility (reading ciphers, creating folders, uploading to API, managing pending state). The responsibility is cohesive, so the dependency count is acceptable.
 
-**Issue A3 — `timeProvider` unused in `DefaultOfflineSyncResolver`.** The `timeProvider` dependency is injected and stored but never referenced. The backup cipher name uses `DateFormatter` with the cipher's own timestamp, not the time provider. This is a dead dependency that should be removed. **Severity: Low.**
+**~~Issue A3~~ [Resolved] — `timeProvider` removed from `DefaultOfflineSyncResolver`.** The unused `timeProvider` dependency has been removed. The backup cipher name uses `DateFormatter` with the cipher's own timestamp, not a time provider. Removed in commit `a52d379`.
 
 ---
 
@@ -177,7 +176,7 @@ The `OfflineSyncResolver` has the highest dependency count (7 injected services)
 
 ### 2.3 Style Issues
 
-**Issue CS-1 — Stray blank line in `Services.swift` typealias.** A blank line is introduced between `& HasConfigService` and `& HasDeviceAPIService` at `Services.swift:22`. The existing code does not have blank lines between entries. **Severity: Cosmetic.**
+**~~Issue CS-1~~ [Resolved] — Stray blank line in `Services.swift` typealias.** The blank line between `& HasConfigService` and `& HasDeviceAPIService` has been removed. Fixed in commit `a52d379`.
 
 **[Updated note]** The `URLError+NetworkConnection.swift` file (previously listed in section 2.1 file naming) has been deleted. The error handling pattern in section 2.2 (`catch let error as URLError where error.isNetworkConnectionError`) has been simplified to plain `catch` blocks.
 
@@ -233,10 +232,10 @@ The removal of the `ConnectivityMonitor` (from a previous iteration) actually **
 | `CipherView+OfflineSync` | `CipherViewOfflineSyncTests.swift` | 7 | Good — verifies property preservation, ID/key nullification, attachment exclusion |
 | `PendingCipherChangeDataStore` | `PendingCipherChangeDataStoreTests.swift` | 10 | Good — full CRUD coverage, user isolation, upsert idempotency, `originalRevisionDate` preservation |
 | `OfflineSyncResolver` | `OfflineSyncResolverTests.swift` | 11 | Good — all change types, conflict resolution paths, backup naming, folder creation |
-| `VaultRepository` (offline) | `VaultRepositoryTests.swift` | +9 new | Good — offline fallback for add/update/delete/softDelete + org cipher rejection. **[Updated]** `test_updateCipher_nonNetworkError_rethrows` removed (no longer applicable since all errors trigger offline save). |
-| `SyncService` (offline) | `SyncServiceTests.swift` | +4 new | Good — pre-sync trigger, skip on locked vault, skip on zero pending, abort on remaining |
+| `VaultRepository` (offline) | `VaultRepositoryTests.swift` | +8 new | Good — offline fallback for add/update/delete/softDelete + org cipher rejection. **[Updated]** `test_updateCipher_nonNetworkError_rethrows` removed (no longer applicable since all errors trigger offline save). |
+| `SyncService` (offline) | `SyncServiceTests.swift` | +4 new | Good — pre-sync trigger, skip on locked vault, no pending changes, abort on remaining |
 
-**Total new test count: 41 tests** **[Updated]** Reduced from 47: removed 5 `URLError+NetworkConnection` tests (extension deleted) and 1 `test_updateCipher_nonNetworkError_rethrows` (no longer applicable).
+**Total new test count: 40 tests** **[Updated]** Reduced from 47: removed 5 `URLError+NetworkConnection` tests (extension deleted) and 1 `test_updateCipher_nonNetworkError_rethrows` (no longer applicable). Also removed unused `pendingChangeCountResults` sequential-return mechanism from the mock.
 
 ### 5.2 Notable Test Gaps
 
@@ -410,13 +409,13 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 
 | Opportunity | Estimated Savings | Trade-off |
 |-------------|-------------------|-----------|
-| Remove `timeProvider` from `DefaultOfflineSyncResolver` | ~5 lines | None — it's unused |
+| ~~Remove `timeProvider` from `DefaultOfflineSyncResolver`~~ | ~~5 lines~~ | **[Done]** — Removed in commit `a52d379` |
 | Merge `handleOfflineDelete` and `handleOfflineSoftDelete` | ~30 lines | Slight increase in complexity of one method; both queue `.softDelete` changes |
 | Use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON | ~20 lines per handler | Would require a different serialization approach for `cipherData`; the current JSON approach matches existing `CipherData` patterns |
 | Remove `CipherView.update(name:folderId:)` and inline the `CipherView(...)` init call in the resolver | ~20 lines | Reduces abstraction but couples resolver to SDK init signature |
 | Use existing project-level mock for `CipherAPIService` (if one exists) instead of inline `MockCipherAPIServiceForOfflineSync` | ~40 lines | Depends on whether a project mock exists with `fatalError` stubs for unused methods |
 
-**Assessment:** The code is already reasonably compact. The most impactful simplification is removing the unused `timeProvider` dependency. The other opportunities offer modest savings with tradeoffs.
+**Assessment:** The code is already reasonably compact. The `timeProvider` removal has been applied. The remaining opportunities offer modest savings with tradeoffs.
 
 ### 9.2 Simplifications Already Applied
 
@@ -487,11 +486,11 @@ The entity is added to the existing `Bitwarden.xcdatamodel` without creating a n
 | `DataStore.swift` | +1 line: Add `PendingCipherChangeData` to `deleteDataForUser` batch delete | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
 | `Bitwarden.xcdatamodel/contents` | +17 lines: Add `PendingCipherChangeData` entity with 9 attributes and uniqueness constraint | [ReviewSection_PendingCipherChangeDataStore.md](ReviewSection_PendingCipherChangeDataStore.md) |
 | `VaultRepository.swift` | +225 lines: Add `pendingCipherChangeDataStore` dependency; offline fallback handlers; org cipher guards | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
-| `VaultRepositoryTests.swift` | +130 lines: 9 new tests for offline fallback and org cipher rejection. **[Updated]** `test_updateCipher_nonNetworkError_rethrows` removed. | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
+| `VaultRepositoryTests.swift` | +115 lines: 8 new tests for offline fallback and org cipher rejection. **[Updated]** `test_updateCipher_nonNetworkError_rethrows` removed (no longer applicable since all errors trigger offline save). | [ReviewSection_VaultRepository.md](ReviewSection_VaultRepository.md) |
 | `SyncService.swift` | +30 lines: Add `offlineSyncResolver`, `pendingCipherChangeDataStore`; pre-sync resolution with early-abort | [ReviewSection_SyncService.md](ReviewSection_SyncService.md) |
 | `SyncServiceTests.swift` | +69 lines: 4 new tests for pre-sync resolution conditions | [ReviewSection_SyncService.md](ReviewSection_SyncService.md) |
 | `ServiceContainer+Mocks.swift` | +6 lines: Add mock defaults for 2 new services | [ReviewSection_DIWiring.md](ReviewSection_DIWiring.md) |
-| `AppProcessor.swift` | +1 line: Whitespace only (blank line added) | N/A |
+| `AppProcessor.swift` | ~~+1 line: Whitespace only (blank line added)~~ **[Reverted]** — Blank line removed in commit `a52d379`. Net zero change. | N/A |
 
 ### Deleted Files
 
@@ -564,8 +563,8 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 
 | ID | Component | Issue | Detailed Section |
 |----|-----------|-------|-----------------|
-| A3 | `OfflineSyncResolver` | `timeProvider` dependency injected but never used | Section 1.4 |
-| CS-1 | `Services.swift` | Stray blank line in typealias | Section 2.3 |
+| ~~A3~~ | ~~`OfflineSyncResolver`~~ | ~~`timeProvider` dependency injected but never used~~ **[Resolved]** Removed in commit `a52d379`. | ~~Section 1.4~~ |
+| ~~CS-1~~ | ~~`Services.swift`~~ | ~~Stray blank line in typealias~~ **[Resolved]** Removed in commit `a52d379`. | ~~Section 2.3~~ |
 | CS-2 | `CipherView+OfflineSync` | `withTemporaryId`/`update` fragile against SDK type changes | Section 3.1 |
 | R1 | `PendingCipherChangeData` | No data format versioning for `cipherData` JSON | Section 7.3 |
 | R2 | `OfflineSyncResolver` | `conflictFolderId` thread safety (class with mutable var, no actor isolation) | [RES-2](ReviewSection_OfflineSyncResolver.md) |
@@ -611,7 +610,7 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 
 ## 16. Conclusion
 
-The offline sync implementation is architecturally sound, follows project conventions, maintains the zero-knowledge security model, and provides robust data loss prevention. The code is well-documented, well-tested (47 new tests), and introduces no new external dependencies or problematic cross-domain coupling.
+The offline sync implementation is architecturally sound, follows project conventions, maintains the zero-knowledge security model, and provides robust data loss prevention. The code is well-documented, well-tested (40 new tests), and introduces no new external dependencies or problematic cross-domain coupling.
 
 The most significant design choice — the early-abort sync pattern — is the correct tradeoff: it prioritizes data safety (never overwriting unsynced local edits) over freshness (users with unresolvable pending changes won't receive server updates until those are cleared). This is consistent with Bitwarden's security-first philosophy.
 

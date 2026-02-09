@@ -108,7 +108,7 @@ A comprehensive mock capturing all method calls and supporting configurable resu
 - `fetchPendingChangesResult` / `fetchPendingChangesCalledWith` — Track fetch-all calls
 - `fetchPendingChangeResult` / `fetchPendingChangeCalledWith` — Track fetch-by-cipher calls
 - `upsertPendingChangeCalledWith` — Captures full parameter tuple for assertion
-- `pendingChangeCountResults: [Int]?` — Supports sequential return values (call index 0 returns `results[0]`, call index 1 returns `results[1]`, etc.), used to simulate the count changing between pre-resolution and post-resolution checks in `SyncServiceTests`
+- `pendingChangeCountResult: Int` — Returns a single configured count value. **[Updated]** The `pendingChangeCountResults: [Int]?` sequential-return mechanism was removed in commit `a52d379` since the SyncService pre-sync flow now only calls `pendingChangeCount` once (post-resolution). The pre-count check was removed; the resolver is always called and handles the empty case internally.
 - `upsertPendingChangeResult: Result<Void, Error>` — Supports configurable error injection
 
 ### 5. User Data Cleanup (`DataStore.swift:105`)

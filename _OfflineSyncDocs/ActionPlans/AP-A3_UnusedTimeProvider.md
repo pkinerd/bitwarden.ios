@@ -1,12 +1,14 @@
 # Action Plan: A3 (RES-5) — Unused `timeProvider` Dependency in OfflineSyncResolver
 
+> **Status: [RESOLVED]** — The unused `timeProvider` dependency was removed in commit `a52d379`. Option A (remove entirely) was implemented. Changes applied to `OfflineSyncResolver.swift`, `ServiceContainer.swift`, and `OfflineSyncResolverTests.swift`.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | A3 / RES-5 |
 | **Component** | `DefaultOfflineSyncResolver` |
-| **Severity** | Low |
+| **Severity** | ~~Low~~ **Resolved** |
 | **Type** | Dead Code |
 | **File** | `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` |
 

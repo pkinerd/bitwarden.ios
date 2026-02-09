@@ -467,9 +467,9 @@ This cleanly excludes org ciphers without affecting any other flow.
 | `ServiceContainer.swift` | `BitwardenShared/Core/Platform/Services/` | Register new services, add properties and init params |
 | `VaultRepository.swift` | `BitwardenShared/Core/Vault/Repositories/` | Offline-aware `updateCipher()`, `addCipher()`, `deleteCipher()` with API failure catch-and-queue |
 | `SyncService.swift` | `BitwardenShared/Core/Vault/Services/` | Add early-abort pattern: resolve pending changes before `fetchSync()`, abort if unresolved to protect offline edits |
-| `CipherService.swift` | `BitwardenShared/Core/Vault/Services/` | Expose helpers needed by resolver (if not already public) |
-| `FolderService.swift` | `BitwardenShared/Core/Vault/Services/` | Minor - used by resolver to create conflict folder (existing API sufficient) |
-| `AddEditItemProcessor.swift` | `BitwardenShared/UI/Vault/VaultItem/AddEditItem/` | Handle offline error state, show org cipher offline restriction message |
+| ~~`CipherService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — Existing protocol methods were sufficient. No changes needed. |
+| ~~`FolderService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — Existing API sufficient for conflict folder creation. |
+| ~~`AddEditItemProcessor.swift`~~ | ~~`BitwardenShared/UI/Vault/VaultItem/AddEditItem/`~~ | **[Not modified]** — `OfflineSyncError.organizationCipherOfflineEditNotSupported` propagates through existing generic error handling. |
 
 ### Test Files (New)
 

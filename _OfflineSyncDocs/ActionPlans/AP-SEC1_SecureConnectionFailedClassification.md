@@ -1,14 +1,16 @@
 # Action Plan: SEC-1 (EXT-2) — `.secureConnectionFailed` May Mask TLS Security Issues
 
+> **Status: [SUPERSEDED]** — The `URLError+NetworkConnection.swift` extension has been deleted entirely. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save by design. The fine-grained URLError classification approach was removed as unnecessary. The security concern about `.secureConnectionFailed` specifically triggering offline save is moot since ALL errors now trigger it. The security analysis in the Updated Review Findings section below actually confirmed that offline fallback is MORE secure than propagating the error (data stays local rather than potentially being sent to a compromised server on retry).
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | SEC-1 / EXT-2 |
-| **Component** | `URLError+NetworkConnection` |
-| **Severity** | Medium |
+| **Component** | ~~`URLError+NetworkConnection`~~ **[Deleted]** |
+| **Severity** | ~~Medium~~ **Superseded** |
 | **Type** | Security |
-| **File** | `BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnection.swift` |
+| **File** | ~~`BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnection.swift`~~ **[Deleted]** |
 
 ## Description
 

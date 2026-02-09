@@ -30,15 +30,11 @@ These issues form a layered defense system:
 
 **Implication:** R1 (format versioning) and R3 (retry backoff with expiry) both address the "permanently stuck item" problem. Implementing R3 with TTL-based expiry covers the format versioning case (old items expire) without needing a version field. Both together provide defense in depth.
 
-### Cluster 3: Error Classification (SEC-1, EXT-1, T6)
+### ~~Cluster 3: Error Classification (SEC-1, EXT-1, T6)~~ **[Resolved]**
 
-These three issues all relate to `URLError+NetworkConnection`:
+~~These three issues all relate to `URLError+NetworkConnection`:~~
 
-- **SEC-1** considers removing `.secureConnectionFailed`
-- **EXT-1** considers removing `.timedOut`
-- **T6** provides test coverage for the full set
-
-**Implication:** Any change to SEC-1 or EXT-1 must be reflected in T6 tests. If SEC-1 removes `.secureConnectionFailed`, T6 should add a test verifying it returns `false`. Implement T6 after SEC-1 and EXT-1 decisions are finalized.
+> **All three issues are resolved/superseded.** The `URLError+NetworkConnection.swift` extension and its tests have been deleted entirely. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save. SEC-1, EXT-1, and T6 no longer exist as actionable items.
 
 ### Cluster 4: UX Improvements (U1, U2, U3, U4)
 
@@ -67,20 +63,20 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 |-------|---------|-------------|
 | **S3** | T5 (mock burden) | T5 (mock quality), S4 (can combine) |
 | **S4** | T5 (mock burden) | T5 (mock quality), S3 (can combine), R3 (retry behavior) |
-| **SEC-1** | T6 (test updates) | EXT-1 (holistic review) |
+| ~~**SEC-1**~~ | ~~T6 (test updates)~~ | ~~EXT-1 (holistic review)~~ **[Superseded]** — Extension deleted |
 | **S6** | — | T7 (combine subsequent edit) |
 | **S7** | — | VR-2 (delete context) |
 | **S8** | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — |
-| **EXT-1** | T6 (test updates) | SEC-1 (holistic review), R3 (false-positive mitigation) |
-| **A3** | R2 (simpler migration) | R3 (timeProvider may be repurposed) |
-| **CS-1** | — | — |
+| ~~**EXT-1**~~ | ~~T6 (test updates)~~ | ~~SEC-1 (holistic review), R3 (false-positive mitigation)~~ **[Superseded]** — Extension deleted |
+| ~~**A3**~~ | ~~R2 (simpler migration)~~ | ~~R3 (timeProvider may be repurposed)~~ **[Resolved]** — Removed in commit `a52d379` |
+| ~~**CS-1**~~ | — | — **[Resolved]** — Removed in commit `a52d379` |
 | **CS-2** | RES-7 (attachment handling) | — |
 | **R1** | — | R3 (both address stuck items), PCDS-1/PCDS-2 (schema changes) |
-| **R2** | — | A3 (remove first for simpler migration) |
-| **R3** | S8 (complementary), R1 (complementary), A3 (timeProvider reuse), SS-2 (recovery), RES-1 (expire duplicates) | S4 (test retry behavior) |
+| **R2** | — | ~~A3 (remove first for simpler migration)~~ **[A3 resolved]** |
+| **R3** | S8 (complementary), R1 (complementary), SS-2 (recovery), RES-1 (expire duplicates) | S4 (test retry behavior) |
 | **R4** | T8 (distinguish abort vs error) | R3 (log expired items), S8 (log flag state) |
 | **DI-1** | U3 (enables indicator) | — |
-| **T6** | — | SEC-1 (classification change), EXT-1 (classification change) |
+| ~~**T6**~~ | — | ~~SEC-1 (classification change), EXT-1 (classification change)~~ **[Resolved]** — Extension and tests deleted |
 | **U1** | — | EXT-1 (timeout duration) |
 | **U2** | — | S8 (feature flag gates all) |
 | **U3** | — | DI-1 (requires UI access), R3 (notify on expiry), R4 (abort notification) |

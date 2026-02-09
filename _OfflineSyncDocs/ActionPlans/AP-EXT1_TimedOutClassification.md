@@ -1,14 +1,16 @@
 # Action Plan: EXT-1 — `.timedOut` May Trigger Offline Save for Slow Servers
 
+> **Status: [SUPERSEDED]** — The `URLError+NetworkConnection.swift` extension has been deleted entirely. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save by design. The fine-grained URLError classification approach was removed as unnecessary. This issue no longer exists.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | EXT-1 |
-| **Component** | `URLError+NetworkConnection` |
-| **Severity** | Medium |
+| **Component** | ~~`URLError+NetworkConnection`~~ **[Deleted]** |
+| **Severity** | ~~Medium~~ **Superseded** |
 | **Type** | Design Decision |
-| **File** | `BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnection.swift` |
+| **File** | ~~`BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnection.swift`~~ **[Deleted]** |
 
 ## Description
 

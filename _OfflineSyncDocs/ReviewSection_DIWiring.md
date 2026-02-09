@@ -34,7 +34,7 @@ These are added to the `Services` typealias in alphabetical order:
 - `& HasOfflineSyncResolver` (between `HasNotificationService` and `HasOrganizationAPIService`)
 - `& HasPendingCipherChangeDataStore` (between `HasPendingAppIntentActionMediator` and `HasPolicyService`)
 
-**Note:** A blank line is introduced in the `Services` typealias between `& HasConfigService` and `& HasDeviceAPIService`. This appears to be an unintentional formatting change (the blank line separates a logical grouping that wasn't separated before).
+~~**Note:** A blank line was introduced in the `Services` typealias between `& HasConfigService` and `& HasDeviceAPIService`.~~ **[Resolved]** The stray blank line was removed in commit `a52d379`.
 
 ### 2. ServiceContainer.swift — Container Registration
 
@@ -64,8 +64,8 @@ let preSyncOfflineSyncResolver = DefaultOfflineSyncResolver(
     folderService: folderService,
     pendingCipherChangeDataStore: dataStore,
     stateService: stateService,
-    timeProvider: timeProvider,
 )
+// NOTE: [Updated] timeProvider was removed in commit a52d379 (was unused — see A3)
 
 // 2. Inject into SyncService
 let syncService = DefaultSyncService(
@@ -121,9 +121,9 @@ PendingCipherChangeData.deleteByUserIdRequest(userId: userId),
 
 This ensures that when a user logs out or their account is deleted, all pending offline changes are cleaned up. Without this line, orphaned pending changes would remain in Core Data indefinitely.
 
-### 6. AppProcessor.swift — Whitespace Only
+### 6. AppProcessor.swift — ~~Whitespace Only~~ [Reverted]
 
-The only change to `AppProcessor.swift` is the addition of a blank line at line 136 (after the closing brace of a block). This is cosmetic only — no behavioral change.
+~~The only change to `AppProcessor.swift` is the addition of a blank line at line 136 (after the closing brace of a block).~~ **[Updated]** The blank line was removed in commit `a52d379`. Net zero change to this file.
 
 ---
 
@@ -180,11 +180,9 @@ Similarly, `HasOfflineSyncResolver` is added to the `Services` typealias. The re
 
 **Assessment:** Same as DI-1 — follows existing precedent and enables future UI-layer usage if needed.
 
-### Issue DI-3: Stray Blank Line in Services Typealias (Cosmetic)
+### ~~Issue DI-3: Stray Blank Line in Services Typealias~~ [Resolved]
 
-A blank line is introduced between `& HasConfigService` and `& HasDeviceAPIService` in the `Services` typealias. The existing code does not have blank lines between entries. This appears to be an unintentional formatting artifact.
-
-**Severity:** Cosmetic only. No functional impact.
+~~A blank line was introduced between `& HasConfigService` and `& HasDeviceAPIService` in the `Services` typealias.~~ **[Resolved]** — The stray blank line was removed in commit `a52d379`.
 
 ### Observation DI-4: Same Resolver Instance Shared Between SyncService and Container
 
