@@ -37,9 +37,11 @@ typealias Services = HasAPIService
     & HasNFCReaderService
     & HasNotificationCenterService
     & HasNotificationService
+    & HasOfflineSyncResolver
     & HasOrganizationAPIService
     & HasPasteboardService
     & HasPendingAppIntentActionMediator
+    & HasPendingCipherChangeDataStore
     & HasPolicyService
     & HasRehydrationHelper
     & HasReviewPromptService
@@ -259,6 +261,13 @@ protocol HasNotificationCenterService {
     var notificationCenterService: NotificationCenterService { get }
 }
 
+/// Protocol for an object that provides an `OfflineSyncResolver`.
+///
+protocol HasOfflineSyncResolver {
+    /// The service used to resolve pending offline cipher changes against server state.
+    var offlineSyncResolver: OfflineSyncResolver { get }
+}
+
 /// Protocol for an object that provides an `OrganizationAPIService`.
 ///
 protocol HasOrganizationAPIService {
@@ -271,6 +280,13 @@ protocol HasOrganizationAPIService {
 protocol HasPendingAppIntentActionMediator {
     /// The mediator to execute pending `AppIntent` actions.
     var pendingAppIntentActionMediator: PendingAppIntentActionMediator { get }
+}
+
+/// Protocol for an object that provides a `PendingCipherChangeDataStore`.
+///
+protocol HasPendingCipherChangeDataStore {
+    /// The data store for managing pending cipher changes queued during offline editing.
+    var pendingCipherChangeDataStore: PendingCipherChangeDataStore { get }
 }
 
 /// Protocol for an object that provides a `PolicyService`.

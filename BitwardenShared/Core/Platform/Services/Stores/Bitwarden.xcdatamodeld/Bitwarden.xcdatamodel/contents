@@ -42,6 +42,23 @@
             </uniquenessConstraint>
         </uniquenessConstraints>
     </entity>
+    <entity name="PendingCipherChangeData" representedClassName=".PendingCipherChangeData" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="cipherId" attributeType="String"/>
+        <attribute name="userId" attributeType="String"/>
+        <attribute name="changeTypeRaw" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="cipherData" optional="YES" attributeType="Binary"/>
+        <attribute name="originalRevisionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="offlinePasswordChangeCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="userId"/>
+                <constraint value="cipherId"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
     <entity name="OrganizationData" representedClassName=".OrganizationData" syncable="YES">
         <attribute name="id" attributeType="String"/>
         <attribute name="modelData" attributeType="Binary"/>

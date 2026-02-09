@@ -20,7 +20,9 @@ class SyncServiceTests: BitwardenTestCase {
     var configService: MockConfigService!
     var folderService: MockFolderService!
     var keyConnectorService: MockKeyConnectorService!
+    var offlineSyncResolver: MockOfflineSyncResolver!
     var organizationService: MockOrganizationService!
+    var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
     var policyService: MockPolicyService!
     var sendService: MockSendService!
     var settingsService: MockSettingsService!
@@ -44,7 +46,9 @@ class SyncServiceTests: BitwardenTestCase {
         configService = MockConfigService()
         folderService = MockFolderService()
         keyConnectorService = MockKeyConnectorService()
+        offlineSyncResolver = MockOfflineSyncResolver()
         organizationService = MockOrganizationService()
+        pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
         policyService = MockPolicyService()
         sendService = MockSendService()
         settingsService = MockSettingsService()
@@ -73,7 +77,9 @@ class SyncServiceTests: BitwardenTestCase {
             configService: configService,
             folderService: folderService,
             keyConnectorService: keyConnectorService,
+            offlineSyncResolver: offlineSyncResolver,
             organizationService: organizationService,
+            pendingCipherChangeDataStore: pendingCipherChangeDataStore,
             policyService: policyService,
             sendService: sendService,
             settingsService: settingsService,
@@ -97,7 +103,9 @@ class SyncServiceTests: BitwardenTestCase {
         configService = nil
         folderService = nil
         keyConnectorService = nil
+        offlineSyncResolver = nil
         organizationService = nil
+        pendingCipherChangeDataStore = nil
         policyService = nil
         sendService = nil
         settingsService = nil
@@ -1083,6 +1091,64 @@ class SyncServiceTests: BitwardenTestCase {
         )
         try await subject.fetchUpsertSyncSend(data: notification)
         XCTAssertEqual(sendService.syncSendWithServerId, "id")
+    }
+
+    // MARK: - Offline Sync Resolution Tests
+
+    /// `fetchSync()` resolves pending changes and proceeds with sync when all are resolved.
+    func test_fetchSync_preSyncResolution_triggersPendingChanges() async throws {
+        client.result = .httpSuccess(testData: .syncWithCiphers)
+        stateService.activeAccount = .fixture()
+        // After resolution, pending count returns 0 (all resolved).
+        pendingCipherChangeDataStore.pendingChangeCountResult = 0
+
+        try await subject.fetchSync(forceSync: false)
+
+        XCTAssertEqual(offlineSyncResolver.processPendingChangesCalledWith, ["1"])
+        // Sync should proceed since all pending changes were resolved.
+        XCTAssertEqual(client.requests.count, 1)
+    }
+
+    /// `fetchSync()` skips resolution when the vault is locked.
+    func test_fetchSync_preSyncResolution_skipsWhenVaultLocked() async throws {
+        client.result = .httpSuccess(testData: .syncWithCiphers)
+        stateService.activeAccount = .fixture()
+        vaultTimeoutService.isClientLocked["1"] = true
+
+        try await subject.fetchSync(forceSync: false)
+
+        XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
+    }
+
+    /// `fetchSync()` proceeds with sync when there are no pending changes after resolution.
+    func test_fetchSync_preSyncResolution_noPendingChanges() async throws {
+        client.result = .httpSuccess(testData: .syncWithCiphers)
+        stateService.activeAccount = .fixture()
+        pendingCipherChangeDataStore.pendingChangeCountResult = 0
+
+        try await subject.fetchSync(forceSync: false)
+
+        // Resolver is always called; it handles the empty case internally.
+        XCTAssertEqual(offlineSyncResolver.processPendingChangesCalledWith, ["1"])
+        // Sync should proceed normally.
+        XCTAssertEqual(client.requests.count, 1)
+    }
+
+    /// `fetchSync()` aborts the sync when pending changes remain after resolution,
+    /// to prevent `replaceCiphers` from overwriting local offline edits.
+    func test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain() async throws {
+        client.result = .httpSuccess(testData: .syncWithCiphers)
+        stateService.activeAccount = .fixture()
+        // After resolution, pending count still > 0 (resolution failed for some).
+        pendingCipherChangeDataStore.pendingChangeCountResult = 2
+
+        try await subject.fetchSync(forceSync: false)
+
+        XCTAssertEqual(offlineSyncResolver.processPendingChangesCalledWith, ["1"])
+        // Sync should NOT proceed - no API requests made.
+        XCTAssertTrue(client.requests.isEmpty)
+        // Ciphers should not be replaced.
+        XCTAssertNil(cipherService.replaceCiphersCiphers)
     }
 
     /// `needsSync(forceSync:onlyCheckLocalData:userId:)` returns `true` when
