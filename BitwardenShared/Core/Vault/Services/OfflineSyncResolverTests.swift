@@ -4,6 +4,7 @@ import Networking
 import XCTest
 
 @testable import BitwardenShared
+@testable import BitwardenSharedMocks
 
 // MARK: - MockCipherAPIServiceForOfflineSync
 
