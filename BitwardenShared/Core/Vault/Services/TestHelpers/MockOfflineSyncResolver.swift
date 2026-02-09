@@ -1,5 +1,7 @@
 import Foundation
 
+@testable import BitwardenShared
+
 class MockOfflineSyncResolver: OfflineSyncResolver {
     var processPendingChangesCalledWith = [String]()
     var processPendingChangesResult: Result<Void, Error> = .success(())
