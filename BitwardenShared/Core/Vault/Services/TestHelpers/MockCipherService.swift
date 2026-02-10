@@ -20,9 +20,7 @@ class MockCipherService: CipherService {
 
     var cipherCountResult: Result<Int, Error> = .success(0)
 
-    var cipherChangesSubject = CurrentValueSubject<CipherChange, Never>(
-        .upserted(.fixture()), // stub data that will be dropped and not published.
-    )
+    var cipherChangesSubject = PassthroughSubject<CipherChange, Never>()
     var cipherChangesSubscribed = false
 
     var ciphersSubject = CurrentValueSubject<[Cipher], Error>([])
@@ -206,7 +204,6 @@ class MockCipherService: CipherService {
 
     func cipherChangesPublisher() async throws -> AnyPublisher<CipherChange, Never> {
         cipherChangesSubject
-            .dropFirst()
             .handleEvents(receiveSubscription: { [weak self] _ in
                 self?.cipherChangesSubscribed = true
             })
