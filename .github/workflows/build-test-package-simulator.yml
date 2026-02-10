@@ -164,6 +164,30 @@ jobs:
           path: build/artifacts/Bitwarden-Simulator.zip
           if-no-files-found: error
 
+      - name: "Upload: Sauce Labs"
+        env:
+          SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+          SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+            --request POST 'https://api.us-west-1.saucelabs.com/v1/storage/upload' \
+            --form 'payload=@"build/artifacts/Bitwarden-Simulator.zip"' \
+            --form 'name="Bitwarden-Simulator.zip"')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "$BODY" | python3 -m json.tool || echo "$BODY"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::Sauce Labs upload failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+          FILE_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['item']['id'])" 2>/dev/null || true)
+          if [ -n "$FILE_ID" ]; then
+            echo "Sauce Labs file ID: $FILE_ID"
+            echo "### Sauce Labs Upload" >> "$GITHUB_STEP_SUMMARY"
+            echo "File ID: \`$FILE_ID\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Test
         env:
           _SIMULATOR_ID: ${{ steps.boot-simulator.outputs.simulator-id }}
