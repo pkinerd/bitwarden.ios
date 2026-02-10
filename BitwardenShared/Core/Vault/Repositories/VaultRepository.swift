@@ -512,7 +512,7 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
-        } catch {
+        } catch is URLError {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
@@ -639,7 +639,7 @@ extension DefaultVaultRepository: VaultRepository {
     func deleteCipher(_ id: String) async throws {
         do {
             try await cipherService.deleteCipherWithServer(id: id)
-        } catch {
+        } catch is URLError {
             try await handleOfflineDelete(cipherId: id)
         }
     }
@@ -895,7 +895,7 @@ extension DefaultVaultRepository: VaultRepository {
         let encryptedCipher = try await encryptAndUpdateCipher(softDeletedCipher)
         do {
             try await cipherService.softDeleteCipherWithServer(id: id, encryptedCipher)
-        } catch {
+        } catch is URLError {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
@@ -922,7 +922,7 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
-        } catch {
+        } catch is URLError {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
