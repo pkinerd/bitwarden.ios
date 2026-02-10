@@ -189,12 +189,11 @@ jobs:
       #     fi
 
       - name: "Upload: Appetize"
-        run: |
-          curl --http1.1 \
-            "https://api.appetize.io/v2/apps" \
-            -H "Authorization: Bearer ${{ secrets.APPETIZE_API_TOKEN }}" \
-            -F "file=@build/artifacts/Bitwarden-Simulator.zip" \
-            -F "platform=ios"
+        uses: appetizeio/github-action-appetize@v1.0.5
+        with:
+          apiToken: ${{ secrets.APPETIZE_API_TOKEN }}
+          appFile: build/artifacts/Bitwarden-Simulator.zip
+          platform: 'ios'
 
       - name: Test
         env:
