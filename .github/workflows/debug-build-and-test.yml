@@ -172,7 +172,7 @@ jobs:
           fi
           mkdir -p build/artifacts
           cd build/DerivedData/Build/Products/Debug-iphonesimulator
-          zip -r -q ../../../../artifacts/Bitwarden-Simulator.zip Bitwarden.app
+          zip -r -q ../../../../artifacts/Bitwarden-Simulator.zip Bitwarden.app -x "Bitwarden.app/Watch/*"
 
       - name: "Upload: Simulator .app"
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
