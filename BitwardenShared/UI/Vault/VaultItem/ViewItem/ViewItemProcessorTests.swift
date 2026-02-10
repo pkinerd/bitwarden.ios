@@ -243,6 +243,45 @@ class ViewItemProcessorTests: BitwardenTestCase { // swiftlint:disable:this type
         XCTAssertEqual(errorReporter.errors.last as? BitwardenTestError, .example)
     }
 
+    /// `perform(_:)` with `.appeared` falls back to fetching the cipher directly when the
+    /// publisher stream fails, allowing offline-created ciphers to load.
+    @MainActor
+    func test_perform_appeared_errors_fallbackToDirectFetch() {
+        let cipherItem = CipherView.fixture(
+            id: "id",
+            login: LoginView(
+                username: "username",
+                password: "password",
+                passwordRevisionDate: nil,
+                uris: nil,
+                totp: nil,
+                autofillOnPageLoad: nil,
+                fido2Credentials: nil,
+            ),
+            name: "Offline Cipher",
+            viewPassword: true,
+        )
+        vaultRepository.fetchCipherResult = .success(cipherItem)
+        vaultRepository.fetchCollectionsResult = .success([])
+        configService.featureFlagsBool[.archiveVaultItems] = true
+
+        vaultRepository.cipherDetailsSubject.send(completion: .failure(BitwardenTestError.example))
+
+        let task = Task {
+            await subject.perform(.appeared)
+        }
+
+        waitFor(subject.state.loadingState != .loading(nil))
+        task.cancel()
+
+        XCTAssertEqual(errorReporter.errors.last as? BitwardenTestError, .example)
+        XCTAssertEqual(vaultRepository.fetchCipherId, "id")
+        guard case .data = subject.state.loadingState else {
+            XCTFail("Expected state to have loaded data via direct fetch fallback")
+            return
+        }
+    }
+
     /// `perform(_:)` with `.appeared` starts listening for updates with the vault repository.
     @MainActor
     func test_perform_appeared_invalidFixture() {
