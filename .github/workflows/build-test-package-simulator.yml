@@ -1,4 +1,4 @@
-name: Test Password Manager
+name: Build, Test & Package Simulator
 
 on:
   push:
@@ -142,14 +142,26 @@ jobs:
               -destination "platform=iOS Simulator,id=$_SIMULATOR_ID" \
               -derivedDataPath build/DerivedData \
               -resultBundlePath "$_BUILD_RESULT_BUNDLE_PATH" \
+              ONLY_ACTIVE_ARCH=NO \
               -quiet
             kill "$PYEETD_PID"
 
-      - name: Upload simulator build artifact
+      - name: "Package: Simulator .app artifact"
+        run: |
+          APP_PATH="build/DerivedData/Build/Products/Debug-iphonesimulator/Bitwarden.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "::error::Bitwarden.app not found at $APP_PATH"
+            exit 1
+          fi
+          mkdir -p build/artifacts
+          cd build/DerivedData/Build/Products/Debug-iphonesimulator
+          zip -r -q ../../../../artifacts/Bitwarden-Simulator.zip Bitwarden.app -x "Bitwarden.app/Watch/*"
+
+      - name: "Upload: Simulator .app"
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: Bitwarden-Simulator-Debug.app
-          path: build/DerivedData/Build/Products/Debug-iphonesimulator/Bitwarden.app
+          name: Bitwarden-Simulator-Debug
+          path: build/artifacts/Bitwarden-Simulator.zip
           if-no-files-found: error
 
       - name: Test
