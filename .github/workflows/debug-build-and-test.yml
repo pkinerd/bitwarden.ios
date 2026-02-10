@@ -133,6 +133,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$_SIMULATOR_ID" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath "$_BUILD_RESULT_BUNDLE_PATH" \
+            ONLY_ACTIVE_ARCH=NO \
             -quiet
           kill "$PYEETD_PID"
 
@@ -285,6 +286,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$_SIMULATOR_ID" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath "$_BUILD_RESULT_BUNDLE_PATH" \
+            ONLY_ACTIVE_ARCH=NO \
             -quiet
           kill "$PYEETD_PID"
 
