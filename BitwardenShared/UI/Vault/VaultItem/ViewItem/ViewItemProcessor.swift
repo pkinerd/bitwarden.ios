@@ -552,74 +552,48 @@ private extension ViewItemProcessor {
             await services.eventService.collect(eventType: .cipherClientViewed, cipherId: itemId)
             for try await cipher in try await services.vaultRepository.cipherDetailsPublisher(id: itemId) {
                 guard let cipher else { continue }
-                await updateState(with: cipher)
+
+                let hasPremium = await services.vaultRepository.doesActiveAccountHavePremium()
+                let collections = try await services.vaultRepository.fetchCollections(includeReadOnly: true)
+                var folder: FolderView?
+                if let folderId = cipher.folderId {
+                    folder = try await services.vaultRepository.fetchFolder(withId: folderId)
+                }
+                var organization: Organization?
+                if let orgId = cipher.organizationId {
+                    organization = try await services.vaultRepository.fetchOrganization(withId: orgId)
+                }
+                let ownershipOptions = try await services.vaultRepository
+                    .fetchCipherOwnershipOptions(includePersonal: false)
+                let showWebIcons = await services.stateService.getShowWebIcons()
+
+                var totpState = LoginTOTPState(cipher.login?.totp)
+                if let key = totpState.authKeyModel,
+                   let updatedState = try? await services.vaultRepository.refreshTOTPCode(for: key) {
+                    totpState = updatedState
+                }
+
+                let isArchiveVaultItemsFFEnabled: Bool = await services.configService.getFeatureFlag(.archiveVaultItems)
+
+                guard var newState = ViewItemState(
+                    cipherView: cipher,
+                    hasPremium: hasPremium,
+                    iconBaseURL: services.environmentService.iconsURL,
+                ) else { continue }
+
+                if case var .data(itemState) = newState.loadingState {
+                    itemState.loginState.totpState = totpState
+                    itemState.allUserCollections = collections
+                    itemState.folderName = folder?.name
+                    itemState.organizationName = organization?.name
+                    itemState.ownershipOptions = ownershipOptions
+                    itemState.showWebIcons = showWebIcons
+                    itemState.isArchiveVaultItemsFFEnabled = isArchiveVaultItemsFFEnabled
+
+                    newState.loadingState = .data(itemState)
+                }
+                state = newState
             }
-        } catch {
-            services.errorReporter.log(error: error)
-            await loadCipherDirectly()
-        }
-    }
-
-    /// Attempts to load the cipher directly as a fallback when the cipher details
-    /// publisher fails (e.g. for offline-created ciphers that may fail to decrypt
-    /// through the publisher pipeline).
-    private func loadCipherDirectly() async {
-        do {
-            guard let cipher = try await services.vaultRepository.fetchCipher(withId: itemId) else {
-                return
-            }
-            await updateState(with: cipher)
-        } catch {
-            services.errorReporter.log(error: error)
-        }
-    }
-
-    /// Updates the view state with the provided cipher details.
-    ///
-    /// - Parameter cipher: The decrypted cipher to display.
-    ///
-    private func updateState(with cipher: CipherView) async {
-        do {
-            let hasPremium = await services.vaultRepository.doesActiveAccountHavePremium()
-            let collections = try await services.vaultRepository.fetchCollections(includeReadOnly: true)
-            var folder: FolderView?
-            if let folderId = cipher.folderId {
-                folder = try await services.vaultRepository.fetchFolder(withId: folderId)
-            }
-            var organization: Organization?
-            if let orgId = cipher.organizationId {
-                organization = try await services.vaultRepository.fetchOrganization(withId: orgId)
-            }
-            let ownershipOptions = try await services.vaultRepository
-                .fetchCipherOwnershipOptions(includePersonal: false)
-            let showWebIcons = await services.stateService.getShowWebIcons()
-
-            var totpState = LoginTOTPState(cipher.login?.totp)
-            if let key = totpState.authKeyModel,
-               let updatedState = try? await services.vaultRepository.refreshTOTPCode(for: key) {
-                totpState = updatedState
-            }
-
-            let isArchiveVaultItemsFFEnabled: Bool = await services.configService.getFeatureFlag(.archiveVaultItems)
-
-            guard var newState = ViewItemState(
-                cipherView: cipher,
-                hasPremium: hasPremium,
-                iconBaseURL: services.environmentService.iconsURL,
-            ) else { return }
-
-            if case var .data(itemState) = newState.loadingState {
-                itemState.loginState.totpState = totpState
-                itemState.allUserCollections = collections
-                itemState.folderName = folder?.name
-                itemState.organizationName = organization?.name
-                itemState.ownershipOptions = ownershipOptions
-                itemState.showWebIcons = showWebIcons
-                itemState.isArchiveVaultItemsFFEnabled = isArchiveVaultItemsFFEnabled
-
-                newState.loadingState = .data(itemState)
-            }
-            state = newState
         } catch {
             services.errorReporter.log(error: error)
         }
