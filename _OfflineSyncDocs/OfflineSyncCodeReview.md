@@ -346,6 +346,7 @@ This prevents unauthorized client-side modifications to shared organization data
 | Single pending change resolution fails | `OfflineSyncResolver` logs error via `Logger.application`, continues to next | **Good** — One failure doesn't block others |
 | Unresolved pending changes after resolution | SyncService aborts sync, returns early | **Good** — Prevents `replaceCiphers` from overwriting local offline edits |
 | Resolver `processPendingChanges` throws hard error | Error propagates through `fetchSync` — entire sync fails | **Acceptable** — If the store is unreadable, sync should not proceed |
+| Detail view publisher stream error (e.g., `decrypt()` failure) | `asyncTryMap` terminates publisher; catch block logs error only, no UI state update | **Gap** — View stuck on `.loading(nil)` (infinite spinner). See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
 
 ### 7.2 Data Loss Prevention
 
@@ -388,6 +389,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 | Archive/unarchive cipher while offline | Fails with generic network error | **Gap** — Inconsistent with add/update/delete offline support |
 | Update cipher collections while offline | Fails with generic network error | **Gap** — Inconsistent |
 | Restore cipher from trash while offline | Fails with generic network error | **Gap** — Inconsistent |
+| Viewing offline-created item | Infinite spinner, item never loads | **Gap** — `cipherDetailsPublisher` uses `asyncTryMap` + `decrypt()` which terminates stream on error; catch block only logs, leaving `.loading(nil)` state. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
 | Viewing pending changes status | No UI indicator | **Gap** — User has no awareness of unsynced changes |
 | Conflict folder discovery | "Offline Sync Conflicts" folder appears in vault | **Acceptable** — Clear name, but English-only |
 
@@ -400,6 +402,8 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 **Observation U3 — No user-visible pending changes indicator.** Users have no way to see pending offline changes. If resolution continues to fail, the user is unaware their changes haven't been uploaded.
 
 **Observation U4 — Conflict folder name in English only.** "Offline Sync Conflicts" is hardcoded in English, not localized. Non-English users see an English folder name. Localization is complex since the encrypted folder name syncs across devices with potentially different locales.
+
+**Issue VI-1 — Offline-created cipher view failure.** When a user creates a new cipher while offline, the item appears in the vault list but fails to load in the detail view (infinite spinner). Root cause: `cipherDetailsPublisher` uses `asyncTryMap` + `decrypt()` which terminates the publisher stream on decryption error. The catch block in `ViewItemProcessor.streamCipherDetails()` only logs the error without updating the state to `.error`, leaving the view permanently in `.loading(nil)`. The vault list uses `decryptListWithFailures()` (resilient), creating an asymmetry with the detail view. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 ---
 
@@ -554,6 +558,7 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 | ID | Component | Issue | Detailed Section |
 |----|-----------|-------|-----------------|
 | ~~SEC-1~~ | ~~`URLError+NetworkConnection`~~ | ~~`.secureConnectionFailed` may mask TLS security issues~~ **[Superseded]** Extension deleted; plain `catch` replaces URLError filtering. | ~~[EXT-2](ReviewSection_SupportingExtensions.md)~~ |
+| VI-1 | `ViewItemProcessor` / `VaultRepository` | Offline-created cipher fails to load in detail view (infinite spinner) — `asyncTryMap` + `decrypt()` terminates stream; catch block only logs | [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
 | S6 | `VaultRepositoryTests` | `handleOfflineUpdate` password change counting not directly tested | [VR](ReviewSection_VaultRepository.md) |
 | S7 | `VaultRepositoryTests` | `handleOfflineDelete` cipher-not-found path not tested | [VR-5](ReviewSection_VaultRepository.md) |
 | S8 | Feature | Consider adding a feature flag for production safety | Section 12.3 |
@@ -618,5 +623,6 @@ The most significant design choice — the early-abort sync pattern — is the c
 1. Additional test coverage for batch processing and error paths in the resolver (S3, S4)
 2. ~~Evaluation of whether `.secureConnectionFailed` should trigger offline mode (SEC-1)~~ **[Superseded]** — resolved by error handling simplification
 3. Consider a feature flag for production safety (S8)
+4. **[New]** Offline-created cipher fails to load in detail view — infinite spinner due to `asyncTryMap` stream termination and missing error state handling (VI-1). See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md)
 
-None of these are blocking issues. The implementation is ready for merge consideration with the understanding that the identified test gaps should be tracked. **[Updated]** The SEC-1 security observation has been superseded by the error handling simplification that removed the `URLError+NetworkConnection` extension entirely.
+None of these are blocking issues. The implementation is ready for merge consideration with the understanding that the identified test gaps should be tracked. **[Updated]** The SEC-1 security observation has been superseded by the error handling simplification that removed the `URLError+NetworkConnection` extension entirely. **[Updated]** VI-1 identifies a usability gap where offline-created items cannot be viewed in the detail view.
