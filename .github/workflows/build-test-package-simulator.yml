@@ -7,11 +7,14 @@ on:
       - "rc"
       - "hotfix-rc"
       - "dev"
+    paths-ignore:
+      - _OfflineSyncDocs/**
   pull_request:
     types: [opened, synchronize]
     paths-ignore:
       - Authenticator/**
       - AuthenticatorShared/**
+      - _OfflineSyncDocs/**
   workflow_dispatch:
     inputs:
       xcode-version:
