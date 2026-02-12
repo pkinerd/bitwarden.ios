@@ -909,6 +909,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 
 | ID | Title | Priority |
 |----|-------|----------|
+| [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher fails to load in detail view (infinite spinner) | Medium |
 | [S6](./_OfflineSyncDocs/ActionPlans/AP-S6_PasswordChangeCountingTest.md) | No password change counting test | Medium |
 | [S7](./_OfflineSyncDocs/ActionPlans/AP-S7_CipherNotFoundPathTest.md) | No cipher-not-found path test | Medium |
 | [S8](./_OfflineSyncDocs/ActionPlans/AP-S8_FeatureFlag.md) | No feature flag for remote disable | Medium |

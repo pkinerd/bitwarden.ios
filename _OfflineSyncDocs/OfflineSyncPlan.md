@@ -102,6 +102,13 @@ Add support for saving vault items locally while offline, with automatic syncing
    c. Queue a PendingCipherChange with changeType = .create
    d. Return success to the UI
 
+Note: [Known gap — VI-1] The locally persisted offline-created cipher appears in the vault
+list (which uses the resilient `decryptListWithFailures()` path) but may fail to load in the
+detail view. The detail view's `cipherDetailsPublisher` uses `asyncTryMap` + `decrypt()` which
+terminates the publisher stream on any decryption error. The catch block in
+`ViewItemProcessor.streamCipherDetails()` only logs the error without setting an error state,
+leaving the view stuck on an infinite spinner. See AP-VI1 for fix options.
+
 2. On sync (see Section 6):
    a. Create on server via addCipherWithServer()
    b. Server returns real ID
