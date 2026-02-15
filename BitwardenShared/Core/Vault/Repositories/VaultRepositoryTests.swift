@@ -1770,6 +1770,47 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(cipherDetails??.name, "Apple")
     }
 
+    /// `cipherDetailsPublisher(id:)` preserves the cipher's ID in the decrypted view
+    /// even when the SDK decrypt output has a nil ID. This ensures offline-created
+    /// ciphers with temporary IDs are displayable in the detail view.
+    func test_cipherDetailsPublisher_preservesIdWhenDecryptReturnsNilId() async throws {
+        let tempId = UUID().uuidString
+
+        // Configure decrypt to return a CipherView with nil ID (simulating SDK behavior)
+        clientService.mockVault.clientCiphers.decryptResult = { cipher in
+            CipherView.fixture(id: nil, name: cipher.name)
+        }
+
+        cipherService.ciphersSubject.send([.fixture(id: tempId, name: "Offline Cipher")])
+
+        var iterator = try await subject.cipherDetailsPublisher(id: tempId)
+            .makeAsyncIterator()
+        let cipherDetails = try await iterator.next()
+
+        let cipherView = try XCTUnwrap(cipherDetails ?? nil)
+        XCTAssertEqual(cipherView.id, tempId, "The cipher's ID should be preserved from the encrypted Cipher")
+        XCTAssertEqual(cipherView.name, "Offline Cipher")
+    }
+
+    /// `fetchCipher(withId:)` preserves the cipher's ID in the decrypted view
+    /// even when the SDK decrypt output has a nil ID.
+    func test_fetchCipher_preservesIdWhenDecryptReturnsNilId() async throws {
+        let tempId = UUID().uuidString
+
+        // Configure decrypt to return a CipherView with nil ID
+        clientService.mockVault.clientCiphers.decryptResult = { cipher in
+            CipherView.fixture(id: nil, name: cipher.name)
+        }
+
+        cipherService.fetchCipherResult = .success(.fixture(id: tempId, name: "Offline Cipher"))
+
+        let cipherView = try await subject.fetchCipher(withId: tempId)
+
+        let unwrapped = try XCTUnwrap(cipherView)
+        XCTAssertEqual(unwrapped.id, tempId, "The cipher's ID should be preserved from the encrypted Cipher")
+        XCTAssertEqual(unwrapped.name, "Offline Cipher")
+    }
+
     /// `organizationsPublisher()` returns a publisher for the user's organizations.
     func test_organizationsPublisher() async throws {
         organizationService.organizationsSubject.value = [

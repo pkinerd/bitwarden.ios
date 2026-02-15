@@ -66,6 +66,57 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
         XCTAssertEqual(result.revisionDate, cipher.revisionDate)
     }
 
+    // MARK: Tests - CipherView.withId
+
+    /// `withId(_:)` returns a cipher view with the specified ID.
+    func test_withId_setsId() {
+        let original = CipherView.fixture(id: nil, name: "No ID Cipher")
+
+        let result = original.withId("temp-id-123")
+
+        XCTAssertEqual(result.id, "temp-id-123")
+    }
+
+    /// `withId(_:)` preserves all other properties of the cipher view.
+    func test_withId_preservesOtherProperties() {
+        let original = CipherView.fixture(
+            id: nil,
+            folderId: "folder-1",
+            login: LoginView(
+                username: "user@example.com",
+                password: "password123",
+                passwordRevisionDate: nil,
+                uris: nil,
+                totp: "totp-secret",
+                autofillOnPageLoad: nil,
+                fido2Credentials: nil
+            ),
+            name: "My Login",
+            notes: "Notes here",
+            organizationId: "org-1"
+        )
+
+        let result = original.withId("assigned-id")
+
+        XCTAssertEqual(result.id, "assigned-id")
+        XCTAssertEqual(result.name, original.name)
+        XCTAssertEqual(result.notes, original.notes)
+        XCTAssertEqual(result.folderId, original.folderId)
+        XCTAssertEqual(result.organizationId, original.organizationId)
+        XCTAssertEqual(result.login?.username, "user@example.com")
+        XCTAssertEqual(result.login?.password, "password123")
+        XCTAssertEqual(result.login?.totp, "totp-secret")
+    }
+
+    /// `withId(_:)` can replace an existing ID.
+    func test_withId_replacesExistingId() {
+        let original = CipherView.fixture(id: "old-id", name: "Cipher")
+
+        let result = original.withId("new-id")
+
+        XCTAssertEqual(result.id, "new-id")
+    }
+
     // MARK: Tests - CipherView.update(name:folderId:)
 
     /// `update(name:folderId:)` sets the new name and folder ID on the returned cipher view.

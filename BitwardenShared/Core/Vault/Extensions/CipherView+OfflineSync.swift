@@ -50,6 +50,50 @@ extension Cipher {
 // MARK: - CipherView + OfflineSync
 
 extension CipherView {
+    /// Returns a copy of the cipher view with the specified ID.
+    ///
+    /// Used to ensure the decrypted `CipherView` retains the cipher's ID after
+    /// SDK decryption. The ID is not an encrypted field, but may not be populated
+    /// by the SDK's `decrypt(cipher:)` output. This preserves the ID from the
+    /// encrypted `Cipher` so that downstream consumers (e.g., `CipherItemState`)
+    /// can rely on a non-nil ID.
+    ///
+    /// - Parameter id: The ID to assign.
+    /// - Returns: A copy of the cipher view with the specified ID.
+    ///
+    func withId(_ id: String) -> CipherView {
+        CipherView(
+            id: id,
+            organizationId: organizationId,
+            folderId: folderId,
+            collectionIds: collectionIds,
+            key: key,
+            name: name,
+            notes: notes,
+            type: type,
+            login: login,
+            identity: identity,
+            card: card,
+            secureNote: secureNote,
+            sshKey: sshKey,
+            favorite: favorite,
+            reprompt: reprompt,
+            organizationUseTotp: organizationUseTotp,
+            edit: edit,
+            permissions: permissions,
+            viewPassword: viewPassword,
+            localData: localData,
+            attachments: attachments,
+            attachmentDecryptionFailures: attachmentDecryptionFailures,
+            fields: fields,
+            passwordHistory: passwordHistory,
+            creationDate: creationDate,
+            deletedDate: deletedDate,
+            revisionDate: revisionDate,
+            archivedDate: archivedDate
+        )
+    }
+
     /// Returns a copy of the cipher with updated name and folder ID.
     ///
     /// Used by the offline sync resolver to create backup copies of conflicting ciphers

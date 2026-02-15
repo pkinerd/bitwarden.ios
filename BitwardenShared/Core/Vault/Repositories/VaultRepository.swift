@@ -622,7 +622,16 @@ extension DefaultVaultRepository: VaultRepository {
 
     func fetchCipher(withId id: String) async throws -> CipherView? {
         guard let cipher = try await cipherService.fetchCipher(withId: id) else { return nil }
-        return try? await clientService.vault().ciphers().decrypt(cipher: cipher)
+        guard let decrypted = try? await clientService.vault().ciphers().decrypt(cipher: cipher) else {
+            return nil
+        }
+        // Ensure the decrypted view retains the cipher's ID. The ID is not
+        // an encrypted field, but the SDK's decrypt output may not populate it
+        // (e.g., for offline-created ciphers with temporary IDs).
+        if decrypted.id == nil, let cipherId = cipher.id {
+            return decrypted.withId(cipherId)
+        }
+        return decrypted
     }
 
     func fetchCipherOwnershipOptions(includePersonal: Bool) async throws -> [CipherOwner] {
@@ -1162,7 +1171,14 @@ extension DefaultVaultRepository: VaultRepository {
         try await cipherService.ciphersPublisher()
             .asyncTryMap { ciphers -> CipherView? in
                 guard let cipher = ciphers.first(where: { $0.id == id }) else { return nil }
-                return try await self.clientService.vault().ciphers().decrypt(cipher: cipher)
+                let decrypted = try await self.clientService.vault().ciphers().decrypt(cipher: cipher)
+                // Ensure the decrypted view retains the cipher's ID. The ID is not
+                // an encrypted field, but the SDK's decrypt output may not populate it
+                // (e.g., for offline-created ciphers with temporary IDs).
+                if decrypted.id == nil, let cipherId = cipher.id {
+                    return decrypted.withId(cipherId)
+                }
+                return decrypted
             }
             .eraseToAnyPublisher()
             .values
