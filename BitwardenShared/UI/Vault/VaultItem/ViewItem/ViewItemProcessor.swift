@@ -596,65 +596,6 @@ private extension ViewItemProcessor {
             }
         } catch {
             services.errorReporter.log(error: error)
-            await handleStreamCipherDetailsFailure()
-        }
-    }
-
-    /// Handles a failure in the cipher details publisher stream by attempting a direct
-    /// fetch as a fallback. If the fallback also fails, sets the loading state to error.
-    private func handleStreamCipherDetailsFailure() async {
-        do {
-            if let cipher = try await services.vaultRepository.fetchCipher(withId: itemId) {
-                let hasPremium = await services.vaultRepository.doesActiveAccountHavePremium()
-                let collections = try await services.vaultRepository.fetchCollections(includeReadOnly: true)
-                var folder: FolderView?
-                if let folderId = cipher.folderId {
-                    folder = try await services.vaultRepository.fetchFolder(withId: folderId)
-                }
-                var organization: Organization?
-                if let orgId = cipher.organizationId {
-                    organization = try await services.vaultRepository.fetchOrganization(withId: orgId)
-                }
-                let ownershipOptions = try await services.vaultRepository
-                    .fetchCipherOwnershipOptions(includePersonal: false)
-                let showWebIcons = await services.stateService.getShowWebIcons()
-
-                var totpState = LoginTOTPState(cipher.login?.totp)
-                if let key = totpState.authKeyModel,
-                   let updatedState = try? await services.vaultRepository.refreshTOTPCode(for: key) {
-                    totpState = updatedState
-                }
-
-                let isArchiveVaultItemsFFEnabled: Bool = await services.configService
-                    .getFeatureFlag(.archiveVaultItems)
-
-                guard var newState = ViewItemState(
-                    cipherView: cipher,
-                    hasPremium: hasPremium,
-                    iconBaseURL: services.environmentService.iconsURL,
-                ) else {
-                    state.loadingState = .error(errorMessage: Localizations.anErrorHasOccurred)
-                    return
-                }
-
-                if case var .data(itemState) = newState.loadingState {
-                    itemState.loginState.totpState = totpState
-                    itemState.allUserCollections = collections
-                    itemState.folderName = folder?.name
-                    itemState.organizationName = organization?.name
-                    itemState.ownershipOptions = ownershipOptions
-                    itemState.showWebIcons = showWebIcons
-                    itemState.isArchiveVaultItemsFFEnabled = isArchiveVaultItemsFFEnabled
-
-                    newState.loadingState = .data(itemState)
-                }
-                state = newState
-            } else {
-                state.loadingState = .error(errorMessage: Localizations.anErrorHasOccurred)
-            }
-        } catch {
-            services.errorReporter.log(error: error)
-            state.loadingState = .error(errorMessage: Localizations.anErrorHasOccurred)
         }
     }
 
