@@ -228,19 +228,82 @@ class ViewItemProcessorTests: BitwardenTestCase { // swiftlint:disable:this type
         XCTAssertTrue(currentState.showWebIcons)
     }
 
-    /// `perform(_:)` with `.appeared` records any errors.
+    /// `perform(_:)` with `.appeared` records any errors and falls back to direct fetch.
+    /// When the fallback returns nil, the loading state is set to error.
     @MainActor
     func test_perform_appeared_errors() {
         vaultRepository.cipherDetailsSubject.send(completion: .failure(BitwardenTestError.example))
+        vaultRepository.fetchCipherResult = .success(nil)
 
         let task = Task {
             await subject.perform(.appeared)
         }
 
-        waitFor(!errorReporter.errors.isEmpty)
+        waitFor(subject.state.loadingState != .loading(nil))
         task.cancel()
 
         XCTAssertEqual(errorReporter.errors.last as? BitwardenTestError, .example)
+        XCTAssertEqual(
+            subject.state.loadingState,
+            .error(errorMessage: Localizations.anErrorHasOccurred),
+        )
+    }
+
+    /// `perform(_:)` with `.appeared` falls back to direct fetch when the publisher stream fails,
+    /// and loads the cipher details successfully if the fetch returns a cipher.
+    @MainActor
+    func test_perform_appeared_errors_fallbackFetchSuccess() {
+        let cipherItem = CipherView.fixture(
+            id: "id",
+            login: LoginView(
+                username: "username",
+                password: "password",
+                passwordRevisionDate: nil,
+                uris: nil,
+                totp: nil,
+                autofillOnPageLoad: nil,
+                fido2Credentials: nil,
+            ),
+            name: "Name",
+            notes: "Notes",
+            viewPassword: true,
+        )
+        vaultRepository.cipherDetailsSubject.send(completion: .failure(BitwardenTestError.example))
+        vaultRepository.fetchCipherResult = .success(cipherItem)
+
+        let task = Task {
+            await subject.perform(.appeared)
+        }
+
+        waitFor(subject.state.loadingState != .loading(nil))
+        task.cancel()
+
+        XCTAssertEqual(errorReporter.errors.last as? BitwardenTestError, .example)
+        XCTAssertEqual(vaultRepository.fetchCipherId, "id")
+        guard case .data = subject.state.loadingState else {
+            XCTFail("Expected .data loading state after fallback fetch")
+            return
+        }
+    }
+
+    /// `perform(_:)` with `.appeared` falls back to direct fetch when the publisher stream fails,
+    /// and shows an error state if the fallback fetch also throws.
+    @MainActor
+    func test_perform_appeared_errors_fallbackFetchFailure() {
+        vaultRepository.cipherDetailsSubject.send(completion: .failure(BitwardenTestError.example))
+        vaultRepository.fetchCipherResult = .failure(BitwardenTestError.example)
+
+        let task = Task {
+            await subject.perform(.appeared)
+        }
+
+        waitFor(subject.state.loadingState != .loading(nil))
+        task.cancel()
+
+        XCTAssertEqual(
+            subject.state.loadingState,
+            .error(errorMessage: Localizations.anErrorHasOccurred),
+        )
     }
 
     /// `perform(_:)` with `.appeared` starts listening for updates with the vault repository.
