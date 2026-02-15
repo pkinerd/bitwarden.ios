@@ -1,8 +1,10 @@
+import BitwardenKit
 import BitwardenKitMocks
 import BitwardenResources
 import BitwardenSdk
 import Combine
 import InlineSnapshotTesting
+import Networking
 import TestHelpers
 import XCTest
 
@@ -168,11 +170,62 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
-    /// `addCipher()` rethrows non-network errors instead of falling back to offline.
-    func test_addCipher_nonNetworkError_rethrows() async throws {
+    /// `addCipher()` falls back to offline save for unknown errors that may indicate
+    /// the server is unreachable.
+    func test_addCipher_offlineFallback_unknownError() async throws {
         cipherService.addCipherWithServerResult = .failure(BitwardenTestError.example)
 
-        await assertAsyncThrows(error: BitwardenTestError.example) {
+        let cipher = CipherView.fixture()
+        try await subject.addCipher(cipher)
+
+        // Should save locally and queue a pending change.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.changeType, .create)
+    }
+
+    /// `addCipher()` falls back to offline save when the server returns a 5xx
+    /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
+    func test_addCipher_offlineFallback_responseValidationError5xx() async throws {
+        cipherService.addCipherWithServerResult = .failure(
+            ResponseValidationError(response: .failure(statusCode: 502))
+        )
+
+        let cipher = CipherView.fixture()
+        try await subject.addCipher(cipher)
+
+        // Should save locally and queue a pending change.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.changeType, .create)
+    }
+
+    /// `addCipher()` rethrows `ServerError` instead of falling back to offline,
+    /// because it indicates the server is reachable but rejected the request.
+    func test_addCipher_serverError_rethrows() async throws {
+        let error = ServerError.error(
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+        )
+        cipherService.addCipherWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
+            try await subject.addCipher(.fixture())
+        }
+
+        // Should NOT fall back to offline.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `addCipher()` rethrows 4xx `ResponseValidationError` instead of falling back to offline,
+    /// because it indicates a client-side issue that offline save cannot resolve.
+    func test_addCipher_responseValidationError4xx_rethrows() async throws {
+        let error = ResponseValidationError(response: .failure(statusCode: 400))
+        cipherService.addCipherWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
             try await subject.addCipher(.fixture())
         }
 
@@ -733,23 +786,46 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(cipherService.deleteCipherId, "123")
     }
 
-    /// `deleteCipher()` rethrows non-network errors instead of falling back to offline.
-    func test_deleteCipher_nonNetworkError_rethrows() async throws {
+    /// `deleteCipher()` falls back to offline save for unknown errors that may indicate
+    /// the server is unreachable.
+    func test_deleteCipher_offlineFallback_unknownError() async throws {
+        stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(BitwardenTestError.example)
+        cipherService.fetchCipherResult = .success(.fixture(id: "123"))
 
-        await assertAsyncThrows(error: BitwardenTestError.example) {
-            try await subject.deleteCipher("1")
-        }
+        try await subject.deleteCipher("123")
 
-        // Should NOT fall back to offline.
-        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
-        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+        // Should delete locally and queue a pending change.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "123")
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .softDelete)
     }
 
     /// `deleteCipher()` falls back to offline save when the server API call fails.
     func test_deleteCipher_offlineFallback() async throws {
         stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+        cipherService.fetchCipherResult = .success(.fixture(id: "123"))
+
+        try await subject.deleteCipher("123")
+
+        // Should delete locally and queue a pending change.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "123")
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `deleteCipher()` falls back to offline save when the server returns a 5xx
+    /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
+    func test_deleteCipher_offlineFallback_responseValidationError5xx() async throws {
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(
+            ResponseValidationError(response: .failure(statusCode: 502))
+        )
         cipherService.fetchCipherResult = .success(.fixture(id: "123"))
 
         try await subject.deleteCipher("123")
@@ -773,6 +849,38 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         }
 
         // Should NOT delete locally or queue a pending change.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `deleteCipher()` rethrows `ServerError` instead of falling back to offline,
+    /// because it indicates the server is reachable but rejected the request.
+    func test_deleteCipher_serverError_rethrows() async throws {
+        let error = ServerError.error(
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+        )
+        cipherService.deleteCipherWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
+            try await subject.deleteCipher("1")
+        }
+
+        // Should NOT fall back to offline.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `deleteCipher()` rethrows 4xx `ResponseValidationError` instead of falling back to offline,
+    /// because it indicates a client-side issue that offline save cannot resolve.
+    func test_deleteCipher_responseValidationError4xx_rethrows() async throws {
+        let error = ResponseValidationError(response: .failure(statusCode: 400))
+        cipherService.deleteCipherWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
+            try await subject.deleteCipher("1")
+        }
+
+        // Should NOT fall back to offline.
         XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
@@ -1566,11 +1674,68 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
-    /// `updateCipher()` rethrows non-network errors instead of falling back to offline.
-    func test_updateCipher_nonNetworkError_rethrows() async throws {
+    /// `updateCipher()` falls back to offline save for unknown errors that may indicate
+    /// the server is unreachable.
+    func test_updateCipher_offlineFallback_unknownError() async throws {
         cipherService.updateCipherWithServerResult = .failure(BitwardenTestError.example)
 
-        await assertAsyncThrows(error: BitwardenTestError.example) {
+        let cipher = CipherView.fixture(id: "123")
+        try await subject.updateCipher(cipher)
+
+        // Should save locally instead of failing.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+
+        // Should queue a pending change.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .update)
+    }
+
+    /// `updateCipher()` falls back to offline save when the server returns a 5xx
+    /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
+    func test_updateCipher_offlineFallback_responseValidationError5xx() async throws {
+        cipherService.updateCipherWithServerResult = .failure(
+            ResponseValidationError(response: .failure(statusCode: 502))
+        )
+
+        let cipher = CipherView.fixture(id: "123")
+        try await subject.updateCipher(cipher)
+
+        // Should save locally instead of failing.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+
+        // Should queue a pending change.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .update)
+    }
+
+    /// `updateCipher()` rethrows `ServerError` instead of falling back to offline,
+    /// because it indicates the server is reachable but rejected the request.
+    func test_updateCipher_serverError_rethrows() async throws {
+        let error = ServerError.error(
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+        )
+        cipherService.updateCipherWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
+            try await subject.updateCipher(.fixture(id: "1"))
+        }
+
+        // Should NOT fall back to offline.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `updateCipher()` rethrows 4xx `ResponseValidationError` instead of falling back to offline,
+    /// because it indicates a client-side issue that offline save cannot resolve.
+    func test_updateCipher_responseValidationError4xx_rethrows() async throws {
+        let error = ResponseValidationError(response: .failure(statusCode: 400))
+        cipherService.updateCipherWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
             try await subject.updateCipher(.fixture(id: "1"))
         }
 
@@ -1789,13 +1954,76 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
-    /// `softDeleteCipher()` rethrows non-network errors instead of falling back to offline.
-    func test_softDeleteCipher_nonNetworkError_rethrows() async throws {
+    /// `softDeleteCipher()` falls back to offline save for unknown errors that may indicate
+    /// the server is unreachable.
+    func test_softDeleteCipher_offlineFallback_unknownError() async throws {
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()
         cipherService.softDeleteWithServerResult = .failure(BitwardenTestError.example)
 
-        await assertAsyncThrows(error: BitwardenTestError.example) {
+        let cipherView: CipherView = .fixture(id: "123")
+        try await subject.softDeleteCipher(cipherView)
+
+        // Should save locally instead of failing.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+
+        // Should queue a pending change.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `softDeleteCipher()` falls back to offline save when the server returns a 5xx
+    /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
+    func test_softDeleteCipher_offlineFallback_responseValidationError5xx() async throws {
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        cipherService.softDeleteWithServerResult = .failure(
+            ResponseValidationError(response: .failure(statusCode: 502))
+        )
+
+        let cipherView: CipherView = .fixture(id: "123")
+        try await subject.softDeleteCipher(cipherView)
+
+        // Should save locally instead of failing.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+
+        // Should queue a pending change.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `softDeleteCipher()` rethrows `ServerError` instead of falling back to offline,
+    /// because it indicates the server is reachable but rejected the request.
+    func test_softDeleteCipher_serverError_rethrows() async throws {
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        let error = ServerError.error(
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+        )
+        cipherService.softDeleteWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
+            try await subject.softDeleteCipher(.fixture(id: "1"))
+        }
+
+        // Should NOT fall back to offline.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `softDeleteCipher()` rethrows 4xx `ResponseValidationError` instead of falling back to offline,
+    /// because it indicates a client-side issue that offline save cannot resolve.
+    func test_softDeleteCipher_responseValidationError4xx_rethrows() async throws {
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        let error = ResponseValidationError(response: .failure(statusCode: 400))
+        cipherService.softDeleteWithServerResult = .failure(error)
+
+        await assertAsyncThrows(error: error) {
             try await subject.softDeleteCipher(.fixture(id: "1"))
         }
 
