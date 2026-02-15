@@ -516,6 +516,8 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {
             throw error
+        } catch let error as CipherAPIServiceError {
+            throw error
         } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
@@ -646,6 +648,8 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as ServerError {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+            throw error
+        } catch let error as CipherAPIServiceError {
             throw error
         } catch {
             try await handleOfflineDelete(cipherId: id)
@@ -907,6 +911,8 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {
             throw error
+        } catch let error as CipherAPIServiceError {
+            throw error
         } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
@@ -937,6 +943,8 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as ServerError {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+            throw error
+        } catch let error as CipherAPIServiceError {
             throw error
         } catch {
             guard !isOrgCipher else {
