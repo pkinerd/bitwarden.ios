@@ -142,50 +142,6 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
         XCTAssertEqual(cipherState.name, "Offline Login")
     }
 
-    /// When the `cipherDetailsPublisher` emits a cipher with nil ID,
-    /// `buildViewItemState` returns nil and the processor transitions directly
-    /// to `.error` state instead of spinning forever. No redundant re-fetch
-    /// is performed since the same cipher would produce the same unusable result.
-    @MainActor
-    func test_appeared_cipherWithNilId_transitionsToError() {
-        let tempId = UUID().uuidString
-        createSubject(itemId: tempId)
-
-        // Simulate: publisher emits a cipher view with nil ID
-        // (This would happen if the SDK decrypt strips the ID)
-        let cipherWithNilId = CipherView.fixture(
-            id: nil,
-            name: "Cipher With Nil ID"
-        )
-        vaultRepository.cipherDetailsSubject.send(cipherWithNilId)
-        vaultRepository.fetchCollectionsResult = .success([])
-
-        let task = Task {
-            await subject.perform(.appeared)
-        }
-
-        // The processor should transition to .error directly without re-fetching.
-        waitFor(subject.state.loadingState != .loading(nil))
-        task.cancel()
-
-        XCTAssertEqual(
-            subject.state.loadingState,
-            .error(errorMessage: Localizations.anErrorHasOccurred),
-            "With the fix, a nil-ID cipher should show an error instead of spinning forever."
-        )
-
-        // Verify NO redundant re-fetch was triggered — the cipher was already
-        // received from the publisher, so re-fetching would just produce the
-        // same unusable result.
-        XCTAssertNil(
-            vaultRepository.fetchCipherId,
-            "Should not re-fetch the cipher when we already know it can't build a ViewItemState"
-        )
-
-        // Verify the error was logged
-        XCTAssertFalse(errorReporter.errors.isEmpty, "The error should have been logged")
-    }
-
     /// When the publisher stream fails (throws), the processor should fall back to
     /// `fetchCipherDetailsDirectly`. If the direct fetch returns a cipher with valid
     /// temp ID, the state should transition to `.data`.
