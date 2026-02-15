@@ -512,7 +512,13 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
-        } catch is URLError {
+        } catch let error as ServerError {
+            throw error
+        } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+            throw error
+        } catch let error as CipherAPIServiceError {
+            throw error
+        } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
@@ -639,7 +645,13 @@ extension DefaultVaultRepository: VaultRepository {
     func deleteCipher(_ id: String) async throws {
         do {
             try await cipherService.deleteCipherWithServer(id: id)
-        } catch is URLError {
+        } catch let error as ServerError {
+            throw error
+        } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+            throw error
+        } catch let error as CipherAPIServiceError {
+            throw error
+        } catch {
             try await handleOfflineDelete(cipherId: id)
         }
     }
@@ -895,7 +907,13 @@ extension DefaultVaultRepository: VaultRepository {
         let encryptedCipher = try await encryptAndUpdateCipher(softDeletedCipher)
         do {
             try await cipherService.softDeleteCipherWithServer(id: id, encryptedCipher)
-        } catch is URLError {
+        } catch let error as ServerError {
+            throw error
+        } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+            throw error
+        } catch let error as CipherAPIServiceError {
+            throw error
+        } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
@@ -922,7 +940,13 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
-        } catch is URLError {
+        } catch let error as ServerError {
+            throw error
+        } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+            throw error
+        } catch let error as CipherAPIServiceError {
+            throw error
+        } catch {
             guard !isOrgCipher else {
                 throw OfflineSyncError.organizationCipherOfflineEditNotSupported
             }
