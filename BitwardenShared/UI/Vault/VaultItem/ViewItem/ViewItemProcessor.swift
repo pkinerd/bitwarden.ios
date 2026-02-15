@@ -546,56 +546,88 @@ private extension ViewItemProcessor {
         coordinator.showAlert(alert)
     }
 
+    /// Builds a `ViewItemState` from the given cipher by fetching additional details
+    /// (collections, folder, organization, ownership options, TOTP state, etc.).
+    ///
+    /// - Parameter cipher: The decrypted cipher view to build state from.
+    /// - Returns: The fully populated `ViewItemState`, or `nil` if the state could not be built
+    ///   (e.g., the cipher has a nil ID).
+    ///
+    private func buildViewItemState(from cipher: CipherView) async throws -> ViewItemState? {
+        let hasPremium = await services.vaultRepository.doesActiveAccountHavePremium()
+        let collections = try await services.vaultRepository.fetchCollections(includeReadOnly: true)
+        var folder: FolderView?
+        if let folderId = cipher.folderId {
+            folder = try await services.vaultRepository.fetchFolder(withId: folderId)
+        }
+        var organization: Organization?
+        if let orgId = cipher.organizationId {
+            organization = try await services.vaultRepository.fetchOrganization(withId: orgId)
+        }
+        let ownershipOptions = try await services.vaultRepository
+            .fetchCipherOwnershipOptions(includePersonal: false)
+        let showWebIcons = await services.stateService.getShowWebIcons()
+
+        var totpState = LoginTOTPState(cipher.login?.totp)
+        if let key = totpState.authKeyModel,
+           let updatedState = try? await services.vaultRepository.refreshTOTPCode(for: key) {
+            totpState = updatedState
+        }
+
+        let isArchiveVaultItemsFFEnabled: Bool = await services.configService.getFeatureFlag(.archiveVaultItems)
+
+        guard var newState = ViewItemState(
+            cipherView: cipher,
+            hasPremium: hasPremium,
+            iconBaseURL: services.environmentService.iconsURL,
+        ) else { return nil }
+
+        if case var .data(itemState) = newState.loadingState {
+            itemState.loginState.totpState = totpState
+            itemState.allUserCollections = collections
+            itemState.folderName = folder?.name
+            itemState.organizationName = organization?.name
+            itemState.ownershipOptions = ownershipOptions
+            itemState.showWebIcons = showWebIcons
+            itemState.isArchiveVaultItemsFFEnabled = isArchiveVaultItemsFFEnabled
+
+            newState.loadingState = .data(itemState)
+        }
+        return newState
+    }
+
     /// Stream the cipher details.
     private func streamCipherDetails() async {
         do {
             await services.eventService.collect(eventType: .cipherClientViewed, cipherId: itemId)
             for try await cipher in try await services.vaultRepository.cipherDetailsPublisher(id: itemId) {
                 guard let cipher else { continue }
-
-                let hasPremium = await services.vaultRepository.doesActiveAccountHavePremium()
-                let collections = try await services.vaultRepository.fetchCollections(includeReadOnly: true)
-                var folder: FolderView?
-                if let folderId = cipher.folderId {
-                    folder = try await services.vaultRepository.fetchFolder(withId: folderId)
+                if let newState = try await buildViewItemState(from: cipher) {
+                    state = newState
                 }
-                var organization: Organization?
-                if let orgId = cipher.organizationId {
-                    organization = try await services.vaultRepository.fetchOrganization(withId: orgId)
-                }
-                let ownershipOptions = try await services.vaultRepository
-                    .fetchCipherOwnershipOptions(includePersonal: false)
-                let showWebIcons = await services.stateService.getShowWebIcons()
-
-                var totpState = LoginTOTPState(cipher.login?.totp)
-                if let key = totpState.authKeyModel,
-                   let updatedState = try? await services.vaultRepository.refreshTOTPCode(for: key) {
-                    totpState = updatedState
-                }
-
-                let isArchiveVaultItemsFFEnabled: Bool = await services.configService.getFeatureFlag(.archiveVaultItems)
-
-                guard var newState = ViewItemState(
-                    cipherView: cipher,
-                    hasPremium: hasPremium,
-                    iconBaseURL: services.environmentService.iconsURL,
-                ) else { continue }
-
-                if case var .data(itemState) = newState.loadingState {
-                    itemState.loginState.totpState = totpState
-                    itemState.allUserCollections = collections
-                    itemState.folderName = folder?.name
-                    itemState.organizationName = organization?.name
-                    itemState.ownershipOptions = ownershipOptions
-                    itemState.showWebIcons = showWebIcons
-                    itemState.isArchiveVaultItemsFFEnabled = isArchiveVaultItemsFFEnabled
-
-                    newState.loadingState = .data(itemState)
-                }
-                state = newState
             }
         } catch {
             services.errorReporter.log(error: error)
+            await fetchCipherDetailsDirectly()
+        }
+    }
+
+    /// Attempts to fetch and display cipher details directly from the data store as a fallback
+    /// when the cipher details publisher stream fails. This handles the case where offline-created
+    /// ciphers may fail decryption in the publisher's `asyncTryMap` (which terminates the stream)
+    /// but can still be fetched and decrypted via the direct `fetchCipher` path.
+    private func fetchCipherDetailsDirectly() async {
+        do {
+            guard let cipher = try await services.vaultRepository.fetchCipher(withId: itemId),
+                  let newState = try await buildViewItemState(from: cipher)
+            else {
+                state.loadingState = .error(errorMessage: Localizations.anErrorHasOccurred)
+                return
+            }
+            state = newState
+        } catch {
+            services.errorReporter.log(error: error)
+            state.loadingState = .error(errorMessage: Localizations.anErrorHasOccurred)
         }
     }
 
