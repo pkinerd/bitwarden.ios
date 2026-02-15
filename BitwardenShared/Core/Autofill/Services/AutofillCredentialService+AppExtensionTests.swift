@@ -119,7 +119,7 @@ class AutofillCredentialServiceAppExtensionTests: BitwardenTestCase { // swiftli
 
         try await waitForAsync { [weak self] in
             guard let self else { return false }
-            return subject.hasCipherChangesSubscription
+            return cipherService.cipherChangesSubscribed
         }
 
         // Send an upserted cipher
@@ -172,7 +172,7 @@ class AutofillCredentialServiceAppExtensionTests: BitwardenTestCase { // swiftli
 
         try await waitForAsync { [weak self] in
             guard let self else { return false }
-            return subject.hasCipherChangesSubscription
+            return cipherService.cipherChangesSubscribed
         }
 
         // Send an upserted cipher
@@ -208,7 +208,7 @@ class AutofillCredentialServiceAppExtensionTests: BitwardenTestCase { // swiftli
 
         try await waitForAsync { [weak self] in
             guard let self else { return false }
-            return subject.hasCipherChangesSubscription
+            return cipherService.cipherChangesSubscribed
         }
 
         // Send a deleted cipher
@@ -245,7 +245,7 @@ class AutofillCredentialServiceAppExtensionTests: BitwardenTestCase { // swiftli
 
         try await waitForAsync { [weak self] in
             guard let self else { return false }
-            return subject.hasCipherChangesSubscription
+            return cipherService.cipherChangesSubscribed
         }
 
         // Send a replaced event
@@ -267,7 +267,7 @@ class AutofillCredentialServiceAppExtensionTests: BitwardenTestCase { // swiftli
 
         try await waitForAsync { [weak self] in
             guard let self else { return false }
-            return subject.hasCipherChangesSubscription
+            return cipherService.cipherChangesSubscribed
         }
 
         // Send an upserted cipher
@@ -296,7 +296,7 @@ class AutofillCredentialServiceAppExtensionTests: BitwardenTestCase { // swiftli
 
         try await waitForAsync { [weak self] in
             guard let self else { return false }
-            return subject.hasCipherChangesSubscription
+            return cipherService.cipherChangesSubscribed
         }
 
         // Send an upserted cipher
