@@ -143,11 +143,11 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
     }
 
     /// When the `cipherDetailsPublisher` emits a cipher with nil ID,
-    /// `buildViewItemState` returns nil and the processor falls back to
-    /// `fetchCipherDetailsDirectly()`, which transitions to `.error` state
-    /// instead of spinning forever.
+    /// `buildViewItemState` returns nil and the processor transitions directly
+    /// to `.error` state instead of spinning forever. No redundant re-fetch
+    /// is performed since the same cipher would produce the same unusable result.
     @MainActor
-    func test_appeared_cipherWithNilId_fallsBackToError() {
+    func test_appeared_cipherWithNilId_transitionsToError() {
         let tempId = UUID().uuidString
         createSubject(itemId: tempId)
 
@@ -160,32 +160,26 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
         vaultRepository.cipherDetailsSubject.send(cipherWithNilId)
         vaultRepository.fetchCollectionsResult = .success([])
 
-        // The fallback's fetchCipher also returns a nil-ID cipher
-        vaultRepository.fetchCipherResult = .success(
-            CipherView.fixture(id: nil, name: "Cipher With Nil ID")
-        )
-
         let task = Task {
             await subject.perform(.appeared)
         }
 
-        // The processor should now fall back to fetchCipherDetailsDirectly
-        // which sets .error state since buildViewItemState returns nil.
+        // The processor should transition to .error directly without re-fetching.
         waitFor(subject.state.loadingState != .loading(nil))
         task.cancel()
 
         XCTAssertEqual(
             subject.state.loadingState,
             .error(errorMessage: Localizations.anErrorHasOccurred),
-            "With the fix, a nil-ID cipher should trigger the fallback and show an error "
-                + "instead of spinning forever."
+            "With the fix, a nil-ID cipher should show an error instead of spinning forever."
         )
 
-        // Verify the fallback was triggered
-        XCTAssertEqual(
+        // Verify NO redundant re-fetch was triggered — the cipher was already
+        // received from the publisher, so re-fetching would just produce the
+        // same unusable result.
+        XCTAssertNil(
             vaultRepository.fetchCipherId,
-            tempId,
-            "The fallback should have attempted to fetch the cipher directly"
+            "Should not re-fetch the cipher when we already know it can't build a ViewItemState"
         )
 
         // Verify the error was logged

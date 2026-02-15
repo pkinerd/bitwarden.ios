@@ -606,12 +606,13 @@ private extension ViewItemProcessor {
                     state = newState
                 } else {
                     // The cipher was received but the view state couldn't be built
-                    // (e.g., CipherView.id is nil after decryption). Fall back to
-                    // the direct fetch path to show an error instead of spinning.
+                    // (e.g., CipherView.id is nil after decryption). Show an error
+                    // directly rather than re-fetching the same cipher from local
+                    // storage, which would produce the same unusable result.
                     services.errorReporter.log(
                         error: ActionError.dataNotLoaded("buildViewItemState returned nil for cipher: \(itemId)")
                     )
-                    await fetchCipherDetailsDirectly()
+                    state.loadingState = .error(errorMessage: Localizations.anErrorHasOccurred)
                     return
                 }
             }
