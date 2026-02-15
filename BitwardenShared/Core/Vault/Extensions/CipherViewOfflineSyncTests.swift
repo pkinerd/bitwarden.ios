@@ -20,8 +20,8 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
     /// `withId(_:)` preserves all other properties of the cipher view.
     func test_withId_preservesOtherProperties() {
         let original = CipherView.fixture(
-            id: nil,
             folderId: "folder-1",
+            id: nil,
             login: LoginView(
                 username: "user@example.com",
                 password: "password123",
