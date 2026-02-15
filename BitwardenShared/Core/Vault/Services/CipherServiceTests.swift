@@ -58,6 +58,22 @@ class CipherServiceTests: BitwardenTestCase { // swiftlint:disable:this type_bod
         XCTAssertEqual(cipherDataStore.upsertCipherValue?.id, "3792af7a-4441-11ee-be56-0242ac120002")
     }
 
+    /// `addCipherWithServer(_:)` throws the `URLError` when the HTTP client fails with a network error,
+    /// preserving the error type through the real `CipherService` → `APIService` → `HTTPService` chain.
+    /// This validates that network errors propagate unmodified so callers (e.g. `VaultRepository`)
+    /// can distinguish them from server-processed errors for offline fallback decisions.
+    func test_addCipherWithServer_networkError_throwsURLError() async throws {
+        stateService.activeAccount = .fixtureAccountLogin()
+        client.result = .failure(URLError(.notConnectedToInternet))
+
+        do {
+            try await subject.addCipherWithServer(.fixture(), encryptedFor: "1")
+            XCTFail("Expected a URLError to be thrown.")
+        } catch {
+            XCTAssertTrue(error is URLError, "Expected URLError but got \(type(of: error)): \(error)")
+        }
+    }
+
     /// `addCipherWithServer(_:)` adds the cipher in the backend and local storage.
     func test_addCipherWithServer_withCollections() async throws {
         stateService.activeAccount = .fixtureAccountLogin()
@@ -387,6 +403,22 @@ class CipherServiceTests: BitwardenTestCase { // swiftlint:disable:this type_bod
         XCTAssertEqual(client.requests.count, 1)
         XCTAssertEqual(client.requests[0].url.absoluteString, "https://example.com/api/ciphers/123")
         XCTAssertEqual(cipherDataStore.upsertCipherValue?.id, "3792af7a-4441-11ee-be56-0242ac120002")
+    }
+
+    /// `updateCipherWithServer(_:)` throws the `URLError` when the HTTP client fails with a network error,
+    /// preserving the error type through the real `CipherService` → `APIService` → `HTTPService` chain.
+    /// This validates that network errors propagate unmodified so callers (e.g. `VaultRepository`)
+    /// can distinguish them from server-processed errors for offline fallback decisions.
+    func test_updateCipherWithServer_networkError_throwsURLError() async throws {
+        stateService.activeAccount = .fixtureAccountLogin()
+        client.result = .failure(URLError(.notConnectedToInternet))
+
+        do {
+            try await subject.updateCipherWithServer(.fixture(id: "123"), encryptedFor: "1")
+            XCTFail("Expected a URLError to be thrown.")
+        } catch {
+            XCTAssertTrue(error is URLError, "Expected URLError but got \(type(of: error)): \(error)")
+        }
     }
 
     /// `updateCipherWithServer(_:)` partial updates the read-only cipher in the backend and local storage.

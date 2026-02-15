@@ -1347,6 +1347,20 @@ class AddEditItemProcessorTests: BitwardenTestCase {
         XCTAssertEqual(coordinator.errorAlertsShown as? [EncryptError], [EncryptError()])
     }
 
+    /// `perform(_:)` with `.savePressed` shows a network error alert when the repository throws a
+    /// `URLError`. This documents the user-visible symptom when the repository's offline fallback
+    /// fails to catch a network error: the user sees an error alert instead of a silent local save.
+    @MainActor
+    func test_perform_savePressed_networkError_showsErrorAlert() async throws {
+        subject.state.name = "vault item"
+        vaultRepository.addCipherResult = .failure(URLError(.notConnectedToInternet))
+
+        await subject.perform(.savePressed)
+
+        XCTAssertEqual(coordinator.errorAlertsShown.count, 1)
+        XCTAssertTrue(coordinator.errorAlertsShown.first is URLError)
+    }
+
     /// `perform(_:)` with `.savePressed` shows an error if an organization but no collections have been selected.
     @MainActor
     func test_perform_savePressed_noCollection() async throws {
@@ -1606,6 +1620,27 @@ class AddEditItemProcessorTests: BitwardenTestCase {
 
         XCTAssertEqual(errorReporter.errors.first as? EncryptError, EncryptError())
         XCTAssertTrue(reviewPromptService.userActions.isEmpty)
+    }
+
+    /// `perform(_:)` with `.savePressed` shows a network error alert when updating an existing item
+    /// and the repository throws a `URLError`. This documents the user-visible symptom when
+    /// the repository's offline fallback fails to catch a network error during an update.
+    @MainActor
+    func test_perform_savePressed_existing_networkError_showsErrorAlert() async throws {
+        let cipher = CipherView.fixture(id: "123")
+        let maybeCipherState = CipherItemState(
+            existing: cipher,
+            hasPremium: true,
+        )
+        let cipherState = try XCTUnwrap(maybeCipherState)
+        vaultRepository.updateCipherResult = .failure(URLError(.notConnectedToInternet))
+
+        subject.state = cipherState.addEditState
+        subject.state.name = "vault item"
+        await subject.perform(.savePressed)
+
+        XCTAssertEqual(coordinator.errorAlertsShown.count, 1)
+        XCTAssertTrue(coordinator.errorAlertsShown.first is URLError)
     }
 
     /// `perform(_:)` with `.savePressed` notifies the delegate that the item was updated and
