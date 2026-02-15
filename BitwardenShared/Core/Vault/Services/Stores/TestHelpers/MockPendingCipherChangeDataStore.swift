@@ -24,6 +24,7 @@ class MockPendingCipherChangeDataStore: PendingCipherChangeDataStore {
     var deleteAllPendingChangesCalledWith = [String]()
 
     var pendingChangeCountResult: Int = 0
+    var pendingChangeCountResults: [Int] = []
     var pendingChangeCountCalledWith = [String]()
 
     func fetchPendingChanges(userId: String) async throws -> [PendingCipherChangeData] {
@@ -69,6 +70,9 @@ class MockPendingCipherChangeDataStore: PendingCipherChangeDataStore {
 
     func pendingChangeCount(userId: String) async throws -> Int {
         pendingChangeCountCalledWith.append(userId)
+        if !pendingChangeCountResults.isEmpty {
+            return pendingChangeCountResults.removeFirst()
+        }
         return pendingChangeCountResult
     }
 }
