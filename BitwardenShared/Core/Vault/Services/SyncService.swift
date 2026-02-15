@@ -332,10 +332,13 @@ extension DefaultSyncService {
         // the SDK crypto context is needed for conflict resolution.
         let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
         if !isVaultLocked {
-            try await offlineSyncResolver.processPendingChanges(userId: userId)
-            let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-            if remainingCount > 0 {
-                return
+            let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+            if pendingCount > 0 {
+                try await offlineSyncResolver.processPendingChanges(userId: userId)
+                let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+                if remainingCount > 0 {
+                    return
+                }
             }
         }
 

@@ -130,6 +130,10 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.last, Cipher(cipherView: cipher))
         XCTAssertEqual(cipherService.addCipherWithServerEncryptedFor, "1")
+
+        // Should clean up any orphaned pending change from a prior offline add.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.count, 1)
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId, "1")
     }
 
     /// `addCipher()` throws an error if encrypting the cipher fails.
@@ -781,9 +785,15 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
     /// `deleteCipher()` deletes cipher from backend and local storage.
     func test_deleteCipher() async throws {
+        stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .success(())
         try await subject.deleteCipher("123")
         XCTAssertEqual(cipherService.deleteCipherId, "123")
+
+        // Should clean up any orphaned pending change from a prior offline operation.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.count, 1)
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.cipherId, "123")
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId, "1")
     }
 
     /// `deleteCipher()` falls back to offline save for unknown errors that may indicate
@@ -1640,6 +1650,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
         XCTAssertEqual(clientCiphers.encryptedCiphers, [cipher])
         XCTAssertEqual(cipherService.updateCipherWithServerEncryptedFor, "1")
+
+        // Should clean up any orphaned pending change from a prior offline save.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.count, 1)
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.cipherId, "123")
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId, "1")
     }
 
     /// `updateCipher()` falls back to offline save when the server API call fails.
@@ -1903,6 +1918,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertNil(cipherView.deletedDate)
         XCTAssertNotNil(cipherService.softDeleteCipher?.deletedDate)
         XCTAssertEqual(cipherService.softDeleteCipherId, "123")
+
+        // Should clean up any orphaned pending change from a prior offline operation.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.count, 1)
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.cipherId, "123")
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId, "1")
     }
 
     /// `softDeleteCipher(_:cipher:)` updates the cipher on the server if the SDK adds a cipher key.

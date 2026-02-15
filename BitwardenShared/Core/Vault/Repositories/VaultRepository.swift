@@ -512,6 +512,13 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
+            // Clean up any orphaned pending change from a prior offline add.
+            if let cipherId = cipherEncryptionContext.cipher.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(
+                    cipherId: cipherId,
+                    userId: cipherEncryptionContext.encryptedFor
+                )
+            }
         } catch let error as ServerError {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {
@@ -645,6 +652,12 @@ extension DefaultVaultRepository: VaultRepository {
     func deleteCipher(_ id: String) async throws {
         do {
             try await cipherService.deleteCipherWithServer(id: id)
+            // Clean up any orphaned pending change from a prior offline operation.
+            let userId = try await stateService.getActiveAccountId()
+            try await pendingCipherChangeDataStore.deletePendingChange(
+                cipherId: id,
+                userId: userId
+            )
         } catch let error as ServerError {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {
@@ -907,6 +920,12 @@ extension DefaultVaultRepository: VaultRepository {
         let encryptedCipher = try await encryptAndUpdateCipher(softDeletedCipher)
         do {
             try await cipherService.softDeleteCipherWithServer(id: id, encryptedCipher)
+            // Clean up any orphaned pending change from a prior offline operation.
+            let userId = try await stateService.getActiveAccountId()
+            try await pendingCipherChangeDataStore.deletePendingChange(
+                cipherId: id,
+                userId: userId
+            )
         } catch let error as ServerError {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {
@@ -940,6 +959,13 @@ extension DefaultVaultRepository: VaultRepository {
                 cipherEncryptionContext.cipher,
                 encryptedFor: cipherEncryptionContext.encryptedFor,
             )
+            // Clean up any orphaned pending change from a prior offline save.
+            if let cipherId = cipherEncryptionContext.cipher.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(
+                    cipherId: cipherId,
+                    userId: cipherEncryptionContext.encryptedFor
+                )
+            }
         } catch let error as ServerError {
             throw error
         } catch let error as ResponseValidationError where error.response.statusCode < 500 {

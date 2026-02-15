@@ -1099,8 +1099,8 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_triggersPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        // After resolution, pending count returns 0 (all resolved).
-        pendingCipherChangeDataStore.pendingChangeCountResult = 0
+        // First call returns 1 (pending changes exist), second call returns 0 (all resolved).
+        pendingCipherChangeDataStore.pendingChangeCountResults = [1, 0]
 
         try await subject.fetchSync(forceSync: false)
 
@@ -1121,7 +1121,7 @@ class SyncServiceTests: BitwardenTestCase {
         XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
     }
 
-    /// `fetchSync()` proceeds with sync when there are no pending changes after resolution.
+    /// `fetchSync()` skips resolution and proceeds with sync when there are no pending changes.
     func test_fetchSync_preSyncResolution_noPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
@@ -1129,8 +1129,8 @@ class SyncServiceTests: BitwardenTestCase {
 
         try await subject.fetchSync(forceSync: false)
 
-        // Resolver is always called; it handles the empty case internally.
-        XCTAssertEqual(offlineSyncResolver.processPendingChangesCalledWith, ["1"])
+        // Resolver should NOT be called when there are no pending changes.
+        XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
         // Sync should proceed normally.
         XCTAssertEqual(client.requests.count, 1)
     }
@@ -1140,8 +1140,8 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        // After resolution, pending count still > 0 (resolution failed for some).
-        pendingCipherChangeDataStore.pendingChangeCountResult = 2
+        // First call returns 2 (pending changes exist), second call returns 2 (resolution failed for some).
+        pendingCipherChangeDataStore.pendingChangeCountResults = [2, 2]
 
         try await subject.fetchSync(forceSync: false)
 
