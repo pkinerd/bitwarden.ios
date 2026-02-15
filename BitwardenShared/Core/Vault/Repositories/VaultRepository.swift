@@ -506,7 +506,14 @@ extension DefaultVaultRepository: VaultRepository {
         // Organization ciphers cannot be created offline
         let isOrgCipher = cipher.organizationId != nil
 
-        let cipherEncryptionContext = try await clientService.vault().ciphers().encrypt(cipherView: cipher)
+        // Assign a temporary client-side ID for new ciphers so it's baked into the
+        // encrypted content. This ensures offline-created ciphers can be decrypted
+        // and loaded in the detail view like any other cipher. The server ignores
+        // this ID for new ciphers and assigns its own.
+        let cipherToEncrypt = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
+
+        let cipherEncryptionContext = try await clientService.vault().ciphers()
+            .encrypt(cipherView: cipherToEncrypt)
         do {
             try await cipherService.addCipherWithServer(
                 cipherEncryptionContext.cipher,
@@ -622,16 +629,7 @@ extension DefaultVaultRepository: VaultRepository {
 
     func fetchCipher(withId id: String) async throws -> CipherView? {
         guard let cipher = try await cipherService.fetchCipher(withId: id) else { return nil }
-        guard let decrypted = try? await clientService.vault().ciphers().decrypt(cipher: cipher) else {
-            return nil
-        }
-        // Ensure the decrypted view retains the cipher's ID. The ID is not
-        // an encrypted field, but the SDK's decrypt output may not populate it
-        // (e.g., for offline-created ciphers with temporary IDs).
-        if decrypted.id == nil, let cipherId = cipher.id {
-            return decrypted.withId(cipherId)
-        }
-        return decrypted
+        return try? await clientService.vault().ciphers().decrypt(cipher: cipher)
     }
 
     func fetchCipherOwnershipOptions(includePersonal: Bool) async throws -> [CipherOwner] {
@@ -1007,26 +1005,14 @@ extension DefaultVaultRepository: VaultRepository {
     ///   - userId: The user ID.
     ///
     private func handleOfflineAdd(encryptedCipher: Cipher, userId: String) async throws {
-        // Assign a temporary client-side ID if the cipher doesn't have one yet.
-        // New ciphers haven't been assigned a server ID; this temp ID allows
-        // local Core Data storage. The server assigns the real ID during sync.
-        let cipher: Cipher
-        if encryptedCipher.id != nil {
-            cipher = encryptedCipher
-        } else {
-            cipher = encryptedCipher.withTemporaryId(UUID().uuidString)
-        }
-
-        try await cipherService.updateCipherWithLocalStorage(cipher)
-
-        let cipherResponseModel = try CipherDetailsResponseModel(cipher: cipher)
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
-        // cipher.id is guaranteed non-nil: either it was already set, or
-        // withTemporaryId assigned one above.
-        guard let cipherId = cipher.id else {
+        guard let cipherId = encryptedCipher.id else {
             throw CipherAPIServiceError.updateMissingId
         }
+
+        try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
+
+        let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
@@ -1171,14 +1157,7 @@ extension DefaultVaultRepository: VaultRepository {
         try await cipherService.ciphersPublisher()
             .asyncTryMap { ciphers -> CipherView? in
                 guard let cipher = ciphers.first(where: { $0.id == id }) else { return nil }
-                let decrypted = try await self.clientService.vault().ciphers().decrypt(cipher: cipher)
-                // Ensure the decrypted view retains the cipher's ID. The ID is not
-                // an encrypted field, but the SDK's decrypt output may not populate it
-                // (e.g., for offline-created ciphers with temporary IDs).
-                if decrypted.id == nil, let cipherId = cipher.id {
-                    return decrypted.withId(cipherId)
-                }
-                return decrypted
+                return try await self.clientService.vault().ciphers().decrypt(cipher: cipher)
             }
             .eraseToAnyPublisher()
             .values

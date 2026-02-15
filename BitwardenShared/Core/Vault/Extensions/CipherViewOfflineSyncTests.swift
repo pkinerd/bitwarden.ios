@@ -6,66 +6,6 @@ import XCTest
 // MARK: - CipherViewOfflineSyncTests
 
 class CipherViewOfflineSyncTests: BitwardenTestCase {
-    // MARK: Tests - Cipher.withTemporaryId
-
-    /// `withTemporaryId(_:)` returns a cipher with the new temporary ID set.
-    func test_withTemporaryId_setsNewId() {
-        let cipher = Cipher.fixture(id: "original-id", name: "Test Cipher")
-        let result = cipher.withTemporaryId("temp-id-123")
-        XCTAssertEqual(result.id, "temp-id-123")
-    }
-
-    /// `withTemporaryId(_:)` preserves all other properties of the cipher.
-    func test_withTemporaryId_preservesOtherProperties() {
-        let cipher = Cipher.fixture(
-            attachments: nil,
-            card: nil,
-            collectionIds: ["col-1", "col-2"],
-            creationDate: Date(year: 2024, month: 3, day: 15),
-            edit: true,
-            favorite: true,
-            folderId: "folder-1",
-            id: "original-id",
-            key: "encryption-key",
-            login: Login(
-                username: "user@example.com",
-                password: nil,
-                passwordRevisionDate: nil,
-                uris: nil,
-                totp: "totp-secret",
-                autofillOnPageLoad: nil,
-                fido2Credentials: nil
-            ),
-            name: "My Login",
-            notes: "Some notes",
-            organizationId: "org-1",
-            organizationUseTotp: true,
-            passwordHistory: [PasswordHistory(password: "old-pw", lastUsedDate: Date())],
-            reprompt: .password,
-            revisionDate: Date(year: 2024, month: 6, day: 1),
-            type: .login,
-            viewPassword: false
-        )
-
-        let result = cipher.withTemporaryId("temp-id")
-
-        XCTAssertEqual(result.id, "temp-id")
-        XCTAssertEqual(result.organizationId, cipher.organizationId)
-        XCTAssertEqual(result.folderId, cipher.folderId)
-        XCTAssertEqual(result.collectionIds, cipher.collectionIds)
-        XCTAssertEqual(result.key, cipher.key)
-        XCTAssertEqual(result.name, cipher.name)
-        XCTAssertEqual(result.notes, cipher.notes)
-        XCTAssertEqual(result.type, cipher.type)
-        XCTAssertEqual(result.favorite, cipher.favorite)
-        XCTAssertEqual(result.reprompt, cipher.reprompt)
-        XCTAssertEqual(result.organizationUseTotp, cipher.organizationUseTotp)
-        XCTAssertEqual(result.edit, cipher.edit)
-        XCTAssertEqual(result.viewPassword, cipher.viewPassword)
-        XCTAssertEqual(result.creationDate, cipher.creationDate)
-        XCTAssertEqual(result.revisionDate, cipher.revisionDate)
-    }
-
     // MARK: Tests - CipherView.withId
 
     /// `withId(_:)` returns a cipher view with the specified ID.
