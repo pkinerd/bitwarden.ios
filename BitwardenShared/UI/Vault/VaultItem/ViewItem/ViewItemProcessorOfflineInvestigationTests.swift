@@ -76,6 +76,7 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
     // MARK: Helpers
 
     /// Creates a ViewItemProcessor configured with the given item ID.
+    @MainActor
     private func createSubject(itemId: String) {
         let services = ServiceContainer.withMocks(
             authRepository: authRepository,
