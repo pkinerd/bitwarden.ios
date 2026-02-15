@@ -168,6 +168,19 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
+    /// `addCipher()` rethrows non-network errors instead of falling back to offline.
+    func test_addCipher_nonNetworkError_rethrows() async throws {
+        cipherService.addCipherWithServerResult = .failure(BitwardenTestError.example)
+
+        await assertAsyncThrows(error: BitwardenTestError.example) {
+            try await subject.addCipher(.fixture())
+        }
+
+        // Should NOT fall back to offline.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
     /// `archiveCipher()` throws on id errors.
     func test_archiveCipher_idError_nil() async throws {
         stateService.accounts = [.fixtureAccountLogin()]
@@ -718,6 +731,19 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         cipherService.deleteCipherWithServerResult = .success(())
         try await subject.deleteCipher("123")
         XCTAssertEqual(cipherService.deleteCipherId, "123")
+    }
+
+    /// `deleteCipher()` rethrows non-network errors instead of falling back to offline.
+    func test_deleteCipher_nonNetworkError_rethrows() async throws {
+        cipherService.deleteCipherWithServerResult = .failure(BitwardenTestError.example)
+
+        await assertAsyncThrows(error: BitwardenTestError.example) {
+            try await subject.deleteCipher("1")
+        }
+
+        // Should NOT fall back to offline.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `deleteCipher()` falls back to offline save when the server API call fails.
@@ -1540,6 +1566,19 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
+    /// `updateCipher()` rethrows non-network errors instead of falling back to offline.
+    func test_updateCipher_nonNetworkError_rethrows() async throws {
+        cipherService.updateCipherWithServerResult = .failure(BitwardenTestError.example)
+
+        await assertAsyncThrows(error: BitwardenTestError.example) {
+            try await subject.updateCipher(.fixture(id: "1"))
+        }
+
+        // Should NOT fall back to offline.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
     /// `cipherDetailsPublisher(id:)` returns a publisher for the details of a cipher in the vault.
     func test_cipherDetailsPublisher() async throws {
         cipherService.ciphersSubject.send([.fixture(id: "123", name: "Apple")])
@@ -1746,6 +1785,21 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         }
 
         // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `softDeleteCipher()` rethrows non-network errors instead of falling back to offline.
+    func test_softDeleteCipher_nonNetworkError_rethrows() async throws {
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        cipherService.softDeleteWithServerResult = .failure(BitwardenTestError.example)
+
+        await assertAsyncThrows(error: BitwardenTestError.example) {
+            try await subject.softDeleteCipher(.fixture(id: "1"))
+        }
+
+        // Should NOT fall back to offline.
         XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
