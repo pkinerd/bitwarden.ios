@@ -476,7 +476,11 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
         try await subject.processPendingChanges(userId: "1")
 
-        // Should attempt to fetch existing folders to check for the conflict folder.
+        // Should encrypt the folder name before creating it on the server.
+        XCTAssertEqual(
+            clientService.mockVault.clientFolders.encryptedFolders.first?.name,
+            "Offline Sync Conflicts"
+        )
         XCTAssertEqual(folderService.addedFolderName, "Offline Sync Conflicts")
 
         // The backup cipher view should be assigned to the conflict folder.

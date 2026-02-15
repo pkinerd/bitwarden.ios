@@ -343,8 +343,10 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
             }
         }
 
-        // Create the folder
-        let newFolder = try await folderService.addFolderWithServer(name: folderName)
+        // Encrypt and create the folder
+        let folderView = FolderView(id: nil, name: folderName, revisionDate: Date.now)
+        let encryptedFolder = try await clientService.vault().folders().encrypt(folder: folderView)
+        let newFolder = try await folderService.addFolderWithServer(name: encryptedFolder.name)
         guard let id = newFolder.id else {
             throw DataMappingError.missingId
         }
