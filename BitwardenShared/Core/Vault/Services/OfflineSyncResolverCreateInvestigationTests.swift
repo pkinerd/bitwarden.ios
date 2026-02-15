@@ -109,24 +109,24 @@ class OfflineSyncResolverCreateInvestigationTests: BitwardenTestCase {
             "resolveCreate should delete the pending change record"
         )
 
-        // INVESTIGATION: Check if the old temp-ID cipher was deleted from the data store.
-        // In the current implementation, `deleteCipherWithLocalStorage` is NOT called.
-        // This means the cipher with the temp ID remains in Core Data.
-        XCTAssertNil(
+        // Verify: the old temp-ID cipher was deleted from local storage.
+        // After addCipherWithServer upserts the server-assigned ID record,
+        // the temp-ID record is orphaned and must be removed.
+        XCTAssertEqual(
             cipherService.deleteCipherWithLocalStorageId,
-            "INVESTIGATION: resolveCreate does NOT delete the temp-ID cipher. "
-                + "This confirms Bug 2: the old cipher record persists, causing duplicates."
+            tempId,
+            "resolveCreate should delete the old temp-ID cipher from local storage"
         )
     }
 
     /// Documents the expected flow of `resolveCreate`:
     /// 1. Decode cipher data from pending change
     /// 2. Call `addCipherWithServer` (which creates a NEW CipherData with server ID)
-    /// 3. Delete the pending change record
-    /// 4. (MISSING) Delete the old CipherData with temp ID
+    /// 3. Delete the old temp-ID CipherData from local storage
+    /// 4. Delete the pending change record
     ///
-    /// This test verifies that `addCipherWithServer` creates a new record
-    /// with a server-assigned ID while the temp-ID record is never cleaned up.
+    /// This test verifies that `addCipherWithServer` receives the correct cipher
+    /// and the temp-ID record is cleaned up.
     func test_resolveCreate_addCipherWithServer_createsNewRecord() async throws {
         let tempId = "temp-\(UUID().uuidString)"
         let cipherResponseModel = CipherDetailsResponseModel.fixture(
@@ -214,6 +214,12 @@ class OfflineSyncResolverCreateInvestigationTests: BitwardenTestCase {
         XCTAssertTrue(
             pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty,
             "Pending change should not be deleted when addCipherWithServer fails"
+        )
+
+        // The temp-ID cipher should NOT be deleted since the add failed
+        XCTAssertNil(
+            cipherService.deleteCipherWithLocalStorageId,
+            "Temp-ID cipher should not be deleted when addCipherWithServer fails"
         )
     }
 

@@ -143,11 +143,11 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
     }
 
     /// When the `cipherDetailsPublisher` emits a cipher with nil ID,
-    /// `buildViewItemState` returns nil and the state remains `.loading(nil)`.
-    /// The stream continues with `guard let cipher else { continue }` and the
-    /// `if let newState = ... { state = newState }` check, causing the spinner.
+    /// `buildViewItemState` returns nil and the processor falls back to
+    /// `fetchCipherDetailsDirectly()`, which transitions to `.error` state
+    /// instead of spinning forever.
     @MainActor
-    func test_appeared_cipherWithNilId_staysInLoadingState() async throws {
+    func test_appeared_cipherWithNilId_fallsBackToError() {
         let tempId = UUID().uuidString
         createSubject(itemId: tempId)
 
@@ -160,30 +160,36 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
         vaultRepository.cipherDetailsSubject.send(cipherWithNilId)
         vaultRepository.fetchCollectionsResult = .success([])
 
+        // The fallback's fetchCipher also returns a nil-ID cipher
+        vaultRepository.fetchCipherResult = .success(
+            CipherView.fixture(id: nil, name: "Cipher With Nil ID")
+        )
+
         let task = Task {
             await subject.perform(.appeared)
         }
 
-        // Give the processor time to process the emitted cipher.
-        // We do NOT use `waitFor` here because we expect the condition to NOT be met;
-        // `waitFor` would XCTFail on timeout, but staying in `.loading(nil)` IS the expected
-        // behavior that confirms the spinner bug.
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        // The processor should now fall back to fetchCipherDetailsDirectly
+        // which sets .error state since buildViewItemState returns nil.
+        waitFor(subject.state.loadingState != .loading(nil))
         task.cancel()
 
-        // INVESTIGATION: Document the actual behavior
-        switch subject.state.loadingState {
-        case .loading:
-            // This confirms the spinner bug mechanism:
-            // nil ID -> CipherItemState returns nil -> ViewItemState returns nil
-            // -> buildViewItemState returns nil -> state stays .loading(nil)
-            break // Expected: this IS the spinner bug
-        case .data:
-            XCTFail("Unexpected: state transitioned to .data despite nil ID cipher")
-        case .error:
-            // Also acceptable: if an error was set by the fallback path
-            break
-        }
+        XCTAssertEqual(
+            subject.state.loadingState,
+            .error(errorMessage: Localizations.anErrorHasOccurred),
+            "With the fix, a nil-ID cipher should trigger the fallback and show an error "
+                + "instead of spinning forever."
+        )
+
+        // Verify the fallback was triggered
+        XCTAssertEqual(
+            vaultRepository.fetchCipherId,
+            tempId,
+            "The fallback should have attempted to fetch the cipher directly"
+        )
+
+        // Verify the error was logged
+        XCTAssertFalse(errorReporter.errors.isEmpty, "The error should have been logged")
     }
 
     /// When the publisher stream fails (throws), the processor should fall back to
