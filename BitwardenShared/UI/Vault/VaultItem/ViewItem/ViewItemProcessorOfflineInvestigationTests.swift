@@ -147,7 +147,7 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
     /// The stream continues with `guard let cipher else { continue }` and the
     /// `if let newState = ... { state = newState }` check, causing the spinner.
     @MainActor
-    func test_appeared_cipherWithNilId_staysInLoadingState() {
+    func test_appeared_cipherWithNilId_staysInLoadingState() async throws {
         let tempId = UUID().uuidString
         createSubject(itemId: tempId)
 
@@ -164,14 +164,11 @@ class ViewItemProcessorOfflineInvestigationTests: BitwardenTestCase {
             await subject.perform(.appeared)
         }
 
-        // Wait briefly to see if state transitions.
-        // Since ViewItemState init returns nil for nil ID, and the processor does
-        // `if let newState = try await buildViewItemState(from: cipher) { state = newState }`,
-        // the state should remain .loading(nil) - the spinner bug.
-        waitFor(
-            { subject.state.loadingState != .loading(nil) },
-            timeout: 1
-        )
+        // Give the processor time to process the emitted cipher.
+        // We do NOT use `waitFor` here because we expect the condition to NOT be met;
+        // `waitFor` would XCTFail on timeout, but staying in `.loading(nil)` IS the expected
+        // behavior that confirms the spinner bug.
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         task.cancel()
 
         // INVESTIGATION: Document the actual behavior
