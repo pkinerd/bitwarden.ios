@@ -37,7 +37,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 
 | Issue | Recommendation | Effort | Risk |
 |-------|---------------|--------|------|
-| **VI-1** — Offline-created cipher view failure | Error state + direct fetch fallback (Option E) | ~30-50 lines | Low |
+| ~~**VI-1** — Offline-created cipher view failure~~ | ~~Error state + direct fetch fallback (Option E)~~ **[Resolved]** Root cause eliminated by moving temp-ID before encryption (commits `06456bc`–`53e08ef`) | 0 | N/A |
 | **S6** — Password change test | Add dedicated tests (Option A) | ~100-150 lines | Very low |
 | **S7** — Cipher-not-found test | Add single targeted test (Option A) | ~30-40 lines | Very low |
 | ~~**SEC-1** — secureConnectionFailed~~ | ~~Add logging for TLS triggers~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted; plain `catch` replaces URLError filtering. | ~~10-15 lines~~ 0 | N/A |
@@ -222,7 +222,7 @@ Based on the code review, the recommended implementation order is refined:
 2. ~~CS-1 — Remove stray blank line~~ **[Resolved]** — Commit `a52d379`
 3. R4 — Add sync abort log line
 4. ~~SEC-1 — Add TLS fallback logging~~ **[Superseded]** — Extension deleted
-5. **VI-1** — Fix offline-created cipher detail view failure (error state + direct fetch fallback)
+5. ~~**VI-1** — Fix offline-created cipher detail view failure~~ **[Resolved]** — Root cause eliminated (commits `06456bc`–`53e08ef`)
 
 **Batch 2: Critical Test Coverage** (updated)
 5. T5 — Evaluate/replace inline mock

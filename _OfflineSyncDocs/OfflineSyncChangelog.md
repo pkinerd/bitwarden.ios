@@ -2,8 +2,8 @@
 
 > **Feature**: Client-side offline vault sync with conflict resolution
 > **Fork base**: `0283b1f` (Update SDK to 9b59b09)
-> **Commits**: 5 (squashed branch)
-> **Scope**: 18 files changed, +2,310 / −11 lines of Swift & Core Data code
+> **Commits**: 5 (initial) + 12 (VI-1 fix, PR #35)
+> **Scope**: 18 files changed (+2,310/−11 initial) + 6 files changed (+251/−80 VI-1 fix)
 > **Documentation**: 40 files, +6,567 lines
 
 ---
@@ -242,26 +242,26 @@ The upsert **intentionally preserves `originalRevisionDate`** on update — this
 
 Two extension methods support offline sync operations by creating modified copies of cipher objects.
 
-### 5a. `Cipher.withTemporaryId(_:)` (line 16)
+### 5a. ~~`Cipher.withTemporaryId(_:)`~~ → `CipherView.withId(_:)` **[Changed in PR #35]**
 
-Creates a copy of an encrypted `Cipher` (from BitwardenSdk) with a new ID assigned:
+**[Updated 2026-02-16]** The original `Cipher.withTemporaryId(_:)` has been replaced by `CipherView.withId(_:)`. The method now operates on the decrypted `CipherView` type *before* encryption rather than the encrypted `Cipher` type *after* encryption.
 
 ```swift
-extension Cipher {
-    func withTemporaryId(_ id: String) -> Cipher {
-        Cipher(
-            id: id,           // ← Replaced with temporary UUID
+extension CipherView {
+    func withId(_ id: String) -> CipherView {
+        CipherView(
+            id: id,           // ← Replaced with specified ID
             organizationId: organizationId,
             folderId: folderId,
-            // ... 24 more properties copied verbatim ...
+            // ... ~24 more properties copied verbatim ...
         )
     }
 }
 ```
 
-**Purpose:** New ciphers don't have a server-assigned ID. This helper assigns a temporary client-generated UUID so the cipher can be stored locally in Core Data. The server assigns the real ID when the pending create is resolved.
+**Purpose:** Assigns a temporary client-generated UUID to a new cipher *before encryption* so the ID is baked into the encrypted content. This ensures offline-created ciphers can be decrypted and loaded in the detail view (fixing VI-1). The server ignores client-provided IDs for new ciphers and assigns its own.
 
-**Design note:** The method sets `data` to `nil` because this field is not used for local storage — it's a server-side JSON blob.
+**Key difference from old approach:** No `data: nil` field (which caused decryption failures). The SDK handles all fields correctly during encryption since it receives a well-formed `CipherView`.
 
 ### 5b. `CipherView.update(name:folderId:)` (line 63)
 
@@ -743,8 +743,9 @@ Tests the cipher extension helpers used for offline sync operations.
 
 | Test | What It Verifies |
 |------|-----------------|
-| `test_withTemporaryId_setsNewId` | Temporary ID is correctly assigned |
-| `test_withTemporaryId_preservesOtherProperties` | All 26 properties preserved during ID replacement |
+| ~~`test_withTemporaryId_setsNewId`~~ → `test_withId_setsId` | ID correctly assigned to cipher view |
+| ~~`test_withTemporaryId_preservesOtherProperties`~~ → `test_withId_preservesOtherProperties` | Key properties preserved during ID assignment |
+| (New) `test_withId_replacesExistingId` | Can replace an existing non-nil ID |
 | `test_update_setsNameAndFolderId` | Name and folder correctly updated for backup copies |
 | `test_update_setsIdToNil` | Backup cipher has nil ID (server assigns new) |
 | `test_update_setsKeyToNil` | Backup cipher has nil key (SDK generates fresh) |
@@ -872,6 +873,21 @@ This resolved [AP-A3](./_OfflineSyncDocs/ActionPlans/Resolved/AP-A3_UnusedTimePr
 
 Updated documentation to reflect the resolved issues and moved resolved/superseded action plans to a `Resolved/` subdirectory.
 
+### PR #35 (Commits `06456bc` through `d191eb6`): VI-1 Offline Spinner Bug Fix
+
+**[Added 2026-02-16]** A multi-part fix for the VI-1 usability bug where offline-created ciphers showed an infinite spinner in the detail view. The fix took a different approach than recommended — instead of adding a catch-block fallback (Option E), it eliminated the root cause.
+
+**Key changes:**
+1. **Temp-ID before encryption** (`3f7240a`): `addCipher()` assigns temp UUID via `CipherView.withId()` before encryption, so the ID is baked into encrypted content
+2. **`Cipher.withTemporaryId()` → `CipherView.withId()`** (`8ff7a09`, `3f7240a`): Operates on decrypted type, eliminating `data: nil` problem
+3. **`handleOfflineAdd` simplified** (`8ff7a09`): No longer assigns IDs post-encryption
+4. **`resolveCreate` temp-ID cleanup** (`8ff7a09`, `53e08ef`): Deletes orphaned temp-ID records after server create
+5. **`.create` type preservation** (`12cb225`): Editing offline-created ciphers keeps `.create` pending change type
+6. **Offline-created cleanup** (`12cb225`): Deleting/soft-deleting offline-created ciphers cleans up locally instead of queuing server operations
+7. **7 new tests, 2 updated tests**: Coverage for all new behaviors
+
+See section 16 of [OfflineSyncCodeReview.md](./_OfflineSyncDocs/OfflineSyncCodeReview.md) for detailed analysis.
+
 ---
 
 ## 17. Documentation Artifacts
@@ -896,7 +912,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [ReviewSection_SyncService.md](./_OfflineSyncDocs/ReviewSection_SyncService.md) | Detailed review of sync integration |
 | [ReviewSection_VaultRepository.md](./_OfflineSyncDocs/ReviewSection_VaultRepository.md) | Detailed review of offline fallback handlers |
 
-### Action Plans (25 Active + 5 Resolved)
+### Action Plans (24 Active + 6 Resolved)
 
 **Phase 1 — Must-Address (Test Gaps):**
 
@@ -909,7 +925,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 
 | ID | Title | Priority |
 |----|-------|----------|
-| [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher fails to load in detail view (infinite spinner) | Medium |
+| ~~[VI-1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-VI1_OfflineCreatedCipherViewFailure.md)~~ | ~~Offline-created cipher fails to load in detail view (infinite spinner)~~ **[Resolved]** | ~~Medium~~ |
 | [S6](./_OfflineSyncDocs/ActionPlans/AP-S6_PasswordChangeCountingTest.md) | No password change counting test | Medium |
 | [S7](./_OfflineSyncDocs/ActionPlans/AP-S7_CipherNotFoundPathTest.md) | No cipher-not-found path test | Medium |
 | [S8](./_OfflineSyncDocs/ActionPlans/AP-S8_FeatureFlag.md) | No feature flag for remote disable | Medium |
@@ -953,6 +969,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [SEC-1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md) | TLS failure classification | Superseded by URLError removal |
 | [EXT-1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-EXT1_TimedOutClassification.md) | Timeout classification | Superseded by URLError removal |
 | [T6](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md) | URLError test coverage | Resolved by deletion |
+| [VI-1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher view failure | Resolved by root cause fix (PR #35) |
 
 **Cross-reference:** [AP-00_CrossReferenceMatrix.md](./_OfflineSyncDocs/ActionPlans/AP-00_CrossReferenceMatrix.md), [AP-00_OverallRecommendations.md](./_OfflineSyncDocs/ActionPlans/AP-00_OverallRecommendations.md)
 

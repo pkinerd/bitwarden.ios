@@ -104,3 +104,17 @@ The review confirms the original assessment with code-level detail. After review
 4. **Overlap with S6**: The subsequent-edit test naturally verifies password counting behavior. Tests 3 and 4 from S6 (subsequent edit with password changed/unchanged) directly overlap with T7. Recommend implementing them as separate test methods but in the same test session.
 
 **Updated conclusion**: Original recommendation (Option A - dedicated test) confirmed. The test directly validates the `originalRevisionDate` preservation invariant which is critical for conflict detection. Priority: Low but important for coverage of the upsert-update code path.
+
+## Post-VI-1 Fix Update (2026-02-16)
+
+The VI-1 fix (commit `12cb225`) added a new test `test_updateCipher_offlineFallback_preservesCreateType` that **partially** addresses this test gap. This test verifies:
+- An existing `.create` pending change is found by `fetchPendingChange`
+- The upserted pending change preserves the `.create` type (not overwritten to `.update`)
+- The cipher data is updated
+
+However, this test covers a **specific subset** of the subsequent-edit scenario (editing an offline-created cipher) and does **not** fully address the T7 gap. The original T7 recommendation remains relevant for:
+- **`originalRevisionDate` preservation**: The `preservesCreateType` test does not specifically assert that `originalRevisionDate` is preserved from the first edit's record
+- **`offlinePasswordChangeCount` accumulation**: Not tested in the new test
+- **`.update` → `.update` path**: The new test covers `.create` → `.create` preservation, but the more common case of editing an already-synced cipher that was first edited offline (`.update` → `.update`) is still untested
+
+**Updated scope**: A dedicated subsequent-edit test is still needed, but with a narrower gap since the `.create` type preservation is now covered. The recommended test should focus on the `.update` path with `originalRevisionDate` preservation and password count accumulation.

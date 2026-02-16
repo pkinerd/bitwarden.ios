@@ -76,25 +76,31 @@ extension URLError {
 
 ### Purpose
 
-Provides two extension methods used by the offline sync system:
+**[Updated 2026-02-16]** Provides two extension methods on `CipherView` used by the offline sync system:
 
-1. **`Cipher.withTemporaryId(_:)`** — Creates a copy of an encrypted `Cipher` (SDK type) with a specified temporary ID. Used when persisting a newly created cipher locally during offline mode.
+1. **`CipherView.withId(_:)`** — Creates a copy of a decrypted `CipherView` with a specified ID. Used to assign a temporary client-generated ID to a new cipher view *before encryption* for offline support. The ID is baked into the encrypted content so it survives the decrypt round-trip. **[Changed]** This replaces the former `Cipher.withTemporaryId(_:)` which operated on the encrypted type *after encryption* and set `data: nil`, causing decryption failures (VI-1).
 
-2. **`CipherView.update(name:folderId:)`** — Creates a copy of a decrypted `CipherView` (SDK type) with a modified name and folder ID. Used to create backup copies of conflicting ciphers in the "Offline Sync Conflicts" folder.
+2. **`CipherView.update(name:folderId:)`** — Creates a copy of a decrypted `CipherView` with a modified name and folder ID. Used to create backup copies of conflicting ciphers in the "Offline Sync Conflicts" folder.
 
 ### Implementation Details
 
-#### `Cipher.withTemporaryId(_ id: String) -> Cipher`
+#### `CipherView.withId(_ id: String) -> CipherView` **[New — replaces Cipher.withTemporaryId]**
 
-This method creates a full copy of the `Cipher` by calling the `Cipher(...)` initializer with all properties explicitly passed through, replacing only `id` with the provided value and setting `data` to `nil`.
+This method creates a full copy of the `CipherView` by calling the `CipherView(...)` initializer with all properties explicitly passed through, replacing only `id` with the provided value.
 
-**Property count:** 26 properties are explicitly copied. This is fragile — if the `Cipher` type (from BitwardenSdk) gains a new property, this method will continue to compile (using default values) but will silently drop the new property's value. There's no compiler warning for this.
+**Key difference from former `Cipher.withTemporaryId`:**
+- Operates on `CipherView` (decrypted, before encryption) instead of `Cipher` (encrypted, after encryption)
+- Does NOT set `data: nil` (CipherView doesn't have a `data` field)
+- Copies `attachmentDecryptionFailures` (new field not present in old `Cipher` method)
+- The assigned ID is included in the encrypted content after SDK encryption
+
+**Property count:** ~26 properties explicitly copied. Same fragility concern as `update` — see Issue EXT-3 / CS-2.
 
 #### `CipherView.update(name:folderId:) -> CipherView`
 
 Similar pattern: creates a full copy of the `CipherView` by calling the initializer with all properties, replacing `name` and `folderId`, and setting `id`, `key`, `attachments`, and `attachmentDecryptionFailures` to `nil`.
 
-**Property count:** 24 properties explicitly handled. Same fragility concern as above.
+**Property count:** ~24 properties explicitly handled. Same fragility concern as above.
 
 **Intentional nil-outs:**
 
@@ -107,12 +113,13 @@ Similar pattern: creates a full copy of the `CipherView` by calling the initiali
 
 ### Test Coverage
 
-#### Cipher.withTemporaryId Tests
+#### CipherView.withId Tests **[Updated]**
 
 | Test | Verification |
 |------|-------------|
-| `test_withTemporaryId_setsNewId` | New ID is set |
-| `test_withTemporaryId_preservesOtherProperties` | 14 properties explicitly verified (organizationId, folderId, collectionIds, key, name, notes, type, favorite, reprompt, organizationUseTotp, edit, viewPassword, creationDate, revisionDate) |
+| `test_withId_setsId` | Specified ID is set on a cipher with nil ID |
+| `test_withId_preservesOtherProperties` | Key properties preserved (name, notes, folderId, organizationId, login username/password/totp) |
+| `test_withId_replacesExistingId` | Can replace a non-nil ID with a new one |
 
 #### CipherView.update Tests
 
@@ -178,11 +185,13 @@ Treating TLS failures as offline triggers means that if a user is on a compromis
 
 **Assessment:** Acceptable tradeoff. The alternative (letting the TLS error propagate as a normal error) would mean the user's changes are lost entirely in a captive-portal scenario, which is worse. The security posture is maintained because no data is sent to the compromised server.
 
-### Issue EXT-3: `withTemporaryId` and `update` Are Fragile Against SDK Type Changes (Low)
+### Issue EXT-3: **[Updated]** `withId` and `update` Are Fragile Against SDK Type Changes (Low)
 
-Both methods manually copy all properties of `Cipher`/`CipherView` by calling the full initializer. If the SDK adds new properties with non-nil defaults, these methods will compile but silently drop the new property's value. If the SDK adds new required parameters, compilation will break (which is the safer outcome).
+**[Updated 2026-02-16]** Both methods now operate on `CipherView` only (previously `Cipher.withTemporaryId` + `CipherView.update`). They manually copy all properties of `CipherView` by calling the full initializer. If the SDK adds new properties with non-nil defaults, these methods will compile but silently drop the new property's value. If the SDK adds new required parameters, compilation will break (which is the safer outcome).
 
-**Recommendation:** Add a comment noting that these methods must be updated when `Cipher`/`CipherView` types change, or consider using a more generic copy mechanism if the SDK provides one.
+**Scope reduced:** The fragility concern now applies to one SDK type (`CipherView`) instead of two (`Cipher` + `CipherView`).
+
+**Recommendation:** Add a comment noting that these methods must be updated when `CipherView` types change, or consider using a more generic copy mechanism if the SDK provides one.
 
 ### ~~Issue EXT-4~~ [Resolved]: Missing URLError Test Coverage for 7 of 10 Cases
 

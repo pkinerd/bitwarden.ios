@@ -141,3 +141,22 @@ The review confirms the original assessment with code-level detail. After review
    - **Post-push cleanup with retry**: After successful push, retry `deletePendingChange` with a short retry loop. Reduces the window but doesn't eliminate it.
 
 **Updated conclusion**: Original recommendation (accept risk) confirmed. The scenario requires two simultaneous failures (rare), and the consequence (duplicate cipher) is recoverable (user can manually delete). The mitigation options either shift the risk to data loss or require server changes. Priority: Informational, accept risk for initial release.
+
+## Post-VI-1 Fix Update (2026-02-16)
+
+The VI-1 fix (commits `8ff7a09` through `53e08ef`) added **temp-ID cleanup** to `resolveCreate`. After `addCipherWithServer` succeeds, the old cipher record with the temporary client-side ID is now explicitly deleted:
+
+```swift
+let tempId = cipher.id
+try await cipherService.addCipherWithServer(cipher, encryptedFor: userId)
+if let tempId {
+    try await cipherService.deleteCipherWithLocalStorage(id: tempId)
+}
+```
+
+This change:
+- **Reduces orphan risk**: Previously, the old temp-ID `CipherData` record would persist in Core Data until the next full sync's `replaceCiphers()` call. Now it's cleaned up immediately.
+- **Does NOT change the duplicate risk**: The duplicate-on-retry scenario described above is still possible if `addCipherWithServer` succeeds but `deletePendingChange` fails. The new temp-ID cleanup step is between these two calls, so a failure at that point could leave both the server cipher AND the pending record intact.
+- **Test coverage added**: `test_processPendingChanges_create` now verifies temp-ID cleanup, and `test_processPendingChanges_create_nilId_skipsLocalDelete` verifies the nil-ID edge case.
+
+**Conclusion unchanged**: Accept the risk. The probability remains extremely low and the consequence is benign.

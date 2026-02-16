@@ -218,3 +218,40 @@ is a production code defect, and the narrow test coverage fails to catch it. Tog
 they represent the most significant quality regression: server-side errors (401, 403,
 400, etc.) are silently swallowed into offline fallback, and no test verifies this
 is wrong.
+
+---
+
+## Post-Review Test Changes (PR #35 — VI-1 Fix, 2026-02-16)
+
+PR #35 added 7 new test methods and updated 1 existing test across two files:
+
+### VaultRepositoryTests.swift (+5 new tests)
+
+| Test | What It Verifies |
+|------|-----------------|
+| `test_addCipher_offlineFallback_newCipherGetsTempId` | Temp ID assigned before encryption; encrypted cipher has non-nil ID; locally stored cipher matches |
+| `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Offline-created cipher deletion cleans up locally (deletes cipher + pending record, no upsert) |
+| `test_updateCipher_offlineFallback_preservesCreateType` | Subsequent edit of offline-created cipher preserves `.create` change type |
+| `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Offline-created cipher soft-deletion cleans up locally (deletes cipher + pending record, no upsert) |
+| (1 existing test updated) | `test_softDeleteCipher_pendingChangeCleanup` userId assertion changed from full UUID to "1" |
+
+### OfflineSyncResolverTests.swift (+2 new tests)
+
+| Test | What It Verifies |
+|------|-----------------|
+| `test_processPendingChanges_create` (updated) | Now also verifies temp-ID record cleanup via `deleteCipherWithLocalStorageId` |
+| `test_processPendingChanges_create_nilId_skipsLocalDelete` | Nil-ID edge case — no `deleteCipherWithLocalStorage` call when cipher has no ID |
+
+### CipherViewOfflineSyncTests.swift (rewritten)
+
+The `Cipher.withTemporaryId` tests were replaced with `CipherView.withId` tests:
+- `test_withTemporaryId_setsNewId` → `test_withId_setsId`
+- `test_withTemporaryId_preservesOtherProperties` → `test_withId_preservesOtherProperties`
+- (New) `test_withId_replacesExistingId`
+
+The tests now use `CipherView.fixture` instead of `Cipher.fixture`, with `LoginView` instead of `Login`, and verify properties relevant to the `CipherView` type.
+
+### Impact on Earlier Findings
+
+- **Deep Dive 7 (narrow error coverage)** — Still relevant. All new tests also use `URLError(.notConnectedToInternet)` only.
+- **Deep Dive 2 (missing negative assertions)** — The new tests make specific positive assertions about offline behavior but still don't add negative assertions to happy-path tests.

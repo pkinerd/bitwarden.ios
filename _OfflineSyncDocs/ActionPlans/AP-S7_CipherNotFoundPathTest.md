@@ -128,3 +128,27 @@ The review confirms the original assessment. After reviewing the implementation:
 5. **Recommendation confirmed**: **Option A (single targeted test)** is correct and sufficient. The behavior (silent no-op) is reasonable for this edge case and just needs verification coverage.
 
 **Updated conclusion**: Original recommendation stands. One test is sufficient to verify the guard clause behavior. Priority remains Medium for coverage completeness.
+
+## Post-VI-1 Fix Update (2026-02-16)
+
+The VI-1 fix (commit `12cb225`) added a new code path at the beginning of `handleOfflineDelete`: when the cipher has an existing pending change with type `.create` (i.e., it was created offline and hasn't synced), the handler cleans up locally instead of queuing a `.softDelete`:
+
+```swift
+if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
+    cipherId: cipherId, userId: userId
+), existing.changeType == .create {
+    try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
+    if let recordId = existing.id {
+        try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
+    }
+    return
+}
+```
+
+This new path is **tested** by `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher`. However, the **original guard clause** (cipher not found locally after the `.create` check) **remains untested**. The original S7 test gap is still valid — it just now follows a longer code path since the `.create` check happens first.
+
+**Updated scope**: The S7 test should account for the new `.create` check by ensuring the mock returns no existing pending change before hitting the guard clause. The recommended test setup is:
+1. Configure `deleteCipherWithServerResult` to throw
+2. Configure `fetchPendingChangeResult` to return `nil` (no existing pending change)
+3. Configure `fetchCipherResult` to return `nil` (cipher not found)
+4. Assert: no pending change upserted, no local operations, no error

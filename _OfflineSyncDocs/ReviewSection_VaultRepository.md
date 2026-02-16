@@ -24,16 +24,20 @@ A new dependency `pendingCipherChangeDataStore: PendingCipherChangeDataStore` is
 encrypt(cipherView) → addCipherWithServer(encrypted) → done
 ```
 
-**After: [Updated]**
+**After: [Updated 2026-02-16]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
-2. encrypt(cipherView) → try addCipherWithServer(encrypted)
-3. catch (any error):
+2. [New] Assign temp ID before encryption if cipher.id is nil:
+     cipherToEncrypt = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
+3. encrypt(cipherToEncrypt) → try addCipherWithServer(encrypted)
+4. catch (any error):
    a. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
    b. Otherwise → handleOfflineAdd(encryptedCipher, userId)
 ```
 
 **[Updated]** The catch block was simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`. Any server API call failure now triggers offline save. The encrypt step occurs outside the do-catch, so SDK errors propagate normally.
+
+**[Updated 2026-02-16 — VI-1 Fix]** Temp-ID assignment now happens *before* encryption. For new ciphers (`cipher.id == nil`), a UUID is assigned via `CipherView.withId()` so the ID is baked into the encrypted content. This ensures offline-created ciphers can be decrypted and loaded in the detail view like any other cipher. The server ignores client-provided IDs for new ciphers and assigns its own.
 
 **Security Flow:** The encryption step (`clientService.vault().ciphers().encrypt(cipherView:)`) occurs BEFORE the server call attempt. The encrypted cipher is available in the catch block, so no additional encryption is needed for offline storage. This preserves the encrypt-before-queue invariant.
 
@@ -98,18 +102,19 @@ create softDeletedCipher (with deletedDate) → encrypt → softDeleteCipherWith
 
 ### 5. New Helper: `handleOfflineAdd`
 
+**[Updated 2026-02-16 — VI-1 Fix]**
 ```
 Parameters: encryptedCipher: Cipher, userId: String
 
-1. If cipher has no ID:
-   → Assign temporary UUID via withTemporaryId(UUID().uuidString)
-2. Persist locally via cipherService.updateCipherWithLocalStorage(cipher)
+1. Guard let cipherId = encryptedCipher.id (temp ID already assigned by addCipher before encryption)
+2. Persist locally via cipherService.updateCipherWithLocalStorage(encryptedCipher)
 3. Convert to CipherDetailsResponseModel → JSON-encode
-4. Guard let cipherId = cipher.id (should always succeed after step 1)
-5. Upsert pending change: changeType = .create, passwordChangeCount = 0
+4. Upsert pending change: changeType = .create, passwordChangeCount = 0
 ```
 
-**Temporary ID Generation:** Uses `UUID().uuidString` which on iOS/macOS uses `/dev/urandom` (cryptographically secure). The ID is a standard UUID format (e.g., "A1B2C3D4-E5F6-...").
+**[Changed]** The method was simplified. Previously, it assigned a temp ID post-encryption via `Cipher.withTemporaryId()`. Now, `addCipher()` assigns the temp ID before encryption via `CipherView.withId()`, so `handleOfflineAdd` always receives a cipher with a non-nil ID. The conditional ID assignment and the `withTemporaryId` call have been removed; replaced with a simple guard.
+
+**Temporary ID Generation:** Uses `UUID().uuidString` which on iOS/macOS uses `/dev/urandom` (cryptographically secure). The ID is a standard UUID format (e.g., "A1B2C3D4-E5F6-..."). Generated in `addCipher()` before encryption.
 
 **Why `updateCipherWithLocalStorage` instead of `addCipherWithLocalStorage`?** The method name suggests an update, but it's used for a new cipher. This is because `CipherService.updateCipherWithLocalStorage` performs an upsert (insert-or-update) on the local Core Data store. For a cipher with a new (temporary) ID, this effectively inserts.
 
@@ -131,7 +136,8 @@ Parameters: cipherView: CipherView, encryptedCipher: Cipher, userId: String
       → Fetch cipher from local storage → decrypt → compare passwords
       → If different: increment count
 7. originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
-8. Upsert pending change with updated data and counts
+8. [New] changeType = existing?.changeType == .create ? .create : .update
+9. Upsert pending change with updated data, counts, and preserved changeType
 ```
 
 **Password Change Detection Logic (lines 1012-1030):**
@@ -147,17 +153,25 @@ Both comparisons happen entirely in-memory. The decrypted values are not persist
 
 ### 7. New Helper: `handleOfflineDelete`
 
+**[Updated 2026-02-16 — VI-1 Fix]**
 ```
 Parameters: cipherId: String
 
 1. Get active account userId via stateService
-2. Fetch cipher from local storage via cipherService.fetchCipher(withId:)
-3. If cipher not found → return (silent no-op)
-4. If cipher has organizationId → throw organizationCipherOfflineEditNotSupported
-5. Soft-delete locally via cipherService.deleteCipherWithLocalStorage(id:)
-6. Convert cipher to CipherDetailsResponseModel → JSON-encode
-7. Upsert pending change: changeType = .softDelete, originalRevisionDate = cipher.revisionDate
+2. [New] Check for existing pending change with type .create:
+   a. If found → cipher was created offline, never synced
+   b. Delete cipher locally via cipherService.deleteCipherWithLocalStorage(id:)
+   c. Delete pending change record
+   d. Return (nothing to delete on server)
+3. Fetch cipher from local storage via cipherService.fetchCipher(withId:)
+4. If cipher not found → return (silent no-op)
+5. If cipher has organizationId → throw organizationCipherOfflineEditNotSupported
+6. Soft-delete locally via cipherService.deleteCipherWithLocalStorage(id:)
+7. Convert cipher to CipherDetailsResponseModel → JSON-encode
+8. Upsert pending change: changeType = .softDelete, originalRevisionDate = cipher.revisionDate
 ```
+
+**[New — VI-1 Fix]** Step 2 handles the case where a cipher was created offline and the user deletes it before syncing. Since the cipher doesn't exist on the server, queuing a `.softDelete` would cause the resolver to fail when trying to fetch it. Instead, both the local cipher record and the pending change are cleaned up directly.
 
 **Important Design Decision:** `deleteCipher` (permanent delete) is converted to a soft delete in offline mode. This is because a permanent delete cannot be undone, and if there's a conflict (server version was edited), the resolver needs the ability to create a backup. By soft-deleting locally, the cipher moves to trash rather than being permanently removed, giving the resolver more options during conflict resolution.
 
@@ -167,14 +181,22 @@ Parameters: cipherId: String
 
 ### 8. New Helper: `handleOfflineSoftDelete`
 
+**[Updated 2026-02-16 — VI-1 Fix]**
 ```
 Parameters: cipherId: String, encryptedCipher: Cipher
 
 1. Get active account userId via stateService
-2. Persist soft-deleted cipher locally via cipherService.updateCipherWithLocalStorage(encryptedCipher)
-3. Convert to CipherDetailsResponseModel → JSON-encode
-4. Upsert pending change: changeType = .softDelete
+2. [New] Check for existing pending change with type .create:
+   a. If found → cipher was created offline, never synced
+   b. Delete cipher locally via cipherService.deleteCipherWithLocalStorage(id:)
+   c. Delete pending change record
+   d. Return (nothing to soft-delete on server)
+3. Persist soft-deleted cipher locally via cipherService.updateCipherWithLocalStorage(encryptedCipher)
+4. Convert to CipherDetailsResponseModel → JSON-encode
+5. Upsert pending change: changeType = .softDelete
 ```
+
+**[New — VI-1 Fix]** Step 2 mirrors the new logic in `handleOfflineDelete` — if the cipher was created offline and hasn't synced, clean up locally instead of queuing a server operation.
 
 **Note:** The `encryptedCipher` already has `deletedDate` set (this was done in `softDeleteCipher` before the API call). So persisting it locally correctly shows the cipher in the trash UI.
 
