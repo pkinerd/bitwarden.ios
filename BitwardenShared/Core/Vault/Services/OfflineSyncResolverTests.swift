@@ -122,8 +122,8 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertTrue(cipherService.updateCipherWithServerCiphers.isEmpty)
     }
 
-    /// `processPendingChanges(userId:)` with a `.create` pending change calls `addCipherWithServer`
-    /// and then deletes the pending change record.
+    /// `processPendingChanges(userId:)` with a `.create` pending change calls `addCipherWithServer`,
+    /// deletes the old cipher record with the temporary ID, and then deletes the pending change record.
     func test_processPendingChanges_create() async throws {
         let cipherResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
         let cipherData = try JSONEncoder().encode(cipherResponseModel)
@@ -144,6 +144,39 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "cipher-1")
+
+        // The old cipher record with the temp ID should be deleted so it doesn't
+        // persist as an orphan alongside the new server-assigned-ID record.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")
+
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    /// `processPendingChanges(userId:)` with a `.create` pending change where the cipher
+    /// has no ID does not attempt to delete a local cipher record (no temp ID to clean up).
+    func test_processPendingChanges_create_nilId_skipsLocalDelete() async throws {
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(id: nil)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "pending-cipher",
+            userId: "1",
+            changeType: .create,
+            cipherData: cipherData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        try await subject.processPendingChanges(userId: "1")
+
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
+
+        // No temp ID to clean up — deleteCipherWithLocalStorage should not be called.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
     }
 
