@@ -1074,10 +1074,15 @@ extension DefaultVaultRepository: VaultRepository {
 
         let originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
 
+        // Preserve .create type if this cipher was originally created offline and hasn't been
+        // synced to the server yet. From the server's perspective it's still a new cipher that
+        // needs to be POSTed, not an existing cipher to PUT.
+        let changeType: PendingCipherChangeType = existing?.changeType == .create ? .create : .update
+
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
-            changeType: .update,
+            changeType: changeType,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
             offlinePasswordChangeCount: passwordChangeCount
@@ -1090,6 +1095,19 @@ extension DefaultVaultRepository: VaultRepository {
     ///
     private func handleOfflineDelete(cipherId: String) async throws {
         let userId = try await stateService.getActiveAccountId()
+
+        // If this cipher was created offline and hasn't been synced to the server,
+        // just clean up locally — there's nothing to delete on the server.
+        if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
+            cipherId: cipherId,
+            userId: userId
+        ), existing.changeType == .create {
+            try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
+            if let recordId = existing.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
+            }
+            return
+        }
 
         // Fetch the current cipher to preserve its data
         guard let cipher = try await cipherService.fetchCipher(withId: cipherId) else { return }
@@ -1123,6 +1141,19 @@ extension DefaultVaultRepository: VaultRepository {
     ///
     private func handleOfflineSoftDelete(cipherId: String, encryptedCipher: Cipher) async throws {
         let userId = try await stateService.getActiveAccountId()
+
+        // If this cipher was created offline and hasn't been synced to the server,
+        // just clean up locally — there's nothing to soft-delete on the server.
+        if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
+            cipherId: cipherId,
+            userId: userId
+        ), existing.changeType == .create {
+            try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
+            if let recordId = existing.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
+            }
+            return
+        }
 
         // Persist the soft-deleted cipher locally so it appears in trash
         try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
