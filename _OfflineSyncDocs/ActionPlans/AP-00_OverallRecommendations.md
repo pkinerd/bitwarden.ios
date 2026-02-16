@@ -37,7 +37,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 
 | Issue | Recommendation | Effort | Risk |
 |-------|---------------|--------|------|
-| ~~**VI-1** — Offline-created cipher view failure~~ | ~~Error state + direct fetch fallback (Option E)~~ **[Resolved]** Root cause eliminated by moving temp-ID before encryption (commits `06456bc`–`53e08ef`) | 0 | N/A |
+| **VI-1** — Offline-created cipher view failure | **Mitigated** — Spinner fixed via UI fallback (`fetchCipherDetailsDirectly()` in `ViewItemProcessor`, PR #31). Root cause remains: `Cipher.withTemporaryId()` sets `data: nil`. Recommended: move temp-ID before encryption, replace `Cipher.withTemporaryId()` with `CipherView`-level ID method | ~50-80 lines | Low |
 | **S6** — Password change test | Add dedicated tests (Option A) | ~100-150 lines | Very low |
 | **S7** — Cipher-not-found test | Add single targeted test (Option A) | ~30-40 lines | Very low |
 | ~~**SEC-1** — secureConnectionFailed~~ | ~~Add logging for TLS triggers~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted; plain `catch` replaces URLError filtering. | ~~10-15 lines~~ 0 | N/A |
@@ -47,7 +47,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | ~~**CS-1** — Stray blank line~~ | ~~Remove blank line (Option A)~~ **[Resolved]** — Removed in commit `a52d379`. | ~~1 line~~ 0 | N/A |
 | **R4** — Silent sync abort | Add log line (Option A) | 1-2 lines | None |
 
-**Rationale:** VI-1 is a user-facing usability bug — offline-created items cannot be viewed, resulting in an infinite spinner. Test gaps (S6, S7) are low-effort, high-value. R4 logging is trivial. S8 (feature flag) is the most impactful medium-priority item for production safety. A3, CS-1, SEC-1, and EXT-1 are all resolved/superseded.
+**Rationale:** VI-1's symptom (infinite spinner) is mitigated via UI fallback, but the root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains. Related edge cases (editing offline-created ciphers loses `.create` type; deleting offline-created ciphers queues futile `.softDelete`; no temp-ID cleanup in `resolveCreate()`) also remain. Test gaps (S6, S7) are low-effort, high-value. R4 logging is trivial. S8 (feature flag) is the most impactful medium-priority item for production safety. A3, CS-1, SEC-1, and EXT-1 are all resolved/superseded.
 
 ### Phase 3: Nice-to-Have (Low Priority)
 
@@ -90,7 +90,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 2. ~~**CS-1** — Remove stray blank line~~ **[Resolved]** — Removed in commit `a52d379`
 3. **R4** — Add sync abort log line (1 file, 2 lines)
 4. ~~**SEC-1** — Add TLS fallback logging~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted
-5. **VI-1** — Fix offline-created cipher detail view failure (1-2 files, ~30-50 lines) — add error state + direct fetch fallback in `ViewItemProcessor.streamCipherDetails()`
+5. **VI-1** — **Mitigated** — spinner fixed via UI fallback (`fetchCipherDetailsDirectly()` in `ViewItemProcessor`, PR #31), root cause remains (`Cipher.withTemporaryId()` sets `data: nil`). Root cause fix still needed: move temp-ID before encryption, replace `Cipher.withTemporaryId()` with `CipherView`-level ID method (~50-80 lines)
 
 ### Batch 2: Test Coverage (1-2 hours)
 5. **T5** — Evaluate/replace inline mock (1 file)
@@ -153,7 +153,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 
 The overall risk of implementing all recommended changes is **low**:
 
-1. **Phase 1-2 are mostly test-only** — VI-1 is a behavioral change (adding error state + fallback to the detail view processor) but is additive and low-risk
+1. **Phase 1-2 are mostly test-only** — VI-1's root cause fix (moving temp-ID before encryption, replacing `Cipher.withTemporaryId()`) is a behavioral change but is additive and low-risk. The UI fallback mitigation is already in place as a safety net.
 2. **Phase 3 reliability improvements** are additive — they add safety mechanisms without changing existing behavior
 3. **Phase 4 items** are mostly accept-as-is — no changes needed
 4. **The feature flag (S8)** reduces overall production risk by providing a kill switch
@@ -222,7 +222,7 @@ Based on the code review, the recommended implementation order is refined:
 2. ~~CS-1 — Remove stray blank line~~ **[Resolved]** — Commit `a52d379`
 3. R4 — Add sync abort log line
 4. ~~SEC-1 — Add TLS fallback logging~~ **[Superseded]** — Extension deleted
-5. ~~**VI-1** — Fix offline-created cipher detail view failure~~ **[Resolved]** — Root cause eliminated (commits `06456bc`–`53e08ef`)
+5. **VI-1** — **Mitigated** — spinner fixed via UI fallback (PR #31), root cause (`data: nil` in `Cipher.withTemporaryId()`) remains. Still needs root cause fix: move temp-ID before encryption, replace `Cipher.withTemporaryId()`
 
 **Batch 2: Critical Test Coverage** (updated)
 5. T5 — Evaluate/replace inline mock

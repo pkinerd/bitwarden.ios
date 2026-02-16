@@ -12,15 +12,18 @@
 
 ## Description
 
-**[Updated]** `Cipher.withTemporaryId(_:)` has been deleted and replaced with `CipherView.withId(_:)` as part of the VI-1 fix (commits `8ff7a09` through `3f7240a`). The new method operates on `CipherView` (before encryption) rather than `Cipher` (after encryption), eliminating the `data: nil` problem that contributed to the offline spinner bug.
+The offline sync implementation introduces manual copy/clone methods for two different BitwardenSdk types: `Cipher` and `CipherView`. These methods manually call the full SDK initializer, copying every property by name. There are three such methods:
 
-The remaining fragile method is `CipherView.update(name:folderId:)` which manually copies ~24 properties and `CipherView.withId(_:)` which manually copies ~26 properties. Both call the full `CipherView` SDK initializer. If `CipherView` from the BitwardenSdk package gains new properties:
+1. **`Cipher.withTemporaryId(_:)`** — Creates a copy of a `Cipher` with a new temporary ID. Manually copies ~26 `Cipher` properties. Sets `data` to `nil` (this is the root cause of VI-1's decryption failures).
+2. **`CipherView.update(name:folderId:)`** — Creates a copy of a `CipherView` with updated name and folder. Manually copies ~24 properties. Sets `id` and `key` to `nil`, `attachments` to `nil`.
+
+If `Cipher` or `CipherView` from the BitwardenSdk package gains new properties:
 - **With default values:** These methods compile but silently drop the new property's value (data loss risk)
 - **Without default values (required):** Compilation fails, which is the safer outcome
 
 This fragility is inherent to working with external SDK types that don't provide copy/clone methods.
 
-**Change from original:** The issue scope has been reduced from two different SDK types (`Cipher` + `CipherView`) to a single type (`CipherView`) with two methods. The `CipherView.withId(_:)` method also now copies `attachmentDecryptionFailures` which was not present in the old `Cipher.withTemporaryId()`.
+**Current dev state:** `Cipher.withTemporaryId()` still exists with `data: nil`, which is the root cause of VI-1's decryption failures (VI-1 is mitigated via UI fallback but the root cause remains). Two SDK types with fragile copy methods remain: `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)`.
 
 ---
 
@@ -28,7 +31,7 @@ This fragility is inherent to working with external SDK types that don't provide
 
 ### Option A: Add SDK Update Review Comment (Recommended)
 
-Add a prominent comment to both methods noting that they must be reviewed when the BitwardenSdk is updated. Include the property count in the comment as a reference.
+Add a prominent comment to all copy methods noting that they must be reviewed when the BitwardenSdk is updated. Include the property count in the comment as a reference.
 
 **Example:**
 ```swift
@@ -114,20 +117,3 @@ Long-term, **Option C** (SDK-native copy methods) is the ideal solution but depe
 - **RES-7**: Backup ciphers lack attachments — the `update(name:folderId:)` method explicitly sets `attachments` to nil. If attachment support is added, this method must be updated.
 - **T5 (RES-6)**: Inline mock fragility — the same class of problem (manual conformance to external types that may change).
 
-## Updated Review Findings (Post-VI-1 Fix)
-
-**[Updated 2026-02-16]** The VI-1 fix significantly changed the landscape for this issue:
-
-1. **`Cipher.withTemporaryId(_:)` has been deleted.** It was replaced by `CipherView.withId(_:)` which operates on the decrypted type before encryption. This eliminates the `data: nil` problem and the associated decryption failures.
-
-2. **Two `CipherView` copy methods now exist:**
-   - `CipherView.withId(_:)` at `CipherView+OfflineSync.swift:16-47`: Copies ~26 properties, replacing the specified ID. Includes `attachmentDecryptionFailures` which the old `Cipher.withTemporaryId()` did not have.
-   - `CipherView.update(name:folderId:)` at `CipherView+OfflineSync.swift:49-90`: Copies ~24 properties. Sets `id` and `key` to `nil`, `attachments` to `nil`, `attachmentDecryptionFailures` to `nil`.
-
-3. **Scope reduced**: The fragility concern now applies to a single SDK type (`CipherView`) rather than two types (`Cipher` + `CipherView`). Both methods are in the same file and call the same initializer pattern.
-
-4. **Mirror-based detection (Option B)**: Still NOT recommended — Rust FFI-generated Swift structs may not accurately reflect properties via `Mirror`.
-
-5. **Recommendation unchanged**: Option A (SDK update review comments) remains the pragmatic approach. The property count note should now reference `CipherView` only.
-
-**Updated conclusion**: The issue severity remains Low, but the scope is reduced. One fragile SDK type instead of two. The recommendation stands: add review comments noting property counts for verification during SDK updates.
