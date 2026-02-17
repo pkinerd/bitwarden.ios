@@ -218,3 +218,27 @@ is a production code defect, and the narrow test coverage fails to catch it. Tog
 they represent the most significant quality regression: server-side errors (401, 403,
 400, etc.) are silently swallowed into offline fallback, and no test verifies this
 is wrong.
+
+---
+
+## Post-Review Test Changes on `dev`
+
+Several PRs added test improvements on `dev`:
+
+### PR #27: Close Test Coverage Gap (Commits `481ddc4`, `578a366`)
+
+| Test File | What Was Added |
+|-----------|---------------|
+| `CipherServiceTests.swift` | URLError propagation tests verifying errors flow through `CipherService` → `APIService` → `HTTPService` chain |
+| `AddEditItemProcessorTests.swift` | Network error alert tests documenting user-visible symptoms when offline fallback fails |
+| (Both files) | Non-network error rethrow tests (`CipherAPIServiceError`, `ServerError`) verifying these propagate rather than trigger offline save |
+
+### PR #33: Test Assertion Fix (Commit `a10fe15`)
+
+Fixed `test_softDeleteCipher_pendingChangeCleanup` userId assertion from `"1"` to `"13512467-9cfe-43b0-969f-07534084764b"` to match `fixtureAccountLogin()`.
+
+### Impact on Earlier Findings
+
+- **Deep Dive 1 (catch-all error handling)** — **Partially addressed.** The production code now uses a denylist pattern (`catch ServerError`, `catch CipherAPIServiceError`, `catch ResponseValidationError < 500`) rather than bare `catch`. Client-side validation errors and 4xx HTTP errors are properly rethrown. PR #28 tests verify this behavior.
+- **Deep Dive 7 (narrow error coverage)** — **Partially addressed.** PR #27 added non-network error rethrow tests, but most offline fallback tests still only use `URLError(.notConnectedToInternet)`.
+- **Deep Dive 2 (missing negative assertions)** — Still relevant. No negative assertions added to happy-path tests.

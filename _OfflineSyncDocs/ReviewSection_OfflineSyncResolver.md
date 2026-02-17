@@ -88,6 +88,8 @@ processPendingChanges(userId:)
 
 **Important:** The create resolution does NOT replace the temporary client-generated ID with the server-assigned ID. The `addCipherWithServer` method on `CipherService` handles this internally: it pushes the cipher to the server, receives the server response (which contains the real ID), and updates local storage.
 
+**Known gap — orphaned temp-ID record:** After `addCipherWithServer` creates a new `CipherData` record with the server-assigned ID, the old record with the temp client-side ID becomes orphaned. This orphan persists until the next full sync's `replaceCiphers()` call cleans it up. While not harmful, it represents unnecessary data in Core Data between resolution and the next full sync.
+
 **Potential Issue RES-1:** If `addCipherWithServer` fails partway (e.g., the server accepts the cipher but the local storage update fails), the pending change is NOT deleted (the `deletePendingChange` line is reached only after `addCipherWithServer` completes). On retry, this could result in a duplicate cipher on the server. The server has no deduplication mechanism for client-generated UUIDs.
 
 #### 5b. Update Resolution (`resolveUpdate`)
@@ -172,9 +174,14 @@ processPendingChanges(userId:)
 2. Fetch all folders via folderService.fetchAllFolders()
 3. For each folder: decrypt and check if name == "Offline Sync Conflicts"
 4. If found: cache ID and return
-5. If not found: create via folderService.addFolderWithServer(name:)
+5. If not found:
+   a. Create FolderView with name "Offline Sync Conflicts"
+   b. Encrypt via clientService.vault().folders().encrypt(folder:)
+   c. Create via folderService.addFolderWithServer(name: encryptedFolder.name)
 6. Cache new ID and return
 ```
+
+**[Updated — PR #29 fix]** The folder creation now properly encrypts the folder name before sending to the server. The original code passed the plaintext name "Offline Sync Conflicts" directly to `addFolderWithServer(name:)`, which expects an encrypted string. This caused the Bitwarden SDK to crash (Rust panic) when later trying to decrypt plaintext as ciphertext during folder fetch.
 
 **Performance Note:** This decrypts every folder to find the conflict folder by name. For users with many folders, this is O(n) decryption operations. The caching per-batch mitigates repeated lookups within a single sync, but each sync batch starts fresh. A more efficient approach would be to store the conflict folder ID in `AppSettingsStore`, but the current approach is simpler and the folder count per user is typically small.
 
@@ -208,7 +215,7 @@ processPendingChanges(userId:)
 | Encrypt before persist (backup) | **Pass** | Backup ciphers are encrypted via SDK before `addCipherWithServer` |
 | No plaintext in transit | **Pass** | API calls use encrypted `Cipher` objects |
 | Decrypt only in-memory | **Pass** | Decryption for name modification and password comparison is ephemeral |
-| Conflict folder name encrypted | **Pass** | Folder name encrypted by SDK during `addFolderWithServer` |
+| Conflict folder name encrypted | **Pass** | **[Fixed in PR #29]** Folder name now encrypted via SDK before `addFolderWithServer`. Original code passed plaintext, causing crash. |
 
 ### Test Coverage
 

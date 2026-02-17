@@ -12,11 +12,18 @@
 
 ## Description
 
-`Cipher.withTemporaryId(_:)` manually copies 26 properties, and `CipherView.update(name:folderId:)` manually copies 24 properties, by calling the full SDK type initializer. If the `Cipher` or `CipherView` types from the BitwardenSdk package gain new properties:
+The offline sync implementation introduces manual copy/clone methods for two different BitwardenSdk types: `Cipher` and `CipherView`. These methods manually call the full SDK initializer, copying every property by name. There are three such methods:
+
+1. **`Cipher.withTemporaryId(_:)`** — Creates a copy of a `Cipher` with a new temporary ID. Manually copies ~26 `Cipher` properties. Sets `data` to `nil` (this is the root cause of VI-1's decryption failures).
+2. **`CipherView.update(name:folderId:)`** — Creates a copy of a `CipherView` with updated name and folder. Manually copies ~24 properties. Sets `id` and `key` to `nil`, `attachments` to `nil`.
+
+If `Cipher` or `CipherView` from the BitwardenSdk package gains new properties:
 - **With default values:** These methods compile but silently drop the new property's value (data loss risk)
 - **Without default values (required):** Compilation fails, which is the safer outcome
 
 This fragility is inherent to working with external SDK types that don't provide copy/clone methods.
+
+**Current dev state:** `Cipher.withTemporaryId()` still exists with `data: nil`, which is the root cause of VI-1's decryption failures (VI-1 is mitigated via UI fallback but the root cause remains). Two SDK types with fragile copy methods remain: `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)`.
 
 ---
 
@@ -24,7 +31,7 @@ This fragility is inherent to working with external SDK types that don't provide
 
 ### Option A: Add SDK Update Review Comment (Recommended)
 
-Add a prominent comment to both methods noting that they must be reviewed when the BitwardenSdk is updated. Include the property count in the comment as a reference.
+Add a prominent comment to all copy methods noting that they must be reviewed when the BitwardenSdk is updated. Include the property count in the comment as a reference.
 
 **Example:**
 ```swift
@@ -110,23 +117,3 @@ Long-term, **Option C** (SDK-native copy methods) is the ideal solution but depe
 - **RES-7**: Backup ciphers lack attachments — the `update(name:folderId:)` method explicitly sets `attachments` to nil. If attachment support is added, this method must be updated.
 - **T5 (RES-6)**: Inline mock fragility — the same class of problem (manual conformance to external types that may change).
 
-## Updated Review Findings
-
-The review confirms the original assessment with code-level detail. After reviewing the implementation:
-
-1. **Code verification**:
-   - `CipherView+OfflineSync.swift:16-47`: `Cipher.withTemporaryId(_:)` copies 26 properties explicitly. The 26th property `data` is hardcoded to `nil`.
-   - `CipherView+OfflineSync.swift:63-94`: `CipherView.update(name:folderId:)` copies 24 properties explicitly. `id` and `key` are set to `nil`, `attachments` set to `nil`, `attachmentDecryptionFailures` set to `nil`.
-
-2. **Property count verification**:
-   - `Cipher` init takes 26 named parameters plus `data` (27 total, but `data` is nil)
-   - `CipherView` init takes 24 named parameters
-   - These include `archivedDate` (related to the `.archiveVaultItems` feature flag), confirming the methods are up-to-date with current SDK
-
-3. **Fragility confirmation**: Both methods use positional init calls. If the SDK adds a new property with a default value, these methods compile silently but the new property gets the default value instead of being copied. This is the "silent data loss" risk described in the action plan.
-
-4. **Mirror-based detection (Option B) assessment**: After consideration, `Mirror(reflecting:)` on SDK types generated from Rust FFI is unreliable. The Rust-generated Swift structs may not accurately reflect all stored properties via `Mirror`. This option should be deprioritized.
-
-5. **SDK update frequency**: The `BitwardenSdk` is an external dependency. When it's updated, the Xcode build would fail if required parameters are added (good). It would NOT fail if optional parameters with defaults are added (the fragility risk).
-
-**Updated conclusion**: Original recommendation (Option A - add SDK update review comments) confirmed. Option B (Mirror-based test) should be explicitly marked as NOT recommended due to unreliability with Rust FFI types. The comments should note the exact property count for quick verification during SDK updates. Priority: Low.

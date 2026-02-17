@@ -28,12 +28,16 @@ encrypt(cipherView) → addCipherWithServer(encrypted) → done
 ```
 1. Check if cipher has organizationId (isOrgCipher)
 2. encrypt(cipherView) → try addCipherWithServer(encrypted)
-3. catch (any error):
-   a. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
-   b. Otherwise → handleOfflineAdd(encryptedCipher, userId)
+3. [New] On success: clean up any orphaned pending change from a prior offline add
+4. catch (denylist pattern):
+   a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
+   b. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
+   c. Otherwise → handleOfflineAdd(encryptedCipher, userId)
 ```
 
-**[Updated]** The catch block was simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`. Any server API call failure now triggers offline save. The encrypt step occurs outside the do-catch, so SDK errors propagate normally.
+**[Updated]** The catch block evolved from `catch let error as URLError where error.isNetworkConnectionError` through bare `catch` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, and `ResponseValidationError` with status < 500; all other errors (including 5xx and `URLError`) trigger offline save.
+
+**[Updated]** On successful server add, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)`. This prevents false conflicts on the next sync.
 
 **Security Flow:** The encryption step (`clientService.vault().ciphers().encrypt(cipherView:)`) occurs BEFORE the server call attempt. The encrypted cipher is available in the catch block, so no additional encryption is needed for offline storage. This preserves the encrypt-before-queue invariant.
 
@@ -55,7 +59,7 @@ encrypt(cipherView) → updateCipherWithServer(encrypted) → done
    b. Otherwise → handleOfflineUpdate(cipherView, encryptedCipher, userId)
 ```
 
-**[Updated]** Simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`.
+**[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
 
 **Notable:** `handleOfflineUpdate` receives both the decrypted `cipherView` (for password change detection) and the encrypted cipher (for local storage). The decrypted view is never persisted — it's used only for an in-memory comparison.
 
@@ -73,7 +77,7 @@ deleteCipherWithServer(id:) → done
    → handleOfflineDelete(cipherId: id)
 ```
 
-**[Updated]** Simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`.
+**[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
 
 **Notable:** Unlike the other methods, `deleteCipher` does not have the encrypted cipher available in the catch block (the original method only takes an `id` parameter). The `handleOfflineDelete` helper must fetch the cipher from local storage to get the encrypted data for the pending change record.
 
@@ -94,22 +98,23 @@ create softDeletedCipher (with deletedDate) → encrypt → softDeleteCipherWith
    b. Otherwise → handleOfflineSoftDelete(cipherId, encryptedCipher)
 ```
 
-**[Updated]** Simplified from `catch let error as URLError where error.isNetworkConnectionError` to plain `catch`.
+**[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
 
 ### 5. New Helper: `handleOfflineAdd`
 
 ```
 Parameters: encryptedCipher: Cipher, userId: String
 
-1. If cipher has no ID:
-   → Assign temporary UUID via withTemporaryId(UUID().uuidString)
+1. If encryptedCipher.id is nil → assign temp ID via Cipher.withTemporaryId(UUID().uuidString)
 2. Persist locally via cipherService.updateCipherWithLocalStorage(cipher)
 3. Convert to CipherDetailsResponseModel → JSON-encode
-4. Guard let cipherId = cipher.id (should always succeed after step 1)
+4. Guard let cipherId = cipher.id
 5. Upsert pending change: changeType = .create, passwordChangeCount = 0
 ```
 
 **Temporary ID Generation:** Uses `UUID().uuidString` which on iOS/macOS uses `/dev/urandom` (cryptographically secure). The ID is a standard UUID format (e.g., "A1B2C3D4-E5F6-...").
+
+**Known issue (VI-1 root cause):** `Cipher.withTemporaryId()` sets `data: nil` on the copy. This means the locally-stored cipher has a valid ID but no encrypted content, causing decryption failures when the detail view tries to load it. This is mitigated by a UI-level fallback (`fetchCipherDetailsDirectly()`) but the root cause remains. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 **Why `updateCipherWithLocalStorage` instead of `addCipherWithLocalStorage`?** The method name suggests an update, but it's used for a new cipher. This is because `CipherService.updateCipherWithLocalStorage` performs an upsert (insert-or-update) on the local Core Data store. For a cipher with a new (temporary) ID, this effectively inserts.
 
@@ -131,7 +136,7 @@ Parameters: cipherView: CipherView, encryptedCipher: Cipher, userId: String
       → Fetch cipher from local storage → decrypt → compare passwords
       → If different: increment count
 7. originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
-8. Upsert pending change with updated data and counts
+8. Upsert pending change: changeType = .update, with updated data and counts
 ```
 
 **Password Change Detection Logic (lines 1012-1030):**
@@ -159,6 +164,8 @@ Parameters: cipherId: String
 7. Upsert pending change: changeType = .softDelete, originalRevisionDate = cipher.revisionDate
 ```
 
+**Known gap:** If a cipher was created offline (pending type `.create`) and the user deletes it before sync, a `.softDelete` pending change is queued for a temp-ID that doesn't exist on the server. The resolver will fail when trying to `getCipher(withId: tempId)`. There is no `.create`-check cleanup on dev.
+
 **Important Design Decision:** `deleteCipher` (permanent delete) is converted to a soft delete in offline mode. This is because a permanent delete cannot be undone, and if there's a conflict (server version was edited), the resolver needs the ability to create a backup. By soft-deleting locally, the cipher moves to trash rather than being permanently removed, giving the resolver more options during conflict resolution.
 
 **Organization Guard:** Unlike the other methods where the org check happens in the public method before the offline handler, `handleOfflineDelete` checks `cipher.organizationId` internally. This is because `deleteCipher(_:)` only receives an ID (not a `CipherView`), so the org check must happen after fetching the cipher.
@@ -175,6 +182,8 @@ Parameters: cipherId: String, encryptedCipher: Cipher
 3. Convert to CipherDetailsResponseModel → JSON-encode
 4. Upsert pending change: changeType = .softDelete
 ```
+
+**Same gap as `handleOfflineDelete`:** No `.create`-check cleanup. If an offline-created cipher is soft-deleted before sync, a futile `.softDelete` pending change is queued for a temp-ID that doesn't exist on the server.
 
 **Note:** The `encryptedCipher` already has `deletedDate` set (this was done in `softDeleteCipher` before the API call). So persisting it locally correctly shows the cipher in the trash UI.
 
@@ -213,7 +222,7 @@ This creates an inconsistency: add, update, delete, and soft-delete work offline
 | DocC documentation | **Pass** | All four private helper methods have DocC with parameter docs |
 | Guard clauses for early returns | **Pass** | Used in `handleOfflineAdd` (cipherId guard), `handleOfflineDelete` (nil guard, org guard) |
 | American English | **Pass** | "organization" used consistently |
-| Error handling pattern | **Pass** | **[Updated]** Plain `catch` blocks — simplified from URLError filtering. The encrypt step occurs outside the do-catch, so SDK errors propagate normally. |
+| Error handling pattern | **Pass** | **[Updated]** Denylist catch pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save. The encrypt step occurs outside the do-catch, so SDK errors propagate normally. |
 
 ### Security Compliance
 

@@ -141,3 +141,4 @@ The review confirms the original assessment with code-level detail. After review
    - **Post-push cleanup with retry**: After successful push, retry `deletePendingChange` with a short retry loop. Reduces the window but doesn't eliminate it.
 
 **Updated conclusion**: Original recommendation (accept risk) confirmed. The scenario requires two simultaneous failures (rare), and the consequence (duplicate cipher) is recoverable (user can manually delete). The mitigation options either shift the risk to data loss or require server changes. Priority: Informational, accept risk for initial release.
+

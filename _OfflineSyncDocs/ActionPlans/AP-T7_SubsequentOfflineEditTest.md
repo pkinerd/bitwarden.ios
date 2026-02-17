@@ -104,3 +104,4 @@ The review confirms the original assessment with code-level detail. After review
 4. **Overlap with S6**: The subsequent-edit test naturally verifies password counting behavior. Tests 3 and 4 from S6 (subsequent edit with password changed/unchanged) directly overlap with T7. Recommend implementing them as separate test methods but in the same test session.
 
 **Updated conclusion**: Original recommendation (Option A - dedicated test) confirmed. The test directly validates the `originalRevisionDate` preservation invariant which is critical for conflict detection. Priority: Low but important for coverage of the upsert-update code path.
+
