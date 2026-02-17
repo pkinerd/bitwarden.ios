@@ -8,7 +8,14 @@ import XCTest
 
 // MARK: - MockCipherAPIServiceForOfflineSync
 
-/// A minimal mock for the cipher API service methods used by the offline sync resolver.
+/// A minimal inline mock for the cipher API service methods used by the offline sync resolver.
+///
+/// This mock exists because `CipherAPIService` does not have the `// sourcery: AutoMockable`
+/// annotation, so no auto-generated mock is available. Only `getCipher(withId:)` is implemented;
+/// all other protocol methods use `fatalError()` stubs. If the `CipherAPIService` protocol
+/// changes (methods added, removed, or renamed), the stubs below must be updated to maintain
+/// compilation. Consider adding `// sourcery: AutoMockable` to `CipherAPIService` to eliminate
+/// this manual maintenance.
 class MockCipherAPIServiceForOfflineSync: CipherAPIService {
     var getCipherResult: Result<CipherDetailsResponseModel, Error> = .success(.fixture())
     var getCipherCalledWith = [String]()
@@ -585,5 +592,325 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let error = OfflineSyncError.vaultLocked
         XCTAssertNotNil(error.errorDescription)
         XCTAssertTrue(error.errorDescription?.contains("locked") ?? false)
+    }
+
+    // MARK: Tests - API Failure Handling
+
+    /// `processPendingChanges(userId:)` retains the pending record when a `.create`
+    /// resolution fails because `addCipherWithServer` throws.
+    func test_processPendingChanges_create_apiFailure_pendingRecordRetained() async throws {
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: cipherData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Make the API call fail.
+        cipherService.addCipherWithServerResult = .failure(BitwardenTestError.example)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The pending record should NOT be deleted when the API call fails.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` retains the pending record when an `.update`
+    /// resolution fails because `getCipher` throws a non-404 error during server fetch.
+    func test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Make the server fetch fail with a non-404 error.
+        cipherAPIService.getCipherResult = .failure(BitwardenTestError.example)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The pending record should NOT be deleted.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+
+        // The update should never have been attempted.
+        XCTAssertTrue(cipherService.updateCipherWithServerCiphers.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` retains the pending record when a `.softDelete`
+    /// resolution fails because `softDeleteCipherWithServer` throws.
+    func test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .softDelete,
+            cipherData: cipherData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server fetch succeeds with the same revisionDate (no conflict).
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        ))
+
+        // Make the soft delete API call fail.
+        cipherService.softDeleteWithServerResult = .failure(BitwardenTestError.example)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The pending record should NOT be deleted.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` retains the pending record when an `.update`
+    /// resolution detects a conflict but the backup creation fails because
+    /// `addCipherWithServer` throws during `createBackupCipher`.
+    func test_processPendingChanges_update_backupFailure_pendingRecordRetained() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            revisionDate: originalRevisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server has a different revisionDate (triggers conflict).
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: serverRevisionDate
+        ))
+
+        // Set up folder creation for the backup cipher.
+        folderService.fetchAllFoldersResult = .success([])
+        folderService.addFolderWithServerResult = .success(
+            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
+        )
+
+        // Make the backup cipher creation fail. In the conflict path (local newer),
+        // the backup is created first via `createBackupCipher` which calls
+        // `addCipherWithServer`. This failure prevents the main update from executing.
+        cipherService.addCipherWithServerResult = .failure(BitwardenTestError.example)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The pending record should NOT be deleted.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+
+        // The main update should NOT have been attempted since the backup failed first.
+        XCTAssertTrue(cipherService.updateCipherWithServerCiphers.isEmpty)
+    }
+
+    // MARK: Tests - Batch Processing
+
+    /// `processPendingChanges(userId:)` processes multiple pending changes of different
+    /// types (create, update, soft delete) in a single batch and cleans up all resolved records.
+    func test_processPendingChanges_batch_allSucceed() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+
+        // Create pending change: cipher-1 (.create)
+        let createResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
+        let createData = try JSONEncoder().encode(createResponseModel)
+
+        // Update pending change: cipher-2 (.update)
+        let updateResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-2",
+            revisionDate: revisionDate
+        )
+        let updateData = try JSONEncoder().encode(updateResponseModel)
+
+        // SoftDelete pending change: cipher-3 (.softDelete)
+        let softDeleteResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-3",
+            revisionDate: revisionDate
+        )
+        let softDeleteData = try JSONEncoder().encode(softDeleteResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-2",
+            userId: "1",
+            changeType: .update,
+            cipherData: updateData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-3",
+            userId: "1",
+            changeType: .softDelete,
+            cipherData: softDeleteData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server returns same revisionDate for update and soft delete (no conflict).
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-2",
+            revisionDate: revisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Create should call addCipherWithServer.
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "cipher-1")
+
+        // Update should call updateCipherWithServer.
+        XCTAssertEqual(cipherService.updateCipherWithServerCiphers.count, 1)
+
+        // SoftDelete should call softDeleteCipherWithServer.
+        XCTAssertNotNil(cipherService.softDeleteCipherId)
+
+        // All three pending records should be deleted.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 3)
+    }
+
+    /// `processPendingChanges(userId:)` resolves successful items and retains failed items'
+    /// pending records when a batch contains a mix of successful and failing resolutions.
+    /// The catch-and-continue error handling ensures that one item's failure does not block others.
+    func test_processPendingChanges_batch_mixedFailure_successfulItemResolved() async throws {
+        // Create pending change: cipher-1 (.create) — will succeed.
+        let createResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
+        let createData = try JSONEncoder().encode(createResponseModel)
+
+        // Update pending change: cipher-2 (.update) — will fail (getCipher throws).
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+        let updateResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-2",
+            revisionDate: revisionDate
+        )
+        let updateData = try JSONEncoder().encode(updateResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-2",
+            userId: "1",
+            changeType: .update,
+            cipherData: updateData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // The create path does not call getCipher, so it succeeds.
+        // The update path calls getCipher, which fails.
+        cipherAPIService.getCipherResult = .failure(BitwardenTestError.example)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Create should have succeeded.
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "cipher-1")
+
+        // Only the create's pending record should be deleted; the update's remains.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+
+        // The update should not have been attempted (failed at getCipher).
+        XCTAssertTrue(cipherService.updateCipherWithServerCiphers.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` retains all pending records when every item in
+    /// the batch fails.
+    func test_processPendingChanges_batch_allFail() async throws {
+        // Two create pending changes — both will fail.
+        let createResponseModel1 = CipherDetailsResponseModel.fixture(id: "cipher-1")
+        let createData1 = try JSONEncoder().encode(createResponseModel1)
+
+        let createResponseModel2 = CipherDetailsResponseModel.fixture(id: "cipher-2")
+        let createData2 = try JSONEncoder().encode(createResponseModel2)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData1,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-2",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData2,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Make addCipherWithServer fail for all items.
+        cipherService.addCipherWithServerResult = .failure(BitwardenTestError.example)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Both items should have been attempted.
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 2)
+
+        // No pending records should be deleted since both failed.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
     }
 }
