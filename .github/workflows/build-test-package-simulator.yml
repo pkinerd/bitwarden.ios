@@ -191,12 +191,31 @@ jobs:
       #       echo "File ID: \`$FILE_ID\`" >> "$GITHUB_STEP_SUMMARY"
       #     fi
 
+      - name: "Prepare: Appetize upload note"
+        id: appetize-note
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BRANCH: ${{ github.head_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            NOTE="PR #${PR_NUMBER}: ${PR_TITLE} | Branch: ${PR_BRANCH} | Commit: ${SHORT_SHA} | ${PR_URL}"
+          else
+            NOTE="Push to ${REF_NAME} | Commit: ${SHORT_SHA} | $_GITHUB_ACTION_RUN_URL"
+          fi
+          echo "note=${NOTE}" >> "$GITHUB_OUTPUT"
+
       - name: "Upload: Appetize"
         uses: appetizeio/github-action-appetize@v1.0.5
         with:
           apiToken: ${{ secrets.APPETIZE_API_TOKEN }}
           appFile: build/artifacts/Bitwarden-Simulator.zip
           platform: 'ios'
+          note: ${{ steps.appetize-note.outputs.note }}
 
       - name: Test
         env:
