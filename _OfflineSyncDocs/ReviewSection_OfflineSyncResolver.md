@@ -266,11 +266,9 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 **Mitigation:** Low probability in practice because `addCipherWithServer` handles both the API call and local storage update, and local storage writes rarely fail. The user would see a duplicate cipher but would not lose data.
 
-### Issue RES-2: `conflictFolderId` Thread Safety (Low)
+### ~~Issue RES-2: `conflictFolderId` Thread Safety (Low)~~ **[Resolved]**
 
-`DefaultOfflineSyncResolver` is a `class` (reference type) with a mutable `var conflictFolderId`. There is no actor isolation, lock, or other synchronization. Currently safe because `processPendingChanges` is called sequentially from `SyncService.fetchSync()`, but fragile if the resolver were ever called concurrently.
-
-**Recommendation:** Consider using `actor` instead of `class`, or add a comment documenting the serial-call-only requirement.
+~~`DefaultOfflineSyncResolver` is a `class` (reference type) with a mutable `var conflictFolderId`. There is no actor isolation, lock, or other synchronization.~~ **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor`, providing compiler-enforced isolation for `conflictFolderId`. See [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md).
 
 ### Issue RES-3: No Test for Batch Processing with Mixed Results (Medium)
 

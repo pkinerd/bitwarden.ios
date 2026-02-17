@@ -53,7 +53,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 
 | Issue | Recommendation | Effort | Risk |
 |-------|---------------|--------|------|
-| **R2** — Thread safety | Convert to actor (Option A) | ~5 lines | Low |
+| ~~**R2** — Thread safety~~ | ~~Convert to actor (Option A)~~ **[Resolved]** — `DefaultOfflineSyncResolver` converted from `class` to `actor` | ~~5 lines~~ 0 | N/A |
 | **R3** — Retry backoff | TTL + retry count (Options A+B) | ~30-50 lines | Low-Medium |
 | **R1** — Data format versioning | Add version field (Option A) | ~15-20 lines | Low |
 | **CS-2** — Fragile SDK copies | Add review comments (Option A) | ~6 lines | None |
@@ -63,7 +63,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | **T5** — Inline mock fragility | Add `@AutoMockable` to CipherAPIService (Option A) | ~5 lines | Very low |
 | **DI-1** — UI layer exposure | Accept current pattern (Option A) | 0 lines | None |
 
-**Rationale:** R2 (actor conversion) and R3 (retry backoff) are the most impactful improvements here. R3 prevents permanently blocked sync. The remaining items are cleanup and additional test coverage.
+**Rationale:** ~~R2 (actor conversion) and~~ R3 (retry backoff) ~~are~~ is the most impactful improvement~~s~~ here. R3 prevents permanently blocked sync. R2 is now resolved. The remaining items are cleanup and additional test coverage.
 
 ### Phase 4: Accept / Future Enhancement (Informational)
 
@@ -101,7 +101,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 10. ~~**T6** — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 
 ### Batch 3: Reliability Improvements (2-3 hours)
-11. **R2** — Convert resolver to actor (1-2 files)
+11. ~~**R2** — Convert resolver to actor~~ **[Resolved]** — Converted `DefaultOfflineSyncResolver` from `class` to `actor`
 12. **R3** — Add retry backoff/TTL (2-3 files, ~30-50 lines, schema change)
 13. **R1** — Add data format version field (2-3 files, ~15-20 lines, schema change)
 
@@ -233,7 +233,7 @@ Based on the code review, the recommended implementation order is refined:
 10. ~~T6 — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 
 **Batch 3: Reliability (R3 elevated)** (updated)
-11. R2 — Convert resolver to actor
+11. ~~R2 — Convert resolver to actor~~ **[Resolved]**
 12. **R3** — Add retry count + failed state (**elevated from Nice-to-have**)
 13. R1 — Add data format version (deprioritize if R3 is implemented)
 

@@ -57,7 +57,7 @@ protocol OfflineSyncResolver {
 
 /// A default implementation of `OfflineSyncResolver` that resolves pending cipher changes.
 ///
-class DefaultOfflineSyncResolver: OfflineSyncResolver {
+actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     // MARK: Constants
 
     /// The minimum number of offline password changes that triggers a server backup

@@ -975,7 +975,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 
 | ID | Title | Priority |
 |----|-------|----------|
-| [R2](./_OfflineSyncDocs/ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md) | `conflictFolderId` thread safety | Low |
+| ~~[R2](./_OfflineSyncDocs/ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md)~~ | ~~`conflictFolderId` thread safety~~ — **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor` | ~~Low~~ N/A |
 | [R3](./_OfflineSyncDocs/ActionPlans/AP-R3_RetryBackoff.md) | No retry backoff for permanently failing items | Low |
 | [R1](./_OfflineSyncDocs/ActionPlans/AP-R1_DataFormatVersioning.md) | No data format versioning | Low |
 | [CS-2](./_OfflineSyncDocs/ActionPlans/AP-CS2_FragileSDKCopyMethods.md) | Fragile SDK copy methods | Low |

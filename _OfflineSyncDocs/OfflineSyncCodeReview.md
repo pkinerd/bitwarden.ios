@@ -367,7 +367,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 
 **Issue R1 (Low) — Pending change data format versioning:** Pending changes store `CipherDetailsResponseModel` as JSON. If the model evolves in a future app update, old pending changes might fail to decode. Severity is low since pending changes are short-lived (resolved on next successful sync).
 
-**Issue R2 (Low) — `conflictFolderId` thread safety:** `DefaultOfflineSyncResolver.conflictFolderId` is a mutable `var` on a class with no `actor` isolation. Currently safe due to sequential calling pattern, but fragile if ever called concurrently.
+~~**Issue R2 (Low) — `conflictFolderId` thread safety:** `DefaultOfflineSyncResolver.conflictFolderId` is a mutable `var` on a class with no `actor` isolation. Currently safe due to sequential calling pattern, but fragile if ever called concurrently.~~ **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor`. See [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md).
 
 **Issue R3 (Low) — No retry backoff for failed resolution items:** Failed items are retried on every subsequent sync with no backoff. If a cipher consistently fails to resolve (e.g., server returns 404), the resolver will attempt it every sync indefinitely. Consider adding a retry count or expiry mechanism.
 
@@ -567,7 +567,7 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 |----|-----------|-------|-----------------|
 | CS-2 | `CipherView+OfflineSync` | `withTemporaryId`/`update` fragile against SDK type changes | Section 3.1 |
 | R1 | `PendingCipherChangeData` | No data format versioning for `cipherData` JSON | Section 7.3 |
-| R2 | `OfflineSyncResolver` | `conflictFolderId` thread safety (class with mutable var, no actor isolation) | [RES-2](ReviewSection_OfflineSyncResolver.md) |
+| ~~R2~~ | ~~`OfflineSyncResolver`~~ | ~~`conflictFolderId` thread safety (class with mutable var, no actor isolation)~~ **[Resolved]** — Converted to `actor` | [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md) |
 | R3 | `OfflineSyncResolver` | No retry backoff for permanently failing resolution items | Section 7.3 |
 | R4 | `SyncService` | Silent sync abort (no logging) | [SS-3](ReviewSection_SyncService.md) |
 | DI-1 | `Services.swift` | `HasPendingCipherChangeDataStore` exposes data store to UI layer (broader than needed) | [DI-1](ReviewSection_DIWiring.md) |

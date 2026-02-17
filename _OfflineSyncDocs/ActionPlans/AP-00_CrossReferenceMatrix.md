@@ -16,7 +16,7 @@ All test gap issues share common infrastructure. The order of implementation mat
 
 **Implication:** If T5 is resolved by using a project-level mock, S3/S4 tests benefit from a cleaner mock setup. If T5 is deferred, S3/S4 add more weight to the inline mock, increasing its maintenance burden.
 
-### Cluster 2: Reliability & Safety (R3, R4, S8, R1, R2)
+### Cluster 2: Reliability & Safety (R3, R4, S8, R1, ~~R2~~)
 
 These issues form a layered defense system:
 
@@ -24,7 +24,7 @@ These issues form a layered defense system:
 2. **R3 (retry backoff)** prevents permanently stuck items from blocking sync.
 3. **R4 (logging)** provides observability into what's happening.
 4. **R1 (format versioning)** prevents format mismatches from creating permanently stuck items.
-5. **R2 (thread safety)** prevents concurrent access bugs.
+5. ~~**R2 (thread safety)** prevents concurrent access bugs.~~ **[Resolved]** — `DefaultOfflineSyncResolver` converted to `actor`.
 
 **Implication:** If S8 (feature flag) is implemented, R3 (retry backoff) becomes less critical since the feature can be disabled entirely. However, R3 is still valuable for graceful degradation. R4 (logging) should be implemented regardless — it's trivial and provides debugging value.
 
@@ -83,7 +83,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | ~~**CS-1**~~ | — | — **[Resolved]** — Removed in commit `a52d379` |
 | **CS-2** | RES-7 (attachment handling) | — |
 | **R1** | — | R3 (both address stuck items), PCDS-1/PCDS-2 (schema changes) |
-| **R2** | — | ~~A3 (remove first for simpler migration)~~ **[A3 resolved]** |
+| ~~**R2**~~ | — | ~~A3 (remove first for simpler migration)~~ **[A3 resolved]** — **[R2 Resolved]** Converted to `actor` |
 | **R3** | S8 (complementary), R1 (complementary), SS-2 (recovery), RES-1 (expire duplicates) | S4 (test retry behavior) |
 | **R4** | T8 (distinguish abort vs error) | R3 (log expired items), S8 (log flag state) |
 | **DI-1** | U3 (enables indicator) | — |

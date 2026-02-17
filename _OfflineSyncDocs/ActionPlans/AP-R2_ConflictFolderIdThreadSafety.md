@@ -1,12 +1,14 @@
 # Action Plan: R2 (RES-2) — `conflictFolderId` Thread Safety
 
+> **Status: [RESOLVED]** — `DefaultOfflineSyncResolver` converted from `class` to `actor`. Single-keyword change provides compiler-enforced thread safety for `conflictFolderId` cache. Option A implemented.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | R2 / RES-2 |
 | **Component** | `DefaultOfflineSyncResolver` |
-| **Severity** | Low |
+| **Severity** | ~~Low~~ Resolved |
 | **Type** | Reliability / Thread Safety |
 | **File** | `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` |
 
