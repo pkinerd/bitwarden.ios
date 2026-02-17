@@ -23,7 +23,7 @@ If `Cipher` or `CipherView` from the BitwardenSdk package gains new properties:
 
 This fragility is inherent to working with external SDK types that don't provide copy/clone methods.
 
-**Current dev state:** `Cipher.withTemporaryId()` still exists with `data: nil`, which is the root cause of VI-1's decryption failures (VI-1 is mitigated via UI fallback but the root cause remains). Two SDK types with fragile copy methods remain: `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)`.
+~~**Current dev state:** `Cipher.withTemporaryId()` still exists with `data: nil`, which is the root cause of VI-1's decryption failures (VI-1 is mitigated via UI fallback but the root cause remains). Two SDK types with fragile copy methods remain: `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)`.~~ **[UPDATE]** `Cipher.withTemporaryId()` has been removed and replaced by `CipherView.withId(_:)` (commit `3f7240a`). VI-1 is now fully resolved. Fragile copy methods now on `CipherView` only: `CipherView.withId(_:)` and `CipherView.update(name:folderId:)`. Same fragility concern (manual field copying), but the `data: nil` problem no longer applies.
 
 ---
 

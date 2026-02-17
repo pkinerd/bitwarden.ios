@@ -22,4 +22,12 @@ struct GetCipherRequest: Request {
     init(cipherId: String) {
         self.cipherId = cipherId
     }
+
+    // MARK: Request
+
+    func validate(_ response: HTTPResponse) throws {
+        if response.statusCode == 404 {
+            throw OfflineSyncError.cipherNotFound
+        }
+    }
 }

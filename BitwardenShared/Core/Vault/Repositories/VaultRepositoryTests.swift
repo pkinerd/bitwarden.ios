@@ -1753,6 +1753,128 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .create)
     }
 
+    /// `updateCipher()` offline fallback increments the password change count when the
+    /// password differs from the pre-offline version (first offline edit).
+    func test_updateCipher_offlineFallback_passwordChanged_incrementsCount() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // No existing pending change — this is the first offline edit.
+        pendingCipherChangeDataStore.fetchPendingChangeResult = nil
+
+        // The pre-offline cipher in local storage has "old-pw".
+        cipherService.fetchCipherResult = .success(
+            Cipher.fixture(id: "123", login: .fixture(password: "old-pw"))
+        )
+
+        // The user is saving with a new password.
+        let cipher = CipherView.fixture(id: "123", login: .fixture(password: "new-pw"))
+        try await subject.updateCipher(cipher)
+
+        // Password changed: count should be 1.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            1
+        )
+    }
+
+    /// `updateCipher()` offline fallback keeps the password change count at zero when the
+    /// password is unchanged from the pre-offline version (first offline edit).
+    func test_updateCipher_offlineFallback_passwordUnchanged_zeroCount() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // No existing pending change — this is the first offline edit.
+        pendingCipherChangeDataStore.fetchPendingChangeResult = nil
+
+        // The pre-offline cipher in local storage has "same-pw".
+        cipherService.fetchCipherResult = .success(
+            Cipher.fixture(id: "123", login: .fixture(password: "same-pw"))
+        )
+
+        // The user is saving with the same password.
+        let cipher = CipherView.fixture(id: "123", login: .fixture(password: "same-pw"))
+        try await subject.updateCipher(cipher)
+
+        // Password unchanged: count should be 0.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            0
+        )
+    }
+
+    /// `updateCipher()` offline fallback increments the password change count from the
+    /// existing pending record's count when the password differs (subsequent offline edit).
+    func test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // Existing pending change with old password and count of 2.
+        let existingCipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "123",
+                login: .fixture(password: "old-pw")
+            )
+        )
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        let existingChange = PendingCipherChangeData(
+            context: dataStore.persistentContainer.viewContext,
+            cipherId: "123",
+            userId: "1",
+            changeType: .update,
+            cipherData: existingCipherData,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
+            offlinePasswordChangeCount: 2
+        )
+        pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        // The user is saving with a new password.
+        let cipher = CipherView.fixture(id: "123", login: .fixture(password: "new-pw"))
+        try await subject.updateCipher(cipher)
+
+        // Password changed: count should be 2 + 1 = 3.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            3
+        )
+    }
+
+    /// `updateCipher()` offline fallback preserves the existing password change count when
+    /// the password is unchanged (subsequent offline edit).
+    func test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // Existing pending change with same password and count of 2.
+        let existingCipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "123",
+                login: .fixture(password: "same-pw")
+            )
+        )
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        let existingChange = PendingCipherChangeData(
+            context: dataStore.persistentContainer.viewContext,
+            cipherId: "123",
+            userId: "1",
+            changeType: .update,
+            cipherData: existingCipherData,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
+            offlinePasswordChangeCount: 2
+        )
+        pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        // The user is saving with the same password.
+        let cipher = CipherView.fixture(id: "123", login: .fixture(password: "same-pw"))
+        try await subject.updateCipher(cipher)
+
+        // Password unchanged: count should remain at 2.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            2
+        )
+    }
+
     /// `updateCipher()` throws for organization ciphers when the server API call fails.
     func test_updateCipher_offlineFallback_orgCipher_throws() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))

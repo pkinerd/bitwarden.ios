@@ -242,3 +242,14 @@ Fixed `test_softDeleteCipher_pendingChangeCleanup` userId assertion from `"1"` t
 - **Deep Dive 1 (catch-all error handling)** — **Partially addressed.** The production code now uses a denylist pattern (`catch ServerError`, `catch CipherAPIServiceError`, `catch ResponseValidationError < 500`) rather than bare `catch`. Client-side validation errors and 4xx HTTP errors are properly rethrown. PR #28 tests verify this behavior.
 - **Deep Dive 7 (narrow error coverage)** — **Partially addressed.** PR #27 added non-network error rethrow tests, but most offline fallback tests still only use `URLError(.notConnectedToInternet)`.
 - **Deep Dive 2 (missing negative assertions)** — Still relevant. No negative assertions added to happy-path tests.
+
+### Branch-Only Changes: Backup Reorder and RES-2 404 Handling
+
+Two additional commits on the `claude/fix-pending-change-cleanup-qCAnC` branch added tests to `OfflineSyncResolverTests.swift`:
+
+| Commit | Test Added | What It Verifies |
+|--------|-----------|-----------------|
+| `e929511` | `test_processPendingChanges_update_cipherNotFound_recreates` | Update resolution where server returns 404 — cipher re-created via `addCipherWithServer`, pending change deleted |
+| `e929511` | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete resolution where server returns 404 — local cipher deleted, pending change deleted |
+
+These tests use `getCipherResult = .failure(OfflineSyncError.cipherNotFound)` to simulate a 404 response from `GetCipherRequest.validate`. The backup reorder commit (`93143f1`) changed behavior but did not add new tests — existing conflict resolution tests implicitly cover the reordered logic.

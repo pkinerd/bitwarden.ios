@@ -1152,6 +1152,29 @@ class SyncServiceTests: BitwardenTestCase {
         XCTAssertNil(cipherService.replaceCiphersCiphers)
     }
 
+    /// `fetchSync()` propagates the error when `processPendingChanges` throws a hard
+    /// error (e.g., Core Data failure), ensuring the entire sync fails and no API
+    /// requests are made.
+    func test_fetchSync_preSyncResolution_resolverThrows_syncFails() async throws {
+        stateService.activeAccount = .fixture()
+        // Pending changes exist, triggering resolution.
+        pendingCipherChangeDataStore.pendingChangeCountResults = [1]
+
+        // Resolver throws a hard error (simulating a Core Data failure or similar).
+        offlineSyncResolver.processPendingChangesResult = .failure(BitwardenTestError.example)
+
+        await assertAsyncThrows(error: BitwardenTestError.example) {
+            try await subject.fetchSync(forceSync: false)
+        }
+
+        // Resolver should have been called.
+        XCTAssertEqual(offlineSyncResolver.processPendingChangesCalledWith, ["1"])
+        // No API sync request should have been made.
+        XCTAssertTrue(client.requests.isEmpty)
+        // Ciphers should not be replaced.
+        XCTAssertNil(cipherService.replaceCiphersCiphers)
+    }
+
     /// `needsSync(forceSync:onlyCheckLocalData:userId:)` returns `true` when
     /// only checking local data and not enough time hasn't passed since the last sync.
     func test_needsSync_onlyCheckLocalData() async throws {

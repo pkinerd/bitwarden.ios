@@ -4,8 +4,8 @@
 
 | File | Type | Lines |
 |------|------|-------|
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 360 |
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 517 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 385 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 589 |
 | `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | Mock | 11 |
 
 ---
@@ -22,8 +22,11 @@ Defines four error cases for offline sync operations:
 | `.missingCipherId` | Pending change record has no cipher ID | "The pending change record is missing a cipher ID." |
 | `.vaultLocked` | Vault is locked; resolution cannot proceed | "The vault is locked. Please unlock to sync offline changes." |
 | `.organizationCipherOfflineEditNotSupported` | Organization items cannot be edited offline | "Organization items cannot be edited while offline. Please try again when connected." |
+| `.cipherNotFound` | The cipher was not found on the server (HTTP 404) | "The cipher was not found on the server." |
 
 All errors conform to `LocalizedError` with `errorDescription` and to `Equatable` for test assertions.
+
+**[Added]** `.cipherNotFound` is thrown by `GetCipherRequest.validate(_:)` when the server returns a 404. This is caught specifically in `resolveUpdate` and `resolveSoftDelete` to handle the case where a cipher is deleted on the server while the user has pending offline changes.
 
 **Note:** The `.vaultLocked` error is defined but never thrown in the current code. The vault-locked guard is in `SyncService.fetchSync()` where it returns early rather than throwing. This error case appears to be defensive, reserved for potential future use.
 
@@ -95,8 +98,12 @@ processPendingChanges(userId:)
 #### 5b. Update Resolution (`resolveUpdate`)
 
 ```
-1. Fetch server version via cipherAPIService.getCipher(withId:)
-2. Decode local pending cipher data
+1. Decode local pending cipher data
+2. Fetch server version via cipherAPIService.getCipher(withId:)
+   — If 404 (OfflineSyncError.cipherNotFound):
+     → Re-create cipher on server via addCipherWithServer
+     → Delete pending change record
+     → Return (skip conflict detection)
 3. Compare server.revisionDate with pendingChange.originalRevisionDate
 4. Determine if hasConflict (dates differ) or hasSoftConflict (4+ password changes)
 
@@ -104,14 +111,18 @@ processPendingChanges(userId:)
      → resolveConflict(localCipher, serverCipher, pendingChange, userId)
 
    If hasSoftConflict (no conflict, but 4+ password changes):
-     → Push local to server via updateCipherWithServer
      → Create backup of server version
+     → Push local to server via updateCipherWithServer
 
    Else (no conflict, <4 password changes):
      → Push local to server via updateCipherWithServer
 
 5. Delete pending change record
 ```
+
+**[Updated]** Local cipher is now decoded before the server fetch so it's available for the 404 fallback. The 404 path re-creates the cipher on the server, preserving the user's offline edits.
+
+**[Updated]** For both hard conflict and soft conflict paths, the backup is now created *before* the push/update to ensure the losing version is preserved even if the subsequent operation fails.
 
 **Conflict Resolution Logic (`resolveConflict`):**
 
@@ -121,13 +132,15 @@ processPendingChanges(userId:)
    - serverTimestamp = serverCipher.revisionDate
 
 2. If localTimestamp > serverTimestamp (local is newer):
-   → Push local to server (updateCipherWithServer)
    → Create backup of server version
+   → Push local to server (updateCipherWithServer)
 
 3. If serverTimestamp >= localTimestamp (server is newer or same):
-   → Update local storage with server version (updateCipherWithLocalStorage)
    → Create backup of local version
+   → Update local storage with server version (updateCipherWithLocalStorage)
 ```
+
+**[Updated]** Backup is now created *before* the push/update in both branches. If `createBackupCipher` fails, the error propagates and the pending change record is NOT deleted — resolution will be retried on the next sync with no data loss.
 
 **Important Design Note:** The timestamp comparison uses `>` (strict greater-than). If timestamps are equal (`localTimestamp == serverTimestamp`), the server version wins. This is a conservative choice — in the case of ambiguity, preserving the server state and backing up the local state ensures no data loss.
 
@@ -135,6 +148,10 @@ processPendingChanges(userId:)
 
 ```
 1. Fetch server version via cipherAPIService.getCipher(withId:)
+   — If 404 (OfflineSyncError.cipherNotFound):
+     → Delete local cipher record via deleteCipherWithLocalStorage
+     → Delete pending change record
+     → Return (cipher already gone, user's delete intent satisfied)
 2. Compare server.revisionDate with pendingChange.originalRevisionDate
 
    If hasConflict (dates differ):
@@ -144,6 +161,8 @@ processPendingChanges(userId:)
 4. Call cipherService.softDeleteCipherWithServer(id:, localCipher)
 5. Delete pending change record
 ```
+
+**[Updated]** 404 handling added. If the server returns 404, the cipher is already deleted — no server operation needed. Local cleanup and pending change deletion are sufficient.
 
 **Design Note:** The soft delete always proceeds, even when there's a conflict. The rationale is that the user explicitly chose to delete the item. The backup preserves the server version (which may have been edited by another user or device) so nothing is lost.
 
@@ -230,10 +249,12 @@ processPendingChanges(userId:)
 | `test_processPendingChanges_update_softConflict` | Soft conflict (4+ password changes, no server change) |
 | `test_processPendingChanges_softDelete_conflict` | Soft delete with server-side changes — backs up server, then deletes |
 | `test_processPendingChanges_update_conflict_createsConflictFolder` | Verifies folder creation and backup cipher assignment |
+| `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
+| `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
 | `test_offlineSyncError_localizedDescription` | Error description verification |
 | `test_offlineSyncError_vaultLocked_localizedDescription` | Error description verification |
 
-**Coverage Assessment:** Good coverage of the main resolution paths. The conflict folder creation and naming convention are verified.
+**Coverage Assessment:** Good coverage of the main resolution paths. The conflict folder creation and naming convention are verified. **[Updated]** Two new tests added for 404 handling in `resolveUpdate` and `resolveSoftDelete`.
 
 ---
 
@@ -245,11 +266,9 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 **Mitigation:** Low probability in practice because `addCipherWithServer` handles both the API call and local storage update, and local storage writes rarely fail. The user would see a duplicate cipher but would not lose data.
 
-### Issue RES-2: `conflictFolderId` Thread Safety (Low)
+### ~~Issue RES-2: `conflictFolderId` Thread Safety (Low)~~ **[Resolved]**
 
-`DefaultOfflineSyncResolver` is a `class` (reference type) with a mutable `var conflictFolderId`. There is no actor isolation, lock, or other synchronization. Currently safe because `processPendingChanges` is called sequentially from `SyncService.fetchSync()`, but fragile if the resolver were ever called concurrently.
-
-**Recommendation:** Consider using `actor` instead of `class`, or add a comment documenting the serial-call-only requirement.
+~~`DefaultOfflineSyncResolver` is a `class` (reference type) with a mutable `var conflictFolderId`. There is no actor isolation, lock, or other synchronization.~~ **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor`, providing compiler-enforced isolation for `conflictFolderId`. See [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md).
 
 ### Issue RES-3: No Test for Batch Processing with Mixed Results (Medium)
 

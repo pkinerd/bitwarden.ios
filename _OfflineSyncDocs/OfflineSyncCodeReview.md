@@ -137,7 +137,7 @@ The `OfflineSyncResolver` has the highest dependency count (6 injected services)
 
 **Observation A2 — `OfflineSyncResolver` has 6 dependencies:** This reflects the resolver's cross-cutting responsibility (reading ciphers, creating folders, uploading to API, managing pending state). The responsibility is cohesive, so the dependency count is acceptable.
 
-**~~Issue A3~~ [Resolved] — `timeProvider` removed from `DefaultOfflineSyncResolver`.** The unused `timeProvider` dependency has been removed. The backup cipher name uses `DateFormatter` with the cipher's own timestamp, not a time provider. Removed in commit `a52d379`.
+**~~Issue A3~~ [Resolved] — `timeProvider` removed.** See [AP-A3](ActionPlans/Resolved/AP-A3_UnusedTimeProvider.md).
 
 ---
 
@@ -176,9 +176,9 @@ The `OfflineSyncResolver` has the highest dependency count (6 injected services)
 
 ### 2.3 Style Issues
 
-**~~Issue CS-1~~ [Resolved] — Stray blank line in `Services.swift` typealias.** The blank line between `& HasConfigService` and `& HasDeviceAPIService` has been removed. Fixed in commit `a52d379`.
+**~~Issue CS-1~~ [Resolved] — Stray blank line removed.** See [AP-CS1](ActionPlans/Resolved/AP-CS1_StrayBlankLine.md).
 
-**[Updated note]** The `URLError+NetworkConnection.swift` file (previously listed in section 2.1 file naming) has been deleted. The error handling pattern in section 2.2 (`catch let error as URLError where error.isNetworkConnectionError`) has been simplified to plain `catch` blocks.
+**[Updated note]** The `URLError+NetworkConnection.swift` file has been deleted. See [AP-URLError_NetworkConnectionReview.md](ActionPlans/Superseded/AP-URLError_NetworkConnectionReview.md). Error handling simplified to plain `catch` blocks.
 
 ---
 
@@ -244,10 +244,10 @@ The removal of the `ConnectivityMonitor` (from a previous iteration) actually **
 | T1 | `OfflineSyncResolver` | No batch processing test — all tests use single pending change | Medium |
 | T2 | `OfflineSyncResolver` | No API failure during resolution tested — `addCipherWithServer`/`updateCipherWithServer` throwing is catch-and-continue but untested | Medium |
 | T3 | `VaultRepository` | `handleOfflineUpdate` password change detection not directly tested — counting logic involves decrypt+compare | Medium |
-| T4 | `VaultRepository` | `handleOfflineDelete` cipher-not-found path not tested — `fetchCipher(withId:)` returning nil leads to silent return | Low |
+| T4 | `VaultRepository` | `handleOfflineDelete` cipher-not-found path not tested — `fetchCipher(withId:)` returning nil leads to silent return | Low | **[Partially Resolved]** Resolver-level 404 tests added (RES-2 fix, commit `e929511`). VaultRepository-level `handleOfflineDelete` not-found test gap remains. See [AP-S7](ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md). |
 | T5 | `OfflineSyncResolverTests` | Inline `MockCipherAPIServiceForOfflineSync` implements full protocol with `fatalError()` stubs for 15 unused methods — fragile against protocol changes | Low |
-| ~~T6~~ | ~~`URLError+NetworkConnection`~~ | ~~Only 3 of 10 positive error codes tested individually~~ **[Resolved]** Extension and tests deleted as part of error handling simplification. | ~~Low~~ N/A |
-| T7 | `VaultRepository` | No test for `handleOfflineUpdate` with existing pending record (subsequent offline edit scenario) | Low |
+| ~~T6~~ | ~~`URLError+NetworkConnection`~~ | ~~Only 3 of 10 positive error codes tested~~ **[Resolved]** See [AP-T6](ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md). | ~~Low~~ N/A |
+| ~~T7~~ | ~~`VaultRepository`~~ | ~~No test for `handleOfflineUpdate` with existing pending record (subsequent offline edit scenario)~~ | ~~Low~~ | **[Resolved]** Covered by `test_updateCipher_offlineFallback_preservesCreateType` (commit `12cb225`). See [AP-T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md). |
 | T8 | `SyncService` | No test for pre-sync resolution where the resolver throws a hard error (not a per-item failure) | Low |
 
 ### 5.3 Test Pattern Compliance (`Docs/Testing.md`)
@@ -327,7 +327,7 @@ This prevents unauthorized client-side modifications to shared organization data
 
 ### 6.6 Security Issues and Observations
 
-**~~Issue SEC-1 (Medium)~~ [Superseded]** — `.secureConnectionFailed` classified as network error. This issue is superseded by the error handling simplification. The `URLError+NetworkConnection.swift` extension has been deleted. The VaultRepository catch blocks now use plain `catch` instead of filtering by `URLError.isNetworkConnectionError`. The fine-grained URLError classification was solving a problem that doesn't exist: the networking stack separates transport errors (`URLError`) from HTTP errors (`ServerError`, `ResponseValidationError`) at a different layer, and the encrypt step occurs outside the do-catch so SDK errors propagate normally. Any server API call failure now triggers offline save, which is the correct behavior since there is no realistic scenario where the server is online and reachable but a pending change is permanently invalid.
+**~~Issue SEC-1~~ [Superseded]** — URLError extension deleted; all API errors trigger offline save. See [AP-SEC1](ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md).
 
 **Observation SEC-2 — Pending data survives vault lock.** `PendingCipherChangeData` is stored in Core Data alongside other vault data. The `cipherData` field contains SDK-encrypted JSON, so it's protected by the vault encryption key. The metadata fields are unencrypted, consistent with existing `CipherData`.
 
@@ -342,11 +342,11 @@ This prevents unauthorized client-side modifications to shared organization data
 | Scenario | Handling | Assessment |
 |---------|---------|-----------|
 | Any server API failure during cipher operation | **[Updated]** Plain `catch` falls back to offline save | **Good** — The encrypt step occurs outside the do-catch, so SDK encryption errors propagate normally. Only server API call failures are caught. The networking stack separates transport errors from HTTP errors at a different layer, so fine-grained URLError filtering was unnecessary. |
-| ~~Non-network error during cipher operation~~ | ~~Rethrows normally~~ | **[Superseded]** No longer applicable — all API errors trigger offline save. There is no realistic scenario where the server is reachable but a pending change is permanently invalid. |
+| ~~Non-network error during cipher operation~~ | ~~Rethrows normally~~ | **[Superseded]** Error handling evolved to denylist pattern (PRs #26, #28). See Phase 2 review §2.2. |
 | Single pending change resolution fails | `OfflineSyncResolver` logs error via `Logger.application`, continues to next | **Good** — One failure doesn't block others |
 | Unresolved pending changes after resolution | SyncService aborts sync, returns early | **Good** — Prevents `replaceCiphers` from overwriting local offline edits |
 | Resolver `processPendingChanges` throws hard error | Error propagates through `fetchSync` — entire sync fails | **Acceptable** — If the store is unreadable, sync should not proceed |
-| Detail view publisher stream error (e.g., `decrypt()` failure) | ~~`asyncTryMap` terminates publisher; catch block logs error only~~ **[Mitigated]** `ViewItemProcessor` catches publisher errors and calls `fetchCipherDetailsDirectly()` fallback | **[Mitigated]** Root cause (`Cipher.withTemporaryId()` produces `data: nil`) still exists; symptom (infinite spinner) mitigated by fallback fetch in PR #31. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
+| Detail view publisher stream error (e.g., `decrypt()` failure) | ~~`asyncTryMap` terminates publisher; catch block logs error only~~ **[Fixed]** `ViewItemProcessor` catches publisher errors and calls `fetchCipherDetailsDirectly()` fallback | **[Resolved]** Root cause (`Cipher.withTemporaryId()` producing `data: nil`) **fixed** — replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). Symptom (infinite spinner) mitigated by fallback fetch (PR #31). See Phase 2 §2.1, [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md). |
 
 ### 7.2 Data Loss Prevention
 
@@ -367,7 +367,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 
 **Issue R1 (Low) — Pending change data format versioning:** Pending changes store `CipherDetailsResponseModel` as JSON. If the model evolves in a future app update, old pending changes might fail to decode. Severity is low since pending changes are short-lived (resolved on next successful sync).
 
-**Issue R2 (Low) — `conflictFolderId` thread safety:** `DefaultOfflineSyncResolver.conflictFolderId` is a mutable `var` on a class with no `actor` isolation. Currently safe due to sequential calling pattern, but fragile if ever called concurrently.
+~~**Issue R2 (Low) — `conflictFolderId` thread safety:** `DefaultOfflineSyncResolver.conflictFolderId` is a mutable `var` on a class with no `actor` isolation. Currently safe due to sequential calling pattern, but fragile if ever called concurrently.~~ **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor`. See [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md).
 
 **Issue R3 (Low) — No retry backoff for failed resolution items:** Failed items are retried on every subsequent sync with no backoff. If a cipher consistently fails to resolve (e.g., server returns 404), the resolver will attempt it every sync indefinitely. Consider adding a retry count or expiry mechanism.
 
@@ -389,7 +389,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 | Archive/unarchive cipher while offline | Fails with generic network error | **Gap** — Inconsistent with add/update/delete offline support |
 | Update cipher collections while offline | Fails with generic network error | **Gap** — Inconsistent |
 | Restore cipher from trash while offline | Fails with generic network error | **Gap** — Inconsistent |
-| Viewing offline-created item | ~~Infinite spinner, item never loads~~ **[Mitigated]** Item loads via fallback fetch | **[Mitigated]** Root cause (`data: nil` on `Cipher.withTemporaryId()`) still exists; symptom mitigated by `fetchCipherDetailsDirectly()` fallback in `ViewItemProcessor` (PR #31). See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
+| Viewing offline-created item | ~~Infinite spinner, item never loads~~ **[Resolved]** Item loads normally | **[Resolved]** Root cause (`Cipher.withTemporaryId()` producing `data: nil`) **fixed** by `CipherView.withId()` (commit `3f7240a`). Symptom (spinner) mitigated by fallback fetch (PR #31). See Phase 2 §2.1, [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md). |
 | Viewing pending changes status | No UI indicator | **Gap** — User has no awareness of unsynced changes |
 | Conflict folder discovery | "Offline Sync Conflicts" folder appears in vault | **Acceptable** — Clear name, but English-only |
 
@@ -403,7 +403,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 
 **Observation U4 — Conflict folder name in English only.** "Offline Sync Conflicts" is hardcoded in English, not localized. Non-English users see an English folder name. Localization is complex since the encrypted folder name syncs across devices with potentially different locales.
 
-**Issue VI-1 [Mitigated] — Offline-created cipher view failure.** When a user creates a new cipher while offline, the item appeared in the vault list but failed to load in the detail view (infinite spinner). **Mitigated in PR #31.** The symptom is addressed by a `fetchCipherDetailsDirectly()` fallback in `ViewItemProcessor` that catches the publisher stream error and retries via `fetchCipher(withId:)` (which uses `try?` for resilient decryption). The root cause (`Cipher.withTemporaryId()` producing `data: nil`) is NOT fixed on `dev`. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
+**Issue VI-1 ~~[Mitigated]~~ [Resolved] — Offline-created cipher view failure.** When a user creates a new cipher while offline, the item appeared in the vault list but failed to load in the detail view (infinite spinner). **Mitigated in PR #31** (fallback fetch in `ViewItemProcessor`). **Root cause fixed in Phase 2:** `Cipher.withTemporaryId()` (which produced `data: nil`) replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). Offline-created ciphers now encrypt correctly, so the publisher stream no longer fails. The UI fallback remains as defense-in-depth. See Phase 2 §2.1, [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 ---
 
@@ -557,26 +557,20 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 
 | ID | Component | Issue | Detailed Section |
 |----|-----------|-------|-----------------|
-| ~~SEC-1~~ | ~~`URLError+NetworkConnection`~~ | ~~`.secureConnectionFailed` may mask TLS security issues~~ **[Superseded]** Extension deleted; plain `catch` replaces URLError filtering. | ~~[EXT-2](ReviewSection_SupportingExtensions.md)~~ |
-| VI-1 | `ViewItemProcessor` / `VaultRepository` | Offline-created cipher fails to load in detail view (infinite spinner) — **[Mitigated]** Symptom addressed by `fetchCipherDetailsDirectly()` fallback in PR #31; root cause (`data: nil` in `Cipher.withTemporaryId()`) still present on `dev`. | [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
+| ~~VI-1~~ | ~~`ViewItemProcessor` / `VaultRepository`~~ | ~~Offline-created cipher fails to load in detail view (infinite spinner)~~ — **[Resolved]** Symptom fixed by `fetchCipherDetailsDirectly()` fallback (PR #31). Root cause (`data: nil` in `Cipher.withTemporaryId()`) **fixed** by `CipherView.withId()` (commit `3f7240a`). All 5 recommended fixes implemented in Phase 2. | [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
 | S6 | `VaultRepositoryTests` | `handleOfflineUpdate` password change counting not directly tested | [VR](ReviewSection_VaultRepository.md) |
-| S7 | `VaultRepositoryTests` | `handleOfflineDelete` cipher-not-found path not tested | [VR-5](ReviewSection_VaultRepository.md) |
 | S8 | Feature | Consider adding a feature flag for production safety | Section 12.3 |
-| ~~EXT-1~~ | ~~`URLError+NetworkConnection`~~ | ~~`.timedOut` may trigger offline save for temporarily slow servers~~ **[Superseded]** Extension deleted; all API errors now trigger offline save by design. | ~~[EXT-1](ReviewSection_SupportingExtensions.md)~~ |
 
 ### Low Priority
 
 | ID | Component | Issue | Detailed Section |
 |----|-----------|-------|-----------------|
-| ~~A3~~ | ~~`OfflineSyncResolver`~~ | ~~`timeProvider` dependency injected but never used~~ **[Resolved]** Removed in commit `a52d379`. | ~~Section 1.4~~ |
-| ~~CS-1~~ | ~~`Services.swift`~~ | ~~Stray blank line in typealias~~ **[Resolved]** Removed in commit `a52d379`. | ~~Section 2.3~~ |
 | CS-2 | `CipherView+OfflineSync` | `withTemporaryId`/`update` fragile against SDK type changes | Section 3.1 |
 | R1 | `PendingCipherChangeData` | No data format versioning for `cipherData` JSON | Section 7.3 |
-| R2 | `OfflineSyncResolver` | `conflictFolderId` thread safety (class with mutable var, no actor isolation) | [RES-2](ReviewSection_OfflineSyncResolver.md) |
+| ~~R2~~ | ~~`OfflineSyncResolver`~~ | ~~`conflictFolderId` thread safety (class with mutable var, no actor isolation)~~ **[Resolved]** — Converted to `actor` | [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md) |
 | R3 | `OfflineSyncResolver` | No retry backoff for permanently failing resolution items | Section 7.3 |
 | R4 | `SyncService` | Silent sync abort (no logging) | [SS-3](ReviewSection_SyncService.md) |
 | DI-1 | `Services.swift` | `HasPendingCipherChangeDataStore` exposes data store to UI layer (broader than needed) | [DI-1](ReviewSection_DIWiring.md) |
-| ~~T6~~ | ~~`URLError+NetworkConnectionTests`~~ | ~~Only 3 of 10 positive error codes tested~~ **[Resolved]** Extension and tests deleted. | ~~[EXT-4](ReviewSection_SupportingExtensions.md)~~ |
 
 ### Informational / Future Considerations
 
@@ -730,11 +724,13 @@ When the publisher stream fails (e.g., decrypt error from `data: nil`), the fall
 3. If successful: displays the item normally via `buildViewItemState`
 4. If failed: shows an error message (not an infinite spinner)
 
-**What this does NOT fix (root cause remains):**
-- `Cipher.withTemporaryId()` still sets `data: nil` — the VI-1 root cause
-- The publisher stream still fails on first try for offline-created ciphers
-- The fallback adds latency (two fetch attempts instead of one)
-- Related edge cases remain (see 16.7)
+~~**What this does NOT fix (root cause remains):**~~
+~~- `Cipher.withTemporaryId()` still sets `data: nil` — the VI-1 root cause~~
+~~- The publisher stream still fails on first try for offline-created ciphers~~
+~~- The fallback adds latency (two fetch attempts instead of one)~~
+~~- Related edge cases remain (see 16.7)~~
+
+**[UPDATE — All Fixed in Phase 2]:** Root cause `Cipher.withTemporaryId()` replaced by `CipherView.withId()` (commit `3f7240a`). Publisher stream no longer fails for offline-created ciphers since encryption data is intact. All edge cases from §16.7 resolved. The UI fallback remains as defense-in-depth.
 
 ### 16.5 Orphaned Pending Change Cleanup
 
@@ -765,29 +761,29 @@ This pattern was added to all four operations: `addCipher`, `updateCipher`, `del
 
 Fixed `test_softDeleteCipher_pendingChangeCleanup` — userId assertion was `"1"` but should have been `"13512467-9cfe-43b0-969f-07534084764b"` to match `fixtureAccountLogin()`.
 
-### 16.7 Remaining Gaps from Original Review (Not Fixed on `dev`)
+### 16.7 Remaining Gaps from Original Review ~~(Not Fixed on `dev`)~~ **[All Fixed in Phase 2]**
 
-The following issues from the original review and VI-1 investigation are **not addressed on `dev`**:
+The following issues from the original review and VI-1 investigation ~~are **not addressed on `dev`**~~ have been **resolved in Phase 2** (see [Phase 2 Code Review](OfflineSyncCodeReview_Phase2.md)):
 
-| Issue | Description | Impact |
-|-------|-------------|--------|
-| **VI-1 root cause** | `Cipher.withTemporaryId()` sets `data: nil`, causing decryption failures | Mitigated by UI fallback, but root cause remains; adds latency to detail view load |
-| **`.create` type not preserved** | `handleOfflineUpdate()` always overwrites pending change type to `.update`, even for offline-created ciphers (type `.create`). When the resolver processes the change, it calls `resolveUpdate()` → `getCipher(withId: tempId)` → HTTP 400 because the temp ID doesn't exist on the server | Editing an offline-created cipher before sync causes the sync resolution to fail |
-| **Offline-created deletion not cleaned up** | `handleOfflineDelete()` and `handleOfflineSoftDelete()` queue `.softDelete` pending changes for offline-created ciphers (temp IDs that don't exist on the server). The resolver fails when trying to fetch the server version | Deleting an offline-created cipher before sync causes the sync resolution to fail |
-| **Temp-ID record not cleaned up in `resolveCreate()`** | After `addCipherWithServer()` creates a new record with the server-assigned ID, the old record with the temp client-side ID is orphaned. Persists until the next full sync's `replaceCiphers()` call | Minor: unnecessary data in Core Data between resolution and next full sync |
-| **No test for subsequent offline edit** (T7) | `handleOfflineUpdate` with an existing pending record is untested — covers password change accumulation, `originalRevisionDate` preservation, and change type handling | Test gap |
+| Issue | Description | Impact | Status |
+|-------|-------------|--------|--------|
+| ~~**VI-1 root cause**~~ | ~~`Cipher.withTemporaryId()` sets `data: nil`, causing decryption failures~~ | ~~Mitigated by UI fallback, but root cause remains~~ | **[FIXED]** Commit `3f7240a` — replaced `Cipher.withTemporaryId()` with `CipherView.withId()` operating before encryption. See Phase 2 §2.1. |
+| ~~**`.create` type not preserved**~~ | ~~`handleOfflineUpdate()` always overwrites pending change type to `.update`~~ | ~~Editing offline-created cipher before sync fails~~ | **[FIXED]** Commit `12cb225` — `handleOfflineUpdate` now preserves `.create` type. See Phase 2 §2.4. |
+| ~~**Offline-created deletion not cleaned up**~~ | ~~`handleOfflineDelete()`/`handleOfflineSoftDelete()` queue `.softDelete` for temp-ID ciphers~~ | ~~Deleting offline-created cipher before sync fails~~ | **[FIXED]** Commit `12cb225` — offline-created ciphers are now deleted locally without queuing a server operation. See Phase 2 §2.5. |
+| ~~**Temp-ID record not cleaned up in `resolveCreate()`**~~ | ~~After `addCipherWithServer()` succeeds, old temp-ID record is orphaned~~ | ~~Minor: stale data until next full sync~~ | **[FIXED]** Commits `8ff7a09`, `53e08ef` — `resolveCreate()` now deletes the temp-ID cipher record after successful server creation. See Phase 2 §2.6. |
+| ~~**No test for subsequent offline edit** (T7)~~ | ~~`handleOfflineUpdate` with existing pending record is untested~~ | ~~Test gap~~ | **[RESOLVED]** Covered by `test_updateCipher_offlineFallback_preservesCreateType` (commit `12cb225`). See [AP-T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md). |
 
-**Recommended root cause fix:** Replace `Cipher.withTemporaryId()` with `CipherView.withId()` that operates *before* encryption (on the decrypted type). This eliminates the `data: nil` problem because `CipherView` doesn't have a `data` field. The ID would be baked into the encrypted content, making offline-created ciphers structurally identical to server-created ciphers. This would also address the `.create` type preservation and offline-created deletion cleanup as prerequisites.
+~~**Recommended root cause fix:** Replace `Cipher.withTemporaryId()` with `CipherView.withId()` that operates *before* encryption (on the decrypted type). This eliminates the `data: nil` problem because `CipherView` doesn't have a `data` field. The ID would be baked into the encrypted content, making offline-created ciphers structurally identical to server-created ciphers. This would also address the `.create` type preservation and offline-created deletion cleanup as prerequisites.~~ **[DONE]** All recommended fixes implemented in Phase 2: `CipherView.withId()` (commit `3f7240a`), `.create` type preservation (commit `12cb225`), offline-created deletion cleanup (commit `12cb225`), temp-ID record cleanup (commits `8ff7a09`, `53e08ef`).
 
 ### 16.8 Action Plan Status Updates
 
 | Issue | Status | Details |
 |-------|--------|---------|
-| **[VI-1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md)** | **Mitigated** | Spinner fixed via UI fallback (PR #31); root cause (`data: nil`) remains |
-| **[CS-2](ActionPlans/AP-CS2_FragileSDKCopyMethods.md)** | Open (Low) | Unchanged — both `Cipher.withTemporaryId()` and `CipherView.update()` still exist |
-| **[RES-1](ActionPlans/AP-RES1_DuplicateCipherOnCreateRetry.md)** | Open (Informational) | Unchanged — no temp-ID cleanup in `resolveCreate()` |
-| **[S7](ActionPlans/AP-S7_CipherNotFoundPathTest.md)** | Open (Medium) | Unchanged — cipher-not-found guard clause untested |
-| **[T7](ActionPlans/AP-T7_SubsequentOfflineEditTest.md)** | Open (Low) | Unchanged — subsequent offline edit scenario untested |
+| **[VI-1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md)** | ~~Mitigated~~ **Resolved** | Spinner fixed via UI fallback (PR #31). Root cause (`data: nil` from `Cipher.withTemporaryId()`) **fixed** in Phase 2: `CipherView.withId()` replaces `Cipher.withTemporaryId()` (commit `3f7240a`). |
+| **[CS-2](ActionPlans/AP-CS2_FragileSDKCopyMethods.md)** | Open (Low) | **Updated** — `Cipher.withTemporaryId()` removed, but fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:folderId:)`. Same underlying concern. |
+| ~~**[RES-1](ActionPlans/AP-RES1_DuplicateCipherOnCreateRetry.md)**~~ | ~~Open (Informational)~~ **Partially Resolved** | Temp-ID cipher record cleanup added to `resolveCreate()` (commits `8ff7a09`, `53e08ef`). Duplicate-on-retry concern (server already has the cipher) still informational. |
+| ~~**[S7](ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md)**~~ | ~~Open (Medium)~~ **[Partially Resolved]** | Resolver-level 404 tests added (RES-2 fix, commit `e929511`). VaultRepository-level `handleOfflineDelete` not-found test gap remains. |
+| ~~**[T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md)**~~ | ~~Open (Low)~~ **[Resolved]** | Covered by `test_updateCipher_offlineFallback_preservesCreateType` (commit `12cb225`). |
 
 ---
 
@@ -797,17 +793,22 @@ The offline sync implementation is architecturally sound, follows project conven
 
 The most significant design choice — the early-abort sync pattern — is the correct tradeoff: it prioritizes data safety (never overwriting unsynced local edits) over freshness (users with unresolvable pending changes won't receive server updates until those are cleared). This is consistent with Bitwarden's security-first philosophy.
 
-The post-review fixes on `dev` (Section 16) improved error handling resilience (denylist pattern), fixed a critical encryption bug (conflict folder), and mitigated the VI-1 spinner bug via a UI fallback. However, the VI-1 root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains, along with related edge cases for editing and deleting offline-created ciphers before sync.
+The post-review fixes on `dev` (Section 16) improved error handling resilience (denylist pattern), fixed a critical encryption bug (conflict folder), and mitigated the VI-1 spinner bug via a UI fallback. ~~However, the VI-1 root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains, along with related edge cases for editing and deleting offline-created ciphers before sync.~~ **[UPDATE]** The VI-1 root cause and all related edge cases have been **fully resolved in Phase 2**: `CipherView.withId()` replaces `Cipher.withTemporaryId()` (commit `3f7240a`), `.create` type preservation (commit `12cb225`), offline-created deletion cleanup (commit `12cb225`), temp-ID record cleanup (commits `8ff7a09`, `53e08ef`). See [Phase 2 Code Review](OfflineSyncCodeReview_Phase2.md).
 
 **Primary areas for improvement:**
 1. Additional test coverage for batch processing and error paths in the resolver (S3, S4)
 2. ~~Evaluation of whether `.secureConnectionFailed` should trigger offline mode (SEC-1)~~ **[Superseded]** — resolved by error handling simplification
 3. Consider a feature flag for production safety (S8)
-4. VI-1 root cause fix — replace `Cipher.withTemporaryId()` with `CipherView.withId()` operating before encryption, plus `.create` type preservation and offline-created deletion cleanup
+4. ~~VI-1 root cause fix — replace `Cipher.withTemporaryId()` with `CipherView.withId()` operating before encryption, plus `.create` type preservation and offline-created deletion cleanup~~ **[DONE]** — All implemented in Phase 2: `CipherView.withId()` (commit `3f7240a`), `.create` type preservation (commit `12cb225`), offline-created deletion cleanup (commit `12cb225`), temp-ID record cleanup (commits `8ff7a09`, `53e08ef`)
 
 None of these are blocking issues. The implementation is ready for merge consideration with the understanding that the identified test gaps and the VI-1 root cause should be tracked.
 
 **Resolution history:**
-- SEC-1 superseded by error handling simplification (URLError extension deleted)
-- VI-1 **mitigated** via UI fallback (PR #31) — root cause remains on `dev`
-- 5 action plans in Resolved: A3, CS-1, SEC-1, EXT-1, T6
+- SEC-1, EXT-1 superseded by error handling simplification (URLError extension deleted)
+- A3, CS-1, T6 resolved by code cleanup and deletion
+- T7 resolved by `test_updateCipher_offlineFallback_preservesCreateType` (Phase 2)
+- S7 partially resolved — resolver-level 404 tests added
+- VI-1 **resolved** — UI fallback (PR #31) fixed spinner; root cause (`data: nil`) fixed by `CipherView.withId()` (commit `3f7240a`)
+- RES-1 partially resolved — temp-ID cleanup added to `resolveCreate()` (commits `8ff7a09`, `53e08ef`)
+- All 5 "remaining gaps" from §16.7 addressed in Phase 2
+- 7 action plans in Resolved: A3, CS-1, SEC-1, EXT-1, T6, S7, T7

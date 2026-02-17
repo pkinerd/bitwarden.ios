@@ -4,19 +4,19 @@ This document maps dependencies and implications between all 30 action plans. An
 
 ## Critical Implication Clusters
 
-### Cluster 1: Test Infrastructure (S3, S4, T5, T6, S6, S7, T7, T8)
+### Cluster 1: Test Infrastructure (~~S3~~, ~~S4~~, ~~T5~~, ~~T6~~, ~~S6~~, S7, ~~T7~~, ~~T8~~) **[Mostly Resolved]**
 
-All test gap issues share common infrastructure. The order of implementation matters:
+~~All test gap issues share common infrastructure. The order of implementation matters:~~
 
-1. **T5 (inline mock)** should be addressed first — if the inline mock is replaced with a project-level mock, all subsequent test additions benefit.
-2. **S3 + S4** (batch + API failure tests) should be implemented together — the "batch with mixed failure" scenario covers both.
-3. **S6 + T7** (password counting + subsequent edit) should be implemented together — subsequent edits are the primary path for password counting.
-4. **S7** (cipher-not-found) and **T8** (hard error) are independent and can be implemented in any order.
-5. **T6** (URLError coverage) is independent of the above.
+> **[UPDATE]** S3, S4, S6, T5, T7, T6, and T8 are all resolved. The remaining test gap is S7 (VaultRepository-level cipher-not-found test).
+>
+> - **T5** — Inline mock retained with maintenance comment. AutoMockable annotation deferred.
+> - **S3 + S4** — 7 tests added to `OfflineSyncResolverTests.swift`: 3 batch tests (all-succeed, mixed-failure, all-fail) + 4 API failure tests (create, update server fetch, soft delete, backup creation).
+> - **S6** — 4 password change counting tests added to `VaultRepositoryTests.swift`.
+> - **T8** — 1 pre-sync resolution failure test added to `SyncServiceTests.swift`.
+> - **S7** — Resolver-level 404 tests exist; VaultRepository-level `handleOfflineDelete` not-found test gap remains open.
 
-**Implication:** If T5 is resolved by using a project-level mock, S3/S4 tests benefit from a cleaner mock setup. If T5 is deferred, S3/S4 add more weight to the inline mock, increasing its maintenance burden.
-
-### Cluster 2: Reliability & Safety (R3, R4, S8, R1, R2)
+### Cluster 2: Reliability & Safety (R3, R4, S8, R1, ~~R2~~)
 
 These issues form a layered defense system:
 
@@ -24,7 +24,7 @@ These issues form a layered defense system:
 2. **R3 (retry backoff)** prevents permanently stuck items from blocking sync.
 3. **R4 (logging)** provides observability into what's happening.
 4. **R1 (format versioning)** prevents format mismatches from creating permanently stuck items.
-5. **R2 (thread safety)** prevents concurrent access bugs.
+5. ~~**R2 (thread safety)** prevents concurrent access bugs.~~ **[Resolved]** — `DefaultOfflineSyncResolver` converted to `actor`.
 
 **Implication:** If S8 (feature flag) is implemented, R3 (retry backoff) becomes less critical since the feature can be disabled entirely. However, R3 is still valuable for graceful degradation. R4 (logging) should be implemented regardless — it's trivial and provides debugging value.
 
@@ -36,15 +36,15 @@ These issues form a layered defense system:
 
 > **All three issues are resolved/superseded.** The `URLError+NetworkConnection.swift` extension and its tests have been deleted entirely. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save. SEC-1, EXT-1, and T6 no longer exist as actionable items.
 
-### Cluster 3b: Detail View / Publisher Resilience (VI-1, CS-2, R3, U3) **[VI-1 Mitigated]**
+### Cluster 3b: Detail View / Publisher Resilience (VI-1, CS-2, R3, U3) ~~[VI-1 Mitigated]~~ **[VI-1 Resolved]**
 
-VI-1 identifies a failure where offline-created ciphers cannot be loaded in the detail view due to `asyncTryMap` + `decrypt()` terminating the publisher stream on error.
+~~VI-1 identifies a failure where offline-created ciphers cannot be loaded in the detail view due to `asyncTryMap` + `decrypt()` terminating the publisher stream on error.~~
 
-> **VI-1 is mitigated, not resolved.** The symptom (infinite spinner) is fixed via a UI fallback in `ViewItemProcessor.fetchCipherDetailsDirectly()` (PR #31). However, the root cause remains: `Cipher.withTemporaryId()` still sets `data: nil`, causing decryption failures in the publisher stream. The UI fallback catches these failures.
+> ~~**VI-1 is mitigated, not resolved.**~~ **VI-1 is fully resolved.** The symptom (infinite spinner) was fixed via a UI fallback (PR #31). The root cause (`Cipher.withTemporaryId()` setting `data: nil`) was **fixed** by replacing it with `CipherView.withId()` operating before encryption (commit `3f7240a`). All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md).
 >
-> **Cluster relevance:**
-> - **CS-2** scope NOT reduced: Both `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)` still exist as fragile copy methods across two SDK types (`Cipher` + `CipherView`). The `Cipher.withTemporaryId()` `data: nil` problem is the root cause of VI-1.
-> - **R3** is still important independently for sync reliability. Without retry backoff, permanently failing items (including those affected by temp-ID issues) block all syncing.
+> **Cluster relevance (updated):**
+> - **CS-2** scope reduced but not eliminated: `Cipher.withTemporaryId()` removed, but `CipherView.withId(_:)` and `CipherView.update(name:folderId:)` still exist as fragile copy methods on `CipherView`. The `data: nil` problem no longer applies.
+> - **R3** is still important independently for sync reliability. Without retry backoff, permanently failing items block all syncing.
 > - **U3** remains a future enhancement independent of VI-1.
 
 ### Cluster 4: UX Improvements (U1, U2, U3, U4)
@@ -72,18 +72,18 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 
 | Issue | Affects | Affected By |
 |-------|---------|-------------|
-| **S3** | T5 (mock burden) | T5 (mock quality), S4 (can combine) |
-| **S4** | T5 (mock burden) | T5 (mock quality), S3 (can combine), R3 (retry behavior) |
+| ~~**S3**~~ | ~~T5 (mock burden)~~ | ~~T5 (mock quality), S4 (can combine)~~ **[Resolved]** — 3 batch tests added |
+| ~~**S4**~~ | ~~T5 (mock burden)~~ | ~~T5 (mock quality), S3 (can combine), R3 (retry behavior)~~ **[Resolved]** — 4 API failure tests added |
 | ~~**SEC-1**~~ | ~~T6 (test updates)~~ | ~~EXT-1 (holistic review)~~ **[Superseded]** — Extension deleted |
-| **S6** | — | T7 (combine subsequent edit) |
-| **S7** | — | VR-2 (delete context) |
+| ~~**S6**~~ | — | ~~T7~~ (T7 resolved separately) **[Resolved]** — 4 password change counting tests added |
+| ~~**S7**~~ | — | VR-2 (delete context) — **[Partially Resolved]** Resolver-level 404 tests added via RES-2 fix; VaultRepository-level `handleOfflineDelete` not-found test gap remains |
 | **S8** | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — |
 | ~~**EXT-1**~~ | ~~T6 (test updates)~~ | ~~SEC-1 (holistic review), R3 (false-positive mitigation)~~ **[Superseded]** — Extension deleted |
 | ~~**A3**~~ | ~~R2 (simpler migration)~~ | ~~R3 (timeProvider may be repurposed)~~ **[Resolved]** — Removed in commit `a52d379` |
 | ~~**CS-1**~~ | — | — **[Resolved]** — Removed in commit `a52d379` |
 | **CS-2** | RES-7 (attachment handling) | — |
 | **R1** | — | R3 (both address stuck items), PCDS-1/PCDS-2 (schema changes) |
-| **R2** | — | ~~A3 (remove first for simpler migration)~~ **[A3 resolved]** |
+| ~~**R2**~~ | — | ~~A3 (remove first for simpler migration)~~ **[A3 resolved]** — **[R2 Resolved]** Converted to `actor` |
 | **R3** | S8 (complementary), R1 (complementary), SS-2 (recovery), RES-1 (expire duplicates) | S4 (test retry behavior) |
 | **R4** | T8 (distinguish abort vs error) | R3 (log expired items), S8 (log flag state) |
 | **DI-1** | U3 (enables indicator) | — |
@@ -95,11 +95,11 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **VR-2** | S7 (delete context) | U2 (consistency with other ops) |
 | **RES-1** | — | R3 (expire stuck creates) |
 | **RES-7** | — | CS-2 (update method changes) |
-| **T5** | S3 (test quality), S4 (test quality) | CS-2 (same fragility class) |
-| **T7** | — | S6 (combine password tests) |
-| **T8** | — | R4 (logging distinguishes scenarios) |
+| ~~**T5**~~ | ~~S3 (test quality), S4 (test quality)~~ | ~~CS-2 (same fragility class)~~ **[Resolved]** — Maintenance comment added |
+| ~~**T7**~~ | — | ~~S6~~ **[Resolved]** — See [Resolved/AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md) |
+| ~~**T8**~~ | — | ~~R4 (logging distinguishes scenarios)~~ **[Resolved]** — Pre-sync resolution failure test added |
 | **PCDS-1** | — | PCDS-2 (same category) |
 | **PCDS-2** | — | PCDS-1 (same category) |
 | **SS-2** | — | R3 (recovery mechanism) |
 | **RES-9** | — | PCDS-1 (type precision), R3 (expire stuck items) |
-| **VI-1** | CS-2 (withTemporaryId is root cause), S7 (no .create check in delete), T7 (no preservesCreateType test) | R3 (permanently unsynced items stay broken), CS-2 (withTemporaryId fragility), U3 (pending indicator would explain the state) — **Mitigated** via UI fallback in ViewItemProcessor; root cause (`data: nil` in `Cipher.withTemporaryId()`) remains |
+| ~~**VI-1**~~ | ~~CS-2 (withTemporaryId is root cause)~~, ~~S7 (no .create check in delete)~~, ~~T7~~ (now resolved) | ~~R3 (permanently unsynced items stay broken)~~, CS-2 (CipherView.withId fragility), U3 (pending indicator) — **[Resolved]** Root cause fixed by `CipherView.withId()` (commit `3f7240a`); all 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md). |

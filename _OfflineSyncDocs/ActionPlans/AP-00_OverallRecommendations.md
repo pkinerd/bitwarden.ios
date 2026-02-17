@@ -28,18 +28,18 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 
 | Issue | Recommendation | Effort | Risk |
 |-------|---------------|--------|------|
-| **S3** — Batch processing test | Add 2-3 targeted batch tests (Option B) | ~200-300 lines | Very low |
-| **S4** — API failure test | Add representative failure tests (Option B) | ~200-300 lines | Very low |
+| ~~**S3** — Batch processing test~~ | ~~Add 2-3 targeted batch tests (Option B)~~ **[Resolved]** — 3 batch tests added (all-succeed, mixed-failure, all-fail) in `OfflineSyncResolverTests.swift`. See [Resolved/AP-S3](Resolved/AP-S3_BatchProcessingTest.md). | ~~200-300 lines~~ 0 | N/A |
+| ~~**S4** — API failure test~~ | ~~Add representative failure tests (Option B)~~ **[Resolved]** — 4 API failure tests added (create, update server fetch, soft delete, backup creation) in `OfflineSyncResolverTests.swift`. See [Resolved/AP-S4](Resolved/AP-S4_APIFailureDuringResolutionTest.md). | ~~200-300 lines~~ 0 | N/A |
 
-**Rationale:** These test gaps cover critical reliability properties (catch-and-continue, batch processing) that should be verified before merge. Implement S3 and S4 together — the "batch with mixed failure" test covers both.
+**Rationale:** ~~These test gaps cover critical reliability properties (catch-and-continue, batch processing) that should be verified before merge. Implement S3 and S4 together — the "batch with mixed failure" test covers both.~~ **[UPDATE]** S3 and S4 are fully resolved. The catch-and-continue pattern and batch processing are now verified by 7 tests covering all change types and failure modes.
 
 ### Phase 2: Should-Address Before Merge (Medium Priority)
 
 | Issue | Recommendation | Effort | Risk |
 |-------|---------------|--------|------|
-| **VI-1** — Offline-created cipher view failure | **Mitigated** — Spinner fixed via UI fallback (`fetchCipherDetailsDirectly()` in `ViewItemProcessor`, PR #31). Root cause remains: `Cipher.withTemporaryId()` sets `data: nil`. Recommended: move temp-ID before encryption, replace `Cipher.withTemporaryId()` with `CipherView`-level ID method | ~50-80 lines | Low |
-| **S6** — Password change test | Add dedicated tests (Option A) | ~100-150 lines | Very low |
-| **S7** — Cipher-not-found test | Add single targeted test (Option A) | ~30-40 lines | Very low |
+| ~~**VI-1** — Offline-created cipher view failure~~ | ~~**Mitigated**~~ **[Resolved]** — Spinner fixed via UI fallback (PR #31). Root cause **fixed**: `Cipher.withTemporaryId()` replaced by `CipherView.withId()` (commit `3f7240a`). All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md). | ~~50-80 lines~~ 0 | N/A |
+| ~~**S6** — Password change test~~ | ~~Add dedicated tests (Option A)~~ **[Resolved]** — 4 password change counting tests added in `VaultRepositoryTests.swift`: first-edit changed, first-edit unchanged, subsequent-edit changed, subsequent-edit unchanged. See [Resolved/AP-S6](Resolved/AP-S6_PasswordChangeCountingTest.md). | ~~100-150 lines~~ 0 | N/A |
+| ~~**S7** — Cipher-not-found test~~ | ~~Add single targeted test (Option A)~~ **[Partially Resolved]** — Two 404-handling tests added in `OfflineSyncResolverTests` (resolver level). VaultRepository-level test gap remains open. | ~~30-40 lines~~ 0 | N/A |
 | ~~**SEC-1** — secureConnectionFailed~~ | ~~Add logging for TLS triggers~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted; plain `catch` replaces URLError filtering. | ~~10-15 lines~~ 0 | N/A |
 | ~~**EXT-1** — timedOut~~ | ~~Accept current behavior~~ **[Superseded]** — Extension deleted; all API errors now trigger offline save by design. | 0 lines | N/A |
 | **S8** — Feature flag | Server-controlled flag (Option A) | ~20-30 lines | Low |
@@ -47,23 +47,23 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | ~~**CS-1** — Stray blank line~~ | ~~Remove blank line (Option A)~~ **[Resolved]** — Removed in commit `a52d379`. | ~~1 line~~ 0 | N/A |
 | **R4** — Silent sync abort | Add log line (Option A) | 1-2 lines | None |
 
-**Rationale:** VI-1's symptom (infinite spinner) is mitigated via UI fallback, but the root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains. Related edge cases (editing offline-created ciphers loses `.create` type; deleting offline-created ciphers queues futile `.softDelete`; no temp-ID cleanup in `resolveCreate()`) also remain. Test gaps (S6, S7) are low-effort, high-value. R4 logging is trivial. S8 (feature flag) is the most impactful medium-priority item for production safety. A3, CS-1, SEC-1, and EXT-1 are all resolved/superseded.
+**Rationale:** ~~VI-1's symptom (infinite spinner) is mitigated via UI fallback, but the root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains. Related edge cases (editing offline-created ciphers loses `.create` type; deleting offline-created ciphers queues futile `.softDelete`; no temp-ID cleanup in `resolveCreate()`) also remain.~~ **[UPDATE]** VI-1 is fully resolved — root cause and all related edge cases fixed in Phase 2. Remaining actionable items in this phase: test gaps (S6) are low-effort, high-value. R4 logging is trivial. S8 (feature flag) is the most impactful medium-priority item for production safety. A3, CS-1, SEC-1, EXT-1, S7 (resolver-level), and VI-1 are all resolved/superseded. RES-2 (server 404 handling) and A-3 (backup-before-push ordering) are also fixed.
 
 ### Phase 3: Nice-to-Have (Low Priority)
 
 | Issue | Recommendation | Effort | Risk |
 |-------|---------------|--------|------|
-| **R2** — Thread safety | Convert to actor (Option A) | ~5 lines | Low |
+| ~~**R2** — Thread safety~~ | ~~Convert to actor (Option A)~~ **[Resolved]** — `DefaultOfflineSyncResolver` converted from `class` to `actor` | ~~5 lines~~ 0 | N/A |
 | **R3** — Retry backoff | TTL + retry count (Options A+B) | ~30-50 lines | Low-Medium |
 | **R1** — Data format versioning | Add version field (Option A) | ~15-20 lines | Low |
 | **CS-2** — Fragile SDK copies | Add review comments (Option A) | ~6 lines | None |
 | ~~**T6** — URLError test coverage~~ | ~~Add individual tests~~ **[Resolved]** — Extension and tests deleted. | ~~35 lines~~ 0 | N/A |
-| **T7** — Subsequent edit test | Add dedicated test (Option A) | ~50-80 lines | Very low |
-| **T8** — Hard error test | Add single test (Option A) | ~30-40 lines | Very low |
-| **T5** — Inline mock fragility | Add `@AutoMockable` to CipherAPIService (Option A) | ~5 lines | Very low |
+| ~~**T7** — Subsequent edit test~~ | ~~Add dedicated test~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType`. See [Resolved/AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md). | ~~50-80 lines~~ 0 | N/A |
+| ~~**T8** — Hard error test~~ | ~~Add single test (Option A)~~ **[Resolved]** — Test `test_fetchSync_preSyncResolution_resolverThrows_syncFails` added in `SyncServiceTests.swift`. See [Resolved/AP-T8](Resolved/AP-T8_HardErrorInPreSyncResolution.md). | ~~30-40 lines~~ 0 | N/A |
+| ~~**T5** — Inline mock fragility~~ | ~~Add `@AutoMockable` to CipherAPIService (Option A)~~ **[Resolved]** — Maintenance comment added to inline `MockCipherAPIServiceForOfflineSync`. AutoMockable annotation deferred (Sourcery not available in CI). See [Resolved/AP-T5](Resolved/AP-T5_InlineMockFragility.md). | ~~5 lines~~ 0 | N/A |
 | **DI-1** — UI layer exposure | Accept current pattern (Option A) | 0 lines | None |
 
-**Rationale:** R2 (actor conversion) and R3 (retry backoff) are the most impactful improvements here. R3 prevents permanently blocked sync. The remaining items are cleanup and additional test coverage.
+**Rationale:** ~~R2 (actor conversion) and~~ R3 (retry backoff) ~~are~~ is the most impactful improvement~~s~~ here. R3 prevents permanently blocked sync. R2 is now resolved. The remaining items are cleanup and additional test coverage.
 
 ### Phase 4: Accept / Future Enhancement (Informational)
 
@@ -90,18 +90,18 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 2. ~~**CS-1** — Remove stray blank line~~ **[Resolved]** — Removed in commit `a52d379`
 3. **R4** — Add sync abort log line (1 file, 2 lines)
 4. ~~**SEC-1** — Add TLS fallback logging~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted
-5. **VI-1** — **Mitigated** — spinner fixed via UI fallback (`fetchCipherDetailsDirectly()` in `ViewItemProcessor`, PR #31), root cause remains (`Cipher.withTemporaryId()` sets `data: nil`). Root cause fix still needed: move temp-ID before encryption, replace `Cipher.withTemporaryId()` with `CipherView`-level ID method (~50-80 lines)
+5. ~~**VI-1** — **Mitigated** — spinner fixed via UI fallback, root cause remains~~ **[Resolved]** — All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 ### Batch 2: Test Coverage (1-2 hours)
-5. **T5** — Evaluate/replace inline mock (1 file)
-6. **S3 + S4** — Batch + API failure tests (1 file, ~400-600 lines)
-7. **S6 + T7** — Password counting + subsequent edit tests (1 file, ~150-230 lines)
-8. **S7** — Cipher-not-found test (1 file, ~30-40 lines)
-9. **T8** — Hard error in pre-sync test (1-2 files, ~30-40 lines)
+5. ~~**T5** — Evaluate/replace inline mock (1 file)~~ **[Resolved]** — Maintenance comment added to inline mock
+6. ~~**S3 + S4** — Batch + API failure tests (1 file, ~400-600 lines)~~ **[Resolved]** — 7 tests added to `OfflineSyncResolverTests.swift`
+7. ~~**S6** — Password counting tests (1 file, ~100-150 lines)~~ **[Resolved]** — 4 tests added to `VaultRepositoryTests.swift`
+8. ~~**S7** — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added; VaultRepository-level test gap remains
+9. ~~**T8** — Hard error in pre-sync test (1-2 files, ~30-40 lines)~~ **[Resolved]** — 1 test added to `SyncServiceTests.swift`
 10. ~~**T6** — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 
 ### Batch 3: Reliability Improvements (2-3 hours)
-11. **R2** — Convert resolver to actor (1-2 files)
+11. ~~**R2** — Convert resolver to actor~~ **[Resolved]** — Converted `DefaultOfflineSyncResolver` from `class` to `actor`
 12. **R3** — Add retry backoff/TTL (2-3 files, ~30-50 lines, schema change)
 13. **R1** — Add data format version field (2-3 files, ~15-20 lines, schema change)
 
@@ -153,7 +153,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 
 The overall risk of implementing all recommended changes is **low**:
 
-1. **Phase 1-2 are mostly test-only** — VI-1's root cause fix (moving temp-ID before encryption, replacing `Cipher.withTemporaryId()`) is a behavioral change but is additive and low-risk. The UI fallback mitigation is already in place as a safety net.
+1. **Phase 1-2 are mostly test-only** — ~~VI-1's root cause fix (moving temp-ID before encryption, replacing `Cipher.withTemporaryId()`) is a behavioral change but is additive and low-risk. The UI fallback mitigation is already in place as a safety net.~~ **[UPDATE]** VI-1 is fully resolved. Remaining Phase 2 items are test-only (S6, S7 VaultRepository-level).
 2. **Phase 3 reliability improvements** are additive — they add safety mechanisms without changing existing behavior
 3. **Phase 4 items** are mostly accept-as-is — no changes needed
 4. **The feature flag (S8)** reduces overall production risk by providing a kill switch
@@ -207,7 +207,7 @@ The following 11 issues were confirmed as correct to accept without code changes
 
 2. **Per-user data isolation is enforced throughout.** The `userId` parameter flows through all data store operations, and `PendingCipherChangeData` predicates filter by userId.
 
-3. **The catch-and-continue pattern at `OfflineSyncResolver.swift:128-136` is correct but unverified.** This is the most critical untested behavior — S3 and S4 test gaps remain the highest priority.
+3. ~~**The catch-and-continue pattern at `OfflineSyncResolver.swift:128-136` is correct but unverified.** This is the most critical untested behavior — S3 and S4 test gaps remain the highest priority.~~ **[Resolved]** — The catch-and-continue pattern is now verified by 7 tests (S3 batch tests + S4 API failure tests) covering all change types and failure modes.
 
 4. **The early-abort pattern at `SyncService.swift:338-340` is the single most impactful reliability concern.** Without R3 (retry backoff), a permanently failing item blocks all syncing indefinitely. This makes R3 more important than originally assessed.
 
@@ -222,18 +222,18 @@ Based on the code review, the recommended implementation order is refined:
 2. ~~CS-1 — Remove stray blank line~~ **[Resolved]** — Commit `a52d379`
 3. R4 — Add sync abort log line
 4. ~~SEC-1 — Add TLS fallback logging~~ **[Superseded]** — Extension deleted
-5. **VI-1** — **Mitigated** — spinner fixed via UI fallback (PR #31), root cause (`data: nil` in `Cipher.withTemporaryId()`) remains. Still needs root cause fix: move temp-ID before encryption, replace `Cipher.withTemporaryId()`
+5. ~~**VI-1** — **Mitigated** — spinner fixed via UI fallback (PR #31), root cause remains~~ **[Resolved]** — All 5 recommended fixes implemented in Phase 2
 
-**Batch 2: Critical Test Coverage** (updated)
-5. T5 — Evaluate/replace inline mock
-6. S3 + S4 — Batch + API failure tests
-7. S6 + T7 — Password counting + subsequent edit tests
-8. S7 — Cipher-not-found test
-9. T8 — Hard error in pre-sync test
+**Batch 2: Critical Test Coverage** (updated) **[All Resolved]**
+5. ~~T5 — Evaluate/replace inline mock~~ **[Resolved]** — Maintenance comment added
+6. ~~S3 + S4 — Batch + API failure tests~~ **[Resolved]** — 7 tests added
+7. ~~S6 — Password counting tests~~ **[Resolved]** — 4 tests added
+8. ~~S7 — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added
+9. ~~T8 — Hard error in pre-sync test~~ **[Resolved]** — 1 test added
 10. ~~T6 — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 
 **Batch 3: Reliability (R3 elevated)** (updated)
-11. R2 — Convert resolver to actor
+11. ~~R2 — Convert resolver to actor~~ **[Resolved]**
 12. **R3** — Add retry count + failed state (**elevated from Nice-to-have**)
 13. R1 — Add data format version (deprioritize if R3 is implemented)
 
