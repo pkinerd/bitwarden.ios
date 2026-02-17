@@ -215,13 +215,14 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
                 userId: userId
             )
         } else if hasSoftConflict {
-            // No server-side changes, but 4+ offline password changes - create backup of server version
-            try await cipherService.updateCipherWithServer(localCipher, encryptedFor: userId)
+            // No server-side changes, but 4+ offline password changes - backup server version
+            // first to ensure it is preserved before pushing the local version.
             try await createBackupCipher(
                 from: serverCipher,
                 timestamp: serverRevisionDate,
                 userId: userId
             )
+            try await cipherService.updateCipherWithServer(localCipher, encryptedFor: userId)
         } else {
             // No conflict, 0-3 password changes - just push local version
             try await cipherService.updateCipherWithServer(localCipher, encryptedFor: userId)
@@ -243,22 +244,25 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
         let serverTimestamp = serverCipher.revisionDate
 
         if localTimestamp > serverTimestamp {
-            // Local is newer - push local, backup server
-            try await cipherService.updateCipherWithServer(localCipher, encryptedFor: userId)
+            // Local is newer - backup server version first, then push local.
+            // Creating the backup before the push ensures the server's previous
+            // version is preserved even if the push succeeds but a later step fails.
             try await createBackupCipher(
                 from: serverCipher,
                 timestamp: serverTimestamp,
                 userId: userId
             )
+            try await cipherService.updateCipherWithServer(localCipher, encryptedFor: userId)
         } else {
-            // Server is newer - server stays, backup local
-            // Server version is already on the server, just update local storage
-            try await cipherService.updateCipherWithLocalStorage(serverCipher)
+            // Server is newer - backup local version first, then update local storage.
+            // Creating the backup before overwriting local storage ensures the local
+            // version is preserved even if the local write succeeds but cleanup fails.
             try await createBackupCipher(
                 from: localCipher,
                 timestamp: localTimestamp,
                 userId: userId
             )
+            try await cipherService.updateCipherWithLocalStorage(serverCipher)
         }
     }
 
