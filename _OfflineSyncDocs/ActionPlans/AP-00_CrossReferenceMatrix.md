@@ -4,17 +4,17 @@ This document maps dependencies and implications between all 30 action plans. An
 
 ## Critical Implication Clusters
 
-### Cluster 1: Test Infrastructure (S3, S4, T5, ~~T6~~, S6, S7, ~~T7~~, T8)
+### Cluster 1: Test Infrastructure (~~S3~~, ~~S4~~, ~~T5~~, ~~T6~~, ~~S6~~, S7, ~~T7~~, ~~T8~~) **[Mostly Resolved]**
 
-All test gap issues share common infrastructure. The order of implementation matters:
+~~All test gap issues share common infrastructure. The order of implementation matters:~~
 
-1. **T5 (inline mock)** should be addressed first — if the inline mock is replaced with a project-level mock, all subsequent test additions benefit.
-2. **S3 + S4** (batch + API failure tests) should be implemented together — the "batch with mixed failure" scenario covers both.
-3. **S6** (password counting) — T7 is now [Resolved](Resolved/AP-T7_SubsequentOfflineEditTest.md); subsequent edit path covered by `test_updateCipher_offlineFallback_preservesCreateType`.
-4. **S7** (cipher-not-found) and **T8** (hard error) are independent and can be implemented in any order.
-5. **T6** (URLError coverage) is independent of the above.
-
-**Implication:** If T5 is resolved by using a project-level mock, S3/S4 tests benefit from a cleaner mock setup. If T5 is deferred, S3/S4 add more weight to the inline mock, increasing its maintenance burden.
+> **[UPDATE]** S3, S4, S6, T5, T7, T6, and T8 are all resolved. The remaining test gap is S7 (VaultRepository-level cipher-not-found test).
+>
+> - **T5** — Inline mock retained with maintenance comment. AutoMockable annotation deferred.
+> - **S3 + S4** — 7 tests added to `OfflineSyncResolverTests.swift`: 3 batch tests (all-succeed, mixed-failure, all-fail) + 4 API failure tests (create, update server fetch, soft delete, backup creation).
+> - **S6** — 4 password change counting tests added to `VaultRepositoryTests.swift`.
+> - **T8** — 1 pre-sync resolution failure test added to `SyncServiceTests.swift`.
+> - **S7** — Resolver-level 404 tests exist; VaultRepository-level `handleOfflineDelete` not-found test gap remains open.
 
 ### Cluster 2: Reliability & Safety (R3, R4, S8, R1, ~~R2~~)
 
@@ -72,10 +72,10 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 
 | Issue | Affects | Affected By |
 |-------|---------|-------------|
-| **S3** | T5 (mock burden) | T5 (mock quality), S4 (can combine) |
-| **S4** | T5 (mock burden) | T5 (mock quality), S3 (can combine), R3 (retry behavior) |
+| ~~**S3**~~ | ~~T5 (mock burden)~~ | ~~T5 (mock quality), S4 (can combine)~~ **[Resolved]** — 3 batch tests added |
+| ~~**S4**~~ | ~~T5 (mock burden)~~ | ~~T5 (mock quality), S3 (can combine), R3 (retry behavior)~~ **[Resolved]** — 4 API failure tests added |
 | ~~**SEC-1**~~ | ~~T6 (test updates)~~ | ~~EXT-1 (holistic review)~~ **[Superseded]** — Extension deleted |
-| **S6** | — | ~~T7~~ (T7 resolved separately) |
+| ~~**S6**~~ | — | ~~T7~~ (T7 resolved separately) **[Resolved]** — 4 password change counting tests added |
 | ~~**S7**~~ | — | VR-2 (delete context) — **[Partially Resolved]** Resolver-level 404 tests added via RES-2 fix; VaultRepository-level `handleOfflineDelete` not-found test gap remains |
 | **S8** | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — |
 | ~~**EXT-1**~~ | ~~T6 (test updates)~~ | ~~SEC-1 (holistic review), R3 (false-positive mitigation)~~ **[Superseded]** — Extension deleted |
@@ -95,9 +95,9 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **VR-2** | S7 (delete context) | U2 (consistency with other ops) |
 | **RES-1** | — | R3 (expire stuck creates) |
 | **RES-7** | — | CS-2 (update method changes) |
-| **T5** | S3 (test quality), S4 (test quality) | CS-2 (same fragility class) |
+| ~~**T5**~~ | ~~S3 (test quality), S4 (test quality)~~ | ~~CS-2 (same fragility class)~~ **[Resolved]** — Maintenance comment added |
 | ~~**T7**~~ | — | ~~S6~~ **[Resolved]** — See [Resolved/AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md) |
-| **T8** | — | R4 (logging distinguishes scenarios) |
+| ~~**T8**~~ | — | ~~R4 (logging distinguishes scenarios)~~ **[Resolved]** — Pre-sync resolution failure test added |
 | **PCDS-1** | — | PCDS-2 (same category) |
 | **PCDS-2** | — | PCDS-1 (same category) |
 | **SS-2** | — | R3 (recovery mechanism) |
