@@ -19,6 +19,9 @@ enum OfflineSyncError: LocalizedError, Equatable {
     /// Organization items cannot be edited offline.
     case organizationCipherOfflineEditNotSupported
 
+    /// The cipher was not found on the server (HTTP 404).
+    case cipherNotFound
+
     var errorDescription: String? {
         switch self {
         case .missingCipherData:
@@ -29,6 +32,8 @@ enum OfflineSyncError: LocalizedError, Equatable {
             "The vault is locked. Please unlock to sync offline changes."
         case .organizationCipherOfflineEditNotSupported:
             "Organization items cannot be edited while offline. Please try again when connected."
+        case .cipherNotFound:
+            "The cipher was not found on the server."
         }
     }
 }
@@ -193,12 +198,24 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
             throw OfflineSyncError.missingCipherData
         }
 
-        // Fetch the current server version
-        let serverResponseModel = try await cipherAPIService.getCipher(withId: cipherId)
-        let serverCipher = Cipher(responseModel: serverResponseModel)
-
+        // Decode the local cipher first so it's available for the not-found fallback.
         let localResponseModel = try JSONDecoder().decode(CipherDetailsResponseModel.self, from: localCipherData)
         let localCipher = Cipher(responseModel: localResponseModel)
+
+        // Fetch the current server version.
+        let serverCipher: Cipher
+        do {
+            let serverResponseModel = try await cipherAPIService.getCipher(withId: cipherId)
+            serverCipher = Cipher(responseModel: serverResponseModel)
+        } catch OfflineSyncError.cipherNotFound {
+            // The cipher was deleted on the server while offline. Re-create it
+            // to preserve the user's offline edits.
+            try await cipherService.addCipherWithServer(localCipher, encryptedFor: userId)
+            if let recordId = pendingChange.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
+            }
+            return
+        }
 
         let serverRevisionDate = serverCipher.revisionDate
         let originalRevisionDate = pendingChange.originalRevisionDate
@@ -272,9 +289,20 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
         cipherId: String,
         userId: String
     ) async throws {
-        // Check if the server version was modified while we were offline
-        let serverResponseModel = try await cipherAPIService.getCipher(withId: cipherId)
-        let serverCipher = Cipher(responseModel: serverResponseModel)
+        // Check if the server version was modified while we were offline.
+        let serverCipher: Cipher
+        do {
+            let serverResponseModel = try await cipherAPIService.getCipher(withId: cipherId)
+            serverCipher = Cipher(responseModel: serverResponseModel)
+        } catch OfflineSyncError.cipherNotFound {
+            // The cipher is already gone on the server — the user's intent (delete)
+            // is satisfied. Clean up the local record and pending change.
+            try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
+            if let recordId = pendingChange.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
+            }
+            return
+        }
 
         let originalRevisionDate = pendingChange.originalRevisionDate
         let hasConflict = originalRevisionDate != nil && serverCipher.revisionDate != originalRevisionDate

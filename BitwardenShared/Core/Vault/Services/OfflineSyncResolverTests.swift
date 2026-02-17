@@ -500,6 +500,77 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
     }
 
+    // MARK: Tests - Cipher Not Found (404)
+
+    /// `processPendingChanges(userId:)` with a `.update` pending change where the server
+    /// returns a 404 (cipher deleted on server while offline) re-creates the cipher on the
+    /// server to preserve the user's offline edits, then cleans up the pending change.
+    func test_processPendingChanges_update_cipherNotFound_recreates() async throws {
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
+            offlinePasswordChangeCount: 1
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server returns 404 — cipher was deleted while offline.
+        cipherAPIService.getCipherResult = .failure(OfflineSyncError.cipherNotFound)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Should re-create the cipher on the server via addCipherWithServer.
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "cipher-1")
+
+        // Should NOT call updateCipherWithServer (the update path is skipped).
+        XCTAssertTrue(cipherService.updateCipherWithServerCiphers.isEmpty)
+
+        // Should delete the pending change record.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    /// `processPendingChanges(userId:)` with a `.softDelete` pending change where the server
+    /// returns a 404 (cipher already deleted on server) cleans up the local record and
+    /// pending change without attempting the soft delete.
+    func test_processPendingChanges_softDelete_cipherNotFound_cleansUp() async throws {
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .softDelete,
+            cipherData: cipherData,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server returns 404 — cipher is already gone.
+        cipherAPIService.getCipherResult = .failure(OfflineSyncError.cipherNotFound)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Should clean up the local cipher record.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")
+
+        // Should NOT attempt to soft delete on the server.
+        XCTAssertNil(cipherService.softDeleteCipherId)
+
+        // Should delete the pending change record.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
     // MARK: Tests - OfflineSyncError
 
     /// `OfflineSyncError.organizationCipherOfflineEditNotSupported` provides a localized description.
