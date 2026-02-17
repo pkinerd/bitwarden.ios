@@ -4,13 +4,13 @@ This document maps dependencies and implications between all 30 action plans. An
 
 ## Critical Implication Clusters
 
-### Cluster 1: Test Infrastructure (S3, S4, T5, T6, S6, S7, T7, T8)
+### Cluster 1: Test Infrastructure (S3, S4, T5, ~~T6~~, S6, S7, ~~T7~~, T8)
 
 All test gap issues share common infrastructure. The order of implementation matters:
 
 1. **T5 (inline mock)** should be addressed first — if the inline mock is replaced with a project-level mock, all subsequent test additions benefit.
 2. **S3 + S4** (batch + API failure tests) should be implemented together — the "batch with mixed failure" scenario covers both.
-3. **S6 + T7** (password counting + subsequent edit) should be implemented together — subsequent edits are the primary path for password counting.
+3. **S6** (password counting) — T7 is now [Resolved](Resolved/AP-T7_SubsequentOfflineEditTest.md); subsequent edit path covered by `test_updateCipher_offlineFallback_preservesCreateType`.
 4. **S7** (cipher-not-found) and **T8** (hard error) are independent and can be implemented in any order.
 5. **T6** (URLError coverage) is independent of the above.
 
@@ -75,7 +75,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **S3** | T5 (mock burden) | T5 (mock quality), S4 (can combine) |
 | **S4** | T5 (mock burden) | T5 (mock quality), S3 (can combine), R3 (retry behavior) |
 | ~~**SEC-1**~~ | ~~T6 (test updates)~~ | ~~EXT-1 (holistic review)~~ **[Superseded]** — Extension deleted |
-| **S6** | — | T7 (combine subsequent edit) |
+| **S6** | — | ~~T7~~ (T7 resolved separately) |
 | ~~**S7**~~ | — | VR-2 (delete context) — **[Partially Resolved]** Resolver-level 404 tests added via RES-2 fix; VaultRepository-level `handleOfflineDelete` not-found test gap remains |
 | **S8** | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — |
 | ~~**EXT-1**~~ | ~~T6 (test updates)~~ | ~~SEC-1 (holistic review), R3 (false-positive mitigation)~~ **[Superseded]** — Extension deleted |
@@ -96,10 +96,10 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **RES-1** | — | R3 (expire stuck creates) |
 | **RES-7** | — | CS-2 (update method changes) |
 | **T5** | S3 (test quality), S4 (test quality) | CS-2 (same fragility class) |
-| **T7** | — | S6 (combine password tests) |
+| ~~**T7**~~ | — | ~~S6~~ **[Resolved]** — See [Resolved/AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md) |
 | **T8** | — | R4 (logging distinguishes scenarios) |
 | **PCDS-1** | — | PCDS-2 (same category) |
 | **PCDS-2** | — | PCDS-1 (same category) |
 | **SS-2** | — | R3 (recovery mechanism) |
 | **RES-9** | — | PCDS-1 (type precision), R3 (expire stuck items) |
-| **VI-1** | CS-2 (withTemporaryId is root cause), S7 (no .create check in delete), T7 (no preservesCreateType test) | R3 (permanently unsynced items stay broken), CS-2 (withTemporaryId fragility), U3 (pending indicator would explain the state) — **Mitigated** via UI fallback in ViewItemProcessor; root cause (`data: nil` in `Cipher.withTemporaryId()`) remains |
+| **VI-1** | CS-2 (withTemporaryId is root cause), S7 (no .create check in delete), ~~T7~~ (now resolved) | R3 (permanently unsynced items stay broken), CS-2 (withTemporaryId fragility), U3 (pending indicator would explain the state) — **Mitigated** via UI fallback in ViewItemProcessor; root cause (`data: nil` in `Cipher.withTemporaryId()`) remains |

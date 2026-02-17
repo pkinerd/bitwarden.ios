@@ -180,9 +180,9 @@ Similarly, `HasOfflineSyncResolver` is added to the `Services` typealias. The re
 
 **Assessment:** Same as DI-1 — follows existing precedent and enables future UI-layer usage if needed.
 
-### ~~Issue DI-3: Stray Blank Line in Services Typealias~~ [Resolved]
+### ~~Issue DI-3~~ [Resolved]
 
-~~A blank line was introduced between `& HasConfigService` and `& HasDeviceAPIService` in the `Services` typealias.~~ **[Resolved]** — The stray blank line was removed in commit `a52d379`.
+Same as CS-1 (stray blank line). See [AP-CS1](ActionPlans/Resolved/AP-CS1_StrayBlankLine.md). Removed in commit `a52d379`.
 
 ### Observation DI-4: Same Resolver Instance Shared Between SyncService and Container
 

@@ -137,7 +137,7 @@ The `OfflineSyncResolver` has the highest dependency count (6 injected services)
 
 **Observation A2 — `OfflineSyncResolver` has 6 dependencies:** This reflects the resolver's cross-cutting responsibility (reading ciphers, creating folders, uploading to API, managing pending state). The responsibility is cohesive, so the dependency count is acceptable.
 
-**~~Issue A3~~ [Resolved] — `timeProvider` removed from `DefaultOfflineSyncResolver`.** The unused `timeProvider` dependency has been removed. The backup cipher name uses `DateFormatter` with the cipher's own timestamp, not a time provider. Removed in commit `a52d379`.
+**~~Issue A3~~ [Resolved] — `timeProvider` removed.** See [AP-A3](ActionPlans/Resolved/AP-A3_UnusedTimeProvider.md).
 
 ---
 
@@ -176,9 +176,9 @@ The `OfflineSyncResolver` has the highest dependency count (6 injected services)
 
 ### 2.3 Style Issues
 
-**~~Issue CS-1~~ [Resolved] — Stray blank line in `Services.swift` typealias.** The blank line between `& HasConfigService` and `& HasDeviceAPIService` has been removed. Fixed in commit `a52d379`.
+**~~Issue CS-1~~ [Resolved] — Stray blank line removed.** See [AP-CS1](ActionPlans/Resolved/AP-CS1_StrayBlankLine.md).
 
-**[Updated note]** The `URLError+NetworkConnection.swift` file (previously listed in section 2.1 file naming) has been deleted. The error handling pattern in section 2.2 (`catch let error as URLError where error.isNetworkConnectionError`) has been simplified to plain `catch` blocks.
+**[Updated note]** The `URLError+NetworkConnection.swift` file has been deleted. See [AP-URLError_NetworkConnectionReview.md](ActionPlans/Superseded/AP-URLError_NetworkConnectionReview.md). Error handling simplified to plain `catch` blocks.
 
 ---
 
@@ -246,7 +246,7 @@ The removal of the `ConnectivityMonitor` (from a previous iteration) actually **
 | T3 | `VaultRepository` | `handleOfflineUpdate` password change detection not directly tested — counting logic involves decrypt+compare | Medium |
 | T4 | `VaultRepository` | `handleOfflineDelete` cipher-not-found path not tested — `fetchCipher(withId:)` returning nil leads to silent return | Low |
 | T5 | `OfflineSyncResolverTests` | Inline `MockCipherAPIServiceForOfflineSync` implements full protocol with `fatalError()` stubs for 15 unused methods — fragile against protocol changes | Low |
-| ~~T6~~ | ~~`URLError+NetworkConnection`~~ | ~~Only 3 of 10 positive error codes tested individually~~ **[Resolved]** Extension and tests deleted as part of error handling simplification. | ~~Low~~ N/A |
+| ~~T6~~ | ~~`URLError+NetworkConnection`~~ | ~~Only 3 of 10 positive error codes tested~~ **[Resolved]** See [AP-T6](ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md). | ~~Low~~ N/A |
 | T7 | `VaultRepository` | No test for `handleOfflineUpdate` with existing pending record (subsequent offline edit scenario) | Low |
 | T8 | `SyncService` | No test for pre-sync resolution where the resolver throws a hard error (not a per-item failure) | Low |
 
@@ -327,7 +327,7 @@ This prevents unauthorized client-side modifications to shared organization data
 
 ### 6.6 Security Issues and Observations
 
-**~~Issue SEC-1 (Medium)~~ [Superseded]** — `.secureConnectionFailed` classified as network error. This issue is superseded by the error handling simplification. The `URLError+NetworkConnection.swift` extension has been deleted. The VaultRepository catch blocks now use plain `catch` instead of filtering by `URLError.isNetworkConnectionError`. The fine-grained URLError classification was solving a problem that doesn't exist: the networking stack separates transport errors (`URLError`) from HTTP errors (`ServerError`, `ResponseValidationError`) at a different layer, and the encrypt step occurs outside the do-catch so SDK errors propagate normally. Any server API call failure now triggers offline save, which is the correct behavior since there is no realistic scenario where the server is online and reachable but a pending change is permanently invalid.
+**~~Issue SEC-1~~ [Superseded]** — URLError extension deleted; all API errors trigger offline save. See [AP-SEC1](ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md).
 
 **Observation SEC-2 — Pending data survives vault lock.** `PendingCipherChangeData` is stored in Core Data alongside other vault data. The `cipherData` field contains SDK-encrypted JSON, so it's protected by the vault encryption key. The metadata fields are unencrypted, consistent with existing `CipherData`.
 
@@ -342,7 +342,7 @@ This prevents unauthorized client-side modifications to shared organization data
 | Scenario | Handling | Assessment |
 |---------|---------|-----------|
 | Any server API failure during cipher operation | **[Updated]** Plain `catch` falls back to offline save | **Good** — The encrypt step occurs outside the do-catch, so SDK encryption errors propagate normally. Only server API call failures are caught. The networking stack separates transport errors from HTTP errors at a different layer, so fine-grained URLError filtering was unnecessary. |
-| ~~Non-network error during cipher operation~~ | ~~Rethrows normally~~ | **[Superseded]** No longer applicable — all API errors trigger offline save. There is no realistic scenario where the server is reachable but a pending change is permanently invalid. |
+| ~~Non-network error during cipher operation~~ | ~~Rethrows normally~~ | **[Superseded]** Error handling evolved to denylist pattern (PRs #26, #28). See Phase 2 review §2.2. |
 | Single pending change resolution fails | `OfflineSyncResolver` logs error via `Logger.application`, continues to next | **Good** — One failure doesn't block others |
 | Unresolved pending changes after resolution | SyncService aborts sync, returns early | **Good** — Prevents `replaceCiphers` from overwriting local offline edits |
 | Resolver `processPendingChanges` throws hard error | Error propagates through `fetchSync` — entire sync fails | **Acceptable** — If the store is unreadable, sync should not proceed |
@@ -557,26 +557,20 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 
 | ID | Component | Issue | Detailed Section |
 |----|-----------|-------|-----------------|
-| ~~SEC-1~~ | ~~`URLError+NetworkConnection`~~ | ~~`.secureConnectionFailed` may mask TLS security issues~~ **[Superseded]** Extension deleted; plain `catch` replaces URLError filtering. | ~~[EXT-2](ReviewSection_SupportingExtensions.md)~~ |
 | VI-1 | `ViewItemProcessor` / `VaultRepository` | Offline-created cipher fails to load in detail view (infinite spinner) — **[Mitigated]** Symptom addressed by `fetchCipherDetailsDirectly()` fallback in PR #31; root cause (`data: nil` in `Cipher.withTemporaryId()`) still present on `dev`. | [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
 | S6 | `VaultRepositoryTests` | `handleOfflineUpdate` password change counting not directly tested | [VR](ReviewSection_VaultRepository.md) |
-| S7 | `VaultRepositoryTests` | `handleOfflineDelete` cipher-not-found path not tested | [VR-5](ReviewSection_VaultRepository.md) |
 | S8 | Feature | Consider adding a feature flag for production safety | Section 12.3 |
-| ~~EXT-1~~ | ~~`URLError+NetworkConnection`~~ | ~~`.timedOut` may trigger offline save for temporarily slow servers~~ **[Superseded]** Extension deleted; all API errors now trigger offline save by design. | ~~[EXT-1](ReviewSection_SupportingExtensions.md)~~ |
 
 ### Low Priority
 
 | ID | Component | Issue | Detailed Section |
 |----|-----------|-------|-----------------|
-| ~~A3~~ | ~~`OfflineSyncResolver`~~ | ~~`timeProvider` dependency injected but never used~~ **[Resolved]** Removed in commit `a52d379`. | ~~Section 1.4~~ |
-| ~~CS-1~~ | ~~`Services.swift`~~ | ~~Stray blank line in typealias~~ **[Resolved]** Removed in commit `a52d379`. | ~~Section 2.3~~ |
 | CS-2 | `CipherView+OfflineSync` | `withTemporaryId`/`update` fragile against SDK type changes | Section 3.1 |
 | R1 | `PendingCipherChangeData` | No data format versioning for `cipherData` JSON | Section 7.3 |
 | R2 | `OfflineSyncResolver` | `conflictFolderId` thread safety (class with mutable var, no actor isolation) | [RES-2](ReviewSection_OfflineSyncResolver.md) |
 | R3 | `OfflineSyncResolver` | No retry backoff for permanently failing resolution items | Section 7.3 |
 | R4 | `SyncService` | Silent sync abort (no logging) | [SS-3](ReviewSection_SyncService.md) |
 | DI-1 | `Services.swift` | `HasPendingCipherChangeDataStore` exposes data store to UI layer (broader than needed) | [DI-1](ReviewSection_DIWiring.md) |
-| ~~T6~~ | ~~`URLError+NetworkConnectionTests`~~ | ~~Only 3 of 10 positive error codes tested~~ **[Resolved]** Extension and tests deleted. | ~~[EXT-4](ReviewSection_SupportingExtensions.md)~~ |
 
 ### Informational / Future Considerations
 
@@ -808,6 +802,9 @@ The post-review fixes on `dev` (Section 16) improved error handling resilience (
 None of these are blocking issues. The implementation is ready for merge consideration with the understanding that the identified test gaps and the VI-1 root cause should be tracked.
 
 **Resolution history:**
-- SEC-1 superseded by error handling simplification (URLError extension deleted)
+- SEC-1, EXT-1 superseded by error handling simplification (URLError extension deleted)
+- A3, CS-1, T6 resolved by code cleanup and deletion
+- T7 resolved by `test_updateCipher_offlineFallback_preservesCreateType` (Phase 2)
+- S7 partially resolved — resolver-level 404 tests added
 - VI-1 **mitigated** via UI fallback (PR #31) — root cause remains on `dev`
-- 5 action plans in Resolved: A3, CS-1, SEC-1, EXT-1, T6
+- 7 action plans in Resolved: A3, CS-1, SEC-1, EXT-1, T6, S7, T7

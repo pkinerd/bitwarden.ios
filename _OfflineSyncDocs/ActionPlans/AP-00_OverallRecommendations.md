@@ -58,7 +58,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | **R1** — Data format versioning | Add version field (Option A) | ~15-20 lines | Low |
 | **CS-2** — Fragile SDK copies | Add review comments (Option A) | ~6 lines | None |
 | ~~**T6** — URLError test coverage~~ | ~~Add individual tests~~ **[Resolved]** — Extension and tests deleted. | ~~35 lines~~ 0 | N/A |
-| **T7** — Subsequent edit test | Add dedicated test (Option A) | ~50-80 lines | Very low |
+| ~~**T7** — Subsequent edit test~~ | ~~Add dedicated test~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType`. See [Resolved/AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md). | ~~50-80 lines~~ 0 | N/A |
 | **T8** — Hard error test | Add single test (Option A) | ~30-40 lines | Very low |
 | **T5** — Inline mock fragility | Add `@AutoMockable` to CipherAPIService (Option A) | ~5 lines | Very low |
 | **DI-1** — UI layer exposure | Accept current pattern (Option A) | 0 lines | None |
@@ -95,7 +95,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 ### Batch 2: Test Coverage (1-2 hours)
 5. **T5** — Evaluate/replace inline mock (1 file)
 6. **S3 + S4** — Batch + API failure tests (1 file, ~400-600 lines)
-7. **S6 + T7** — Password counting + subsequent edit tests (1 file, ~150-230 lines)
+7. **S6** — Password counting tests (1 file, ~100-150 lines) — T7 now resolved separately
 8. ~~**S7** — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added; VaultRepository-level test gap remains
 9. **T8** — Hard error in pre-sync test (1-2 files, ~30-40 lines)
 10. ~~**T6** — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
@@ -227,7 +227,7 @@ Based on the code review, the recommended implementation order is refined:
 **Batch 2: Critical Test Coverage** (updated)
 5. T5 — Evaluate/replace inline mock
 6. S3 + S4 — Batch + API failure tests
-7. S6 + T7 — Password counting + subsequent edit tests
+7. S6 — Password counting tests (T7 resolved)
 8. S7 — Cipher-not-found test
 9. T8 — Hard error in pre-sync test
 10. ~~T6 — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted

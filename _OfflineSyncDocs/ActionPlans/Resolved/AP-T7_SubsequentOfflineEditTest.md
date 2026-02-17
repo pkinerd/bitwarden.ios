@@ -1,5 +1,7 @@
 # Action Plan: T7 — No Test for `handleOfflineUpdate` with Existing Pending Record
 
+> **Status: [RESOLVED]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType` in Phase 2 (commit `12cb225`). The subsequent-edit code path is exercised by this test, which verifies that an existing `.create` pending record is found and the change type is preserved on update.
+
 ## Issue Summary
 
 | Field | Value |

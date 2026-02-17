@@ -952,7 +952,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [ReviewSection_SyncService.md](./_OfflineSyncDocs/ReviewSection_SyncService.md) | Detailed review of sync integration |
 | [ReviewSection_VaultRepository.md](./_OfflineSyncDocs/ReviewSection_VaultRepository.md) | Detailed review of offline fallback handlers |
 
-### Action Plans (24 Active + 5 Resolved)
+### Action Plans (22 Active + 7 Resolved + 1 Superseded)
 
 **Phase 1 — Must-Address (Test Gaps):**
 
@@ -980,7 +980,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [R1](./_OfflineSyncDocs/ActionPlans/AP-R1_DataFormatVersioning.md) | No data format versioning | Low |
 | [CS-2](./_OfflineSyncDocs/ActionPlans/AP-CS2_FragileSDKCopyMethods.md) | Fragile SDK copy methods | Low |
 | [T5](./_OfflineSyncDocs/ActionPlans/AP-T5_InlineMockFragility.md) | Inline mock fragility | Low |
-| [T7](./_OfflineSyncDocs/ActionPlans/AP-T7_SubsequentOfflineEditTest.md) | No subsequent offline edit test | Low |
+| ~~[T7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md)~~ | ~~No subsequent offline edit test~~ **[Resolved]** — See Resolved/Superseded table below | ~~Low~~ |
 | [T8](./_OfflineSyncDocs/ActionPlans/AP-T8_HardErrorInPreSyncResolution.md) | No hard error in pre-sync resolution test | Low |
 | [DI-1](./_OfflineSyncDocs/ActionPlans/AP-DI1_DataStoreExposedToUILayer.md) | DataStore exposed to UI layer | Low |
 
@@ -1010,7 +1010,14 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [EXT-1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-EXT1_TimedOutClassification.md) | Timeout classification | Superseded by URLError removal |
 | [T6](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md) | URLError test coverage | Resolved by deletion |
 | [S7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md) | Cipher-not-found path test | **Partially Resolved** — resolver-level 404 tests added (commit `e929511`); VaultRepository-level `handleOfflineDelete` guard clause test gap remains |
+| [T7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md) | Subsequent offline edit test | **Resolved** — Covered by `test_updateCipher_offlineFallback_preservesCreateType` (Phase 2, commit `12cb225`) |
 | [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher view failure | **Mitigated** — spinner fixed via UI fallback (PR #31); root cause (`data: nil`) remains |
+
+**Superseded:**
+
+| ID | Title | Resolution |
+|----|-------|------------|
+| [URLError Review](ActionPlans/Superseded/AP-URLError_NetworkConnectionReview.md) | URLError+NetworkConnection extension review | **Superseded** — File deleted in commit `e13aefe`; historical review preserved |
 
 **Cross-reference:** [AP-00_CrossReferenceMatrix.md](./_OfflineSyncDocs/ActionPlans/AP-00_CrossReferenceMatrix.md), [AP-00_OverallRecommendations.md](./_OfflineSyncDocs/ActionPlans/AP-00_OverallRecommendations.md)
 

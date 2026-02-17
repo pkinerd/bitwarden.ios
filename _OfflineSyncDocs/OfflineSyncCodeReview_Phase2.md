@@ -342,7 +342,7 @@ The phase 2 commits add significant test coverage:
 - **S3 (batch processing):** Still not tested
 - **S4 (API failure during resolution):** Still not tested
 - **S6 (password change counting):** Still not tested
-- **T7 (subsequent offline edit):** Now covered by `test_updateCipher_offlineFallback_preservesCreateType`
+- ~~**T7 (subsequent offline edit):**~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType`. See [Resolved/AP-T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md).
 
 ---
 
@@ -465,15 +465,15 @@ None identified. All changes use existing types and APIs. The `@testable import`
 | P2-T3 | `VaultRepository` | Orphaned pending change cleanup error could mask successful server operation |
 | P2-T4 | `ViewItemProcessor` | No test for state becoming stale after fallback (one-shot fetch, no subscription) |
 
-### Superseded Original Review Issues
+### Superseded/Resolved Original Review Issues
 
 | Original ID | Status | Notes |
 |-------------|--------|-------|
 | CS-2 (`Cipher.withTemporaryId` fragile) | **Updated** | Now applies to `CipherView.withId(_:)` — same fragility concern |
-| SEC-1 (`.secureConnectionFailed` as network error) | **Further superseded** | Error filtering now catches specific types; unknown errors still fall through to offline save |
+| ~~SEC-1~~ | **[Superseded]** | See [AP-SEC1](ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md). Error filtering now catches specific types; unknown errors fall through to offline save. |
 | S3 (batch processing test) | **Still open** | Not addressed in phase 2 |
 | S4 (API failure during resolution test) | **Still open** | Not addressed in phase 2 |
-| T7 (subsequent offline edit) | **Resolved** | Covered by `test_updateCipher_offlineFallback_preservesCreateType` |
+| ~~T7~~ (subsequent offline edit) | **[Resolved]** | See [AP-T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md). Covered by `test_updateCipher_offlineFallback_preservesCreateType`. |
 
 ---
 
