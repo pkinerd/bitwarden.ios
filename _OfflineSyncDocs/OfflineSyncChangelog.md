@@ -2,7 +2,7 @@
 
 > **Feature**: Client-side offline vault sync with conflict resolution
 > **Fork base**: `0283b1f` (Update SDK to 9b59b09)
-> **Commits**: 5 (initial) + 8 (post-review fixes on dev: PRs #26-#33)
+> **Commits**: 5 (initial) + 8 (post-review fixes on dev: PRs #26-#33) + 2 (branch-only: backup reorder + RES-2 404 handling)
 > **Scope**: 18 files changed (+2,310/−11 initial) + multiple post-review fixes
 > **Documentation**: 40+ files
 
@@ -409,7 +409,7 @@ The original implementation used `URLError` classification to determine which er
 
 ## 7. OfflineSyncResolver Conflict Resolution Engine
 
-**File:** `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` (new, 354 lines)
+**File:** `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` (new, 385 lines)
 
 The core conflict resolution engine that processes pending offline changes when connectivity returns.
 
@@ -421,10 +421,11 @@ enum OfflineSyncError: LocalizedError {
     case missingCipherId
     case vaultLocked
     case organizationCipherOfflineEditNotSupported
+    case cipherNotFound
 }
 ```
 
-Four error types with `LocalizedError` conformance for user-facing messages.
+Five error types with `LocalizedError` conformance for user-facing messages. The `.cipherNotFound` case was added in commit `e929511` (RES-2 fix) to handle server 404 responses during conflict resolution.
 
 ### 7b. OfflineSyncResolver Protocol (line 40)
 
@@ -779,7 +780,7 @@ All tests trigger the offline path by configuring `MockCipherService` to throw `
 
 ## 13. Test Coverage: OfflineSyncResolverTests
 
-**File:** `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` (new, 513 lines)
+**File:** `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` (new, 589 lines)
 
 Comprehensive tests for the conflict resolution engine. Includes a custom `MockCipherAPIServiceForOfflineSync` that provides a minimal mock for `getCipher(withId:)`.
 
@@ -794,6 +795,8 @@ Comprehensive tests for the conflict resolution engine. Includes a custom `MockC
 | `test_processPendingChanges_update_softConflict` | Soft conflict: 4+ password changes → push local, backup server |
 | `test_processPendingChanges_softDelete_conflict` | Soft delete conflict: backup server before deleting |
 | `test_processPendingChanges_update_conflict_createsConflictFolder` | Verifies "Offline Sync Conflicts" folder creation |
+| `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
+| `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
 | `test_offlineSyncError_localizedDescription` | Error message for org cipher restriction |
 | `test_offlineSyncError_vaultLocked_localizedDescription` | Error message for vault locked state |
 
@@ -897,6 +900,26 @@ Mitigated the VI-1 infinite spinner bug via a UI-level fallback in `ViewItemProc
 
 **Note:** This mitigates the symptom but the root cause remains — `Cipher.withTemporaryId()` still sets `data: nil`.
 
+### Commit `93143f1`: Reorder Conflict Resolution — Backup Before Push
+
+Reordered the conflict resolution logic in `DefaultOfflineSyncResolver` so that backup ciphers are always created *before* the destructive push/update operation. Previously, the backup was created after the push — if backup creation failed (e.g., network error during `addCipherWithServer` for the backup), the losing version would already be overwritten on the server with no recovery.
+
+Three code paths changed in `OfflineSyncResolver.swift`:
+1. **`resolveConflict` — local wins**: Backup of server version now created before `updateCipherWithServer` pushes local version
+2. **`resolveConflict` — server wins**: Backup of local version now created before `updateCipherWithLocalStorage` overwrites local
+3. **`resolveUpdate` — soft conflict**: Backup of server version now created before `updateCipherWithServer` pushes local version
+
+### Commit `e929511`: Handle Server 404 in resolveUpdate and resolveSoftDelete (RES-2)
+
+Added handling for the case where `cipherAPIService.getCipher(withId:)` returns a 404 (cipher deleted on server while user was offline). Previously, this error propagated unhandled, leaving the pending change stuck and blocking all future syncs via the early-abort in `SyncService.fetchSync`.
+
+Changes:
+1. **`OfflineSyncError.cipherNotFound`** — New error case for 404 responses
+2. **`GetCipherRequest.validate(_:)`** — New validation method (following `CheckLoginRequestRequest` pattern) that intercepts 404 before `ResponseValidationHandler` processes the response
+3. **`resolveUpdate` 404 handling** — Re-creates the cipher on the server via `addCipherWithServer`, preserving the user's offline edits
+4. **`resolveSoftDelete` 404 handling** — Cleans up local cipher record and pending change (user's delete intent already satisfied)
+5. **Two new tests** — `test_processPendingChanges_update_cipherNotFound_recreates` and `test_processPendingChanges_softDelete_cipherNotFound_cleansUp`
+
 ### Commit `dd3bc38`: Orphaned Pending Change Cleanup
 
 After successful online operations, orphaned pending change records from prior offline attempts are cleaned up. Added count check in `SyncService` so the common case (no pending changes) skips `processPendingChanges()`.
@@ -944,7 +967,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 |----|-------|----------|
 | [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher view failure — **Mitigated** (spinner fixed via UI fallback; root cause `data: nil` remains) | Medium |
 | [S6](./_OfflineSyncDocs/ActionPlans/AP-S6_PasswordChangeCountingTest.md) | No password change counting test | Medium |
-| [S7](./_OfflineSyncDocs/ActionPlans/AP-S7_CipherNotFoundPathTest.md) | No cipher-not-found path test | Medium |
+| [S7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md) | No cipher-not-found path test — **Partially Resolved** (resolver-level tests added; VaultRepository gap remains) | Medium |
 | [S8](./_OfflineSyncDocs/ActionPlans/AP-S8_FeatureFlag.md) | No feature flag for remote disable | Medium |
 | [R4](./_OfflineSyncDocs/ActionPlans/AP-R4_SilentSyncAbort.md) | Silent sync abort (no logging) | Medium |
 
@@ -986,6 +1009,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [SEC-1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md) | TLS failure classification | Superseded by URLError removal |
 | [EXT-1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-EXT1_TimedOutClassification.md) | Timeout classification | Superseded by URLError removal |
 | [T6](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md) | URLError test coverage | Resolved by deletion |
+| [S7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md) | Cipher-not-found path test | **Partially Resolved** — resolver-level 404 tests added (commit `e929511`); VaultRepository-level `handleOfflineDelete` guard clause test gap remains |
 | [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher view failure | **Mitigated** — spinner fixed via UI fallback (PR #31); root cause (`data: nil`) remains |
 
 **Cross-reference:** [AP-00_CrossReferenceMatrix.md](./_OfflineSyncDocs/ActionPlans/AP-00_CrossReferenceMatrix.md), [AP-00_OverallRecommendations.md](./_OfflineSyncDocs/ActionPlans/AP-00_OverallRecommendations.md)
@@ -1001,8 +1025,8 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | `Core/Vault/Extensions/CipherView+OfflineSync.swift` | 95 | Cipher copy helpers |
 | `Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` | 128 | Extension tests |
 | `Core/Vault/Models/Data/PendingCipherChangeData.swift` | 192 | Core Data entity |
-| `Core/Vault/Services/OfflineSyncResolver.swift` | 354 | Conflict resolution engine |
-| `Core/Vault/Services/OfflineSyncResolverTests.swift` | 513 | Resolver tests |
+| `Core/Vault/Services/OfflineSyncResolver.swift` | 385 | Conflict resolution engine |
+| `Core/Vault/Services/OfflineSyncResolverTests.swift` | 589 | Resolver tests |
 | `Core/Vault/Services/Stores/PendingCipherChangeDataStore.swift` | 155 | Data store protocol + impl |
 | `Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests.swift` | 286 | Data store tests |
 | `Core/Vault/Services/Stores/TestHelpers/MockPendingCipherChangeDataStore.swift` | 72 | Data store mock |

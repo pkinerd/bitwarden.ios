@@ -1,5 +1,7 @@
 # Action Plan: S7 (T4, VR-5) — Cipher-Not-Found Path in handleOfflineDelete Not Tested
 
+> **Status: [PARTIALLY RESOLVED]** — The resolver-level cipher-not-found path is now tested via two new tests in `OfflineSyncResolverTests.swift`: `test_processPendingChanges_update_cipherNotFound_recreates` and `test_processPendingChanges_softDelete_cipherNotFound_cleansUp`. These were added as part of the RES-2 fix (server 404 handling). The VaultRepository-level test gap (`handleOfflineDelete` guard clause when `fetchCipher` returns nil) remains open.
+
 ## Issue Summary
 
 | Field | Value |

@@ -111,6 +111,7 @@ Accept the very low probability of this scenario. A duplicate cipher is a minor 
 
 - **S4 (RES-4)**: API failure during resolution — the create failure test could verify that pending records are retained on failure, providing confidence in the retry behavior.
 - **R3 (SS-5)**: Retry backoff — if retry backoff is implemented, permanently failing create operations would eventually be expired rather than retried indefinitely.
+- **RES-2 (404 handling)**: The RES-2 fix (commit `e929511`) added 404 handling to `resolveUpdate` — when a cipher is not found on the server, it re-creates it via `addCipherWithServer`. This is a separate code path from `resolveCreate` but shares the same `addCipherWithServer` call, so the same theoretical duplicate risk applies if the re-create call partially fails.
 
 ## Updated Review Findings
 

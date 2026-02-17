@@ -122,6 +122,7 @@ if let cipherId = cipherEncryptionContext.cipher.id {
 - **Rationale:** If a cipher was previously saved offline (creating a pending change), and then the user retries while online, the online operation succeeds but the pending change record remains orphaned. On next sync, the resolver would attempt to resolve an already-synced change.
 - **Correctness:** Using `deletePendingChange(cipherId:userId:)` is safe — if no pending change exists, it's a no-op.
 - **Edge case:** The cleanup happens after the server call succeeds but before the method returns. If the `deletePendingChange` call fails (Core Data error), the error is not caught — it propagates to the caller. This could cause a successful server operation to appear as a failure to the UI. **Severity: Low** — Core Data delete-by-predicate failures are extremely rare.
+- **[Post-review fix — RES-2]:** The resolver's `resolveUpdate` and `resolveSoftDelete` methods previously did not handle the case where `getCipher(withId:)` returns a 404 (cipher deleted on the server while offline). This has been fixed: `resolveUpdate` now re-creates the cipher on the server via `addCipherWithServer`; `resolveSoftDelete` cleans up the local record and pending change since the user's delete intent is already satisfied. See section 2.8.
 
 ### 2.4 Preserve `.create` Type for Offline-Created Ciphers (Critical Fix)
 
@@ -182,6 +183,51 @@ let newFolder = try await folderService.addFolderWithServer(name: encryptedFolde
 - **Security:** This is a critical fix. Folder names must be encrypted before being sent to the server to maintain zero-knowledge architecture. The encrypted folder name is what gets stored on the server.
 - **Test coverage:** `test_processPendingChanges_update_conflict_localNewer` verifies that `clientService.mockVault.clientFolders.encryptedFolders.first?.name` equals `"Offline Sync Conflicts"` (the mock returns the input as-is, but it validates the encrypt path is called).
 - **Original review update:** This was not flagged in the original review. The original `getOrCreateConflictFolder` passed a plaintext name. This is the most significant security fix in this phase.
+
+### 2.7 Backup-Before-Push Reordering (Safety Improvement)
+
+**Before:** In `resolveConflict`, the winning cipher was pushed to the server (or written to local storage) *before* the backup of the losing version was created. If `createBackupCipher` failed (network error, folder creation failure), the losing version would be permanently lost — violating the "no silent data loss" design principle.
+
+**After:** The order is reversed — `createBackupCipher` is called *before* the push/update in all three conflict paths:
+
+- **Local-wins (hard conflict):** Backup server version first, then push local via `updateCipherWithServer`
+- **Server-wins (hard conflict):** Backup local version first, then overwrite local via `updateCipherWithLocalStorage`
+- **Soft conflict (4+ password changes):** Backup server version first, then push local via `updateCipherWithServer`
+
+**Review:**
+- **Correctness:** If `createBackupCipher` fails, the error propagates and the pending change record is NOT deleted — resolution will be retried on the next sync with no data loss. This matches the pattern already used by `resolveSoftDelete`, which already backed up before deleting.
+- **No ordering dependency:** `createBackupCipher` creates a new cipher (with `id: nil`) on the server. It does not modify the original cipher being pushed/updated, so the reorder is safe.
+
+### 2.8 Server 404 Handling in resolveUpdate and resolveSoftDelete (Important Fix)
+
+**Bug:** When `resolveUpdate` or `resolveSoftDelete` called `cipherAPIService.getCipher(withId:)` and the cipher had been deleted on the server while the user was offline, the resulting error propagated unhandled. The pending change stayed unresolved, and all future syncs were permanently blocked (`remainingCount > 0` at `SyncService.swift:339` prevents full sync).
+
+**Fix — 404 detection via `GetCipherRequest.validate`:**
+
+The `ResponseValidationHandler` processes error responses before the caller sees them. If the server returns a 404 with a JSON body, it becomes a `ServerError` with no accessible status code. To reliably detect 404, a `validate` method was added to `GetCipherRequest` following the existing `CheckLoginRequestRequest` pattern:
+
+```swift
+func validate(_ response: HTTPResponse) throws {
+    if response.statusCode == 404 {
+        throw OfflineSyncError.cipherNotFound
+    }
+}
+```
+
+The `validate` method runs before `ResponseValidationHandler` (`HTTPService.swift:153`), intercepting the raw `HTTPResponse`.
+
+**Fix — `resolveUpdate` 404 handling:**
+
+When `.cipherNotFound` is caught, the local cipher is re-created on the server via `addCipherWithServer`, preserving the user's offline edits. The pending change record is then deleted.
+
+**Fix — `resolveSoftDelete` 404 handling:**
+
+When `.cipherNotFound` is caught, the cipher is already gone — the user's delete intent is satisfied. The local cipher record and pending change are cleaned up.
+
+**Review:**
+- **Correctness:** Both paths clean up the pending change, unblocking future syncs.
+- **Test coverage:** Two new tests: `test_processPendingChanges_update_cipherNotFound_recreates` and `test_processPendingChanges_softDelete_cipherNotFound_cleansUp`.
+- **Design choice:** Re-creating the cipher on the server (rather than discarding the user's offline edits) follows the principle of preserving user work. The user may have intentionally deleted the cipher on another device, but the offline edits take priority since the user actively edited the cipher locally.
 
 ---
 

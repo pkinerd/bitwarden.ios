@@ -39,7 +39,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 |-------|---------------|--------|------|
 | **VI-1** — Offline-created cipher view failure | **Mitigated** — Spinner fixed via UI fallback (`fetchCipherDetailsDirectly()` in `ViewItemProcessor`, PR #31). Root cause remains: `Cipher.withTemporaryId()` sets `data: nil`. Recommended: move temp-ID before encryption, replace `Cipher.withTemporaryId()` with `CipherView`-level ID method | ~50-80 lines | Low |
 | **S6** — Password change test | Add dedicated tests (Option A) | ~100-150 lines | Very low |
-| **S7** — Cipher-not-found test | Add single targeted test (Option A) | ~30-40 lines | Very low |
+| ~~**S7** — Cipher-not-found test~~ | ~~Add single targeted test (Option A)~~ **[Partially Resolved]** — Two 404-handling tests added in `OfflineSyncResolverTests` (resolver level). VaultRepository-level test gap remains open. | ~~30-40 lines~~ 0 | N/A |
 | ~~**SEC-1** — secureConnectionFailed~~ | ~~Add logging for TLS triggers~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted; plain `catch` replaces URLError filtering. | ~~10-15 lines~~ 0 | N/A |
 | ~~**EXT-1** — timedOut~~ | ~~Accept current behavior~~ **[Superseded]** — Extension deleted; all API errors now trigger offline save by design. | 0 lines | N/A |
 | **S8** — Feature flag | Server-controlled flag (Option A) | ~20-30 lines | Low |
@@ -47,7 +47,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | ~~**CS-1** — Stray blank line~~ | ~~Remove blank line (Option A)~~ **[Resolved]** — Removed in commit `a52d379`. | ~~1 line~~ 0 | N/A |
 | **R4** — Silent sync abort | Add log line (Option A) | 1-2 lines | None |
 
-**Rationale:** VI-1's symptom (infinite spinner) is mitigated via UI fallback, but the root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains. Related edge cases (editing offline-created ciphers loses `.create` type; deleting offline-created ciphers queues futile `.softDelete`; no temp-ID cleanup in `resolveCreate()`) also remain. Test gaps (S6, S7) are low-effort, high-value. R4 logging is trivial. S8 (feature flag) is the most impactful medium-priority item for production safety. A3, CS-1, SEC-1, and EXT-1 are all resolved/superseded.
+**Rationale:** VI-1's symptom (infinite spinner) is mitigated via UI fallback, but the root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains. Related edge cases (editing offline-created ciphers loses `.create` type; deleting offline-created ciphers queues futile `.softDelete`; no temp-ID cleanup in `resolveCreate()`) also remain. Test gaps (S6) are low-effort, high-value. R4 logging is trivial. S8 (feature flag) is the most impactful medium-priority item for production safety. A3, CS-1, SEC-1, EXT-1, and S7 (resolver-level) are all resolved/superseded. **[Updated]** RES-2 (server 404 handling in `resolveUpdate`/`resolveSoftDelete`) has been fixed — the resolver now handles cipher-not-found gracefully, preventing permanent sync blockage. The backup-before-push ordering (A-3) has also been fixed to prevent data loss if backup creation fails.
 
 ### Phase 3: Nice-to-Have (Low Priority)
 
@@ -96,7 +96,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 5. **T5** — Evaluate/replace inline mock (1 file)
 6. **S3 + S4** — Batch + API failure tests (1 file, ~400-600 lines)
 7. **S6 + T7** — Password counting + subsequent edit tests (1 file, ~150-230 lines)
-8. **S7** — Cipher-not-found test (1 file, ~30-40 lines)
+8. ~~**S7** — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added; VaultRepository-level test gap remains
 9. **T8** — Hard error in pre-sync test (1-2 files, ~30-40 lines)
 10. ~~**T6** — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 

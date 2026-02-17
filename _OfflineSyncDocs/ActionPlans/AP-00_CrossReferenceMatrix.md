@@ -76,7 +76,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **S4** | T5 (mock burden) | T5 (mock quality), S3 (can combine), R3 (retry behavior) |
 | ~~**SEC-1**~~ | ~~T6 (test updates)~~ | ~~EXT-1 (holistic review)~~ **[Superseded]** — Extension deleted |
 | **S6** | — | T7 (combine subsequent edit) |
-| **S7** | — | VR-2 (delete context) |
+| ~~**S7**~~ | — | VR-2 (delete context) — **[Partially Resolved]** Resolver-level 404 tests added via RES-2 fix; VaultRepository-level `handleOfflineDelete` not-found test gap remains |
 | **S8** | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — |
 | ~~**EXT-1**~~ | ~~T6 (test updates)~~ | ~~SEC-1 (holistic review), R3 (false-positive mitigation)~~ **[Superseded]** — Extension deleted |
 | ~~**A3**~~ | ~~R2 (simpler migration)~~ | ~~R3 (timeProvider may be repurposed)~~ **[Resolved]** — Removed in commit `a52d379` |

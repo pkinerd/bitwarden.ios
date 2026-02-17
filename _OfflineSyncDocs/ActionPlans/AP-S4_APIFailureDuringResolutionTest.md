@@ -127,3 +127,12 @@ The review confirms the original assessment. After reviewing the actual implemen
 6. **Overlap with S3**: The S3 "batch mixed failure" test naturally covers the S4 catch-and-continue behavior. However, dedicated single-item failure tests are still valuable for isolating failure diagnostics. Recommend implementing both: S3 batch tests confirm batch behavior, S4 single-item tests confirm per-type error handling.
 
 **Updated conclusion**: Original recommendation stands. Implement Option B with 3-4 representative failure tests. Priority remains High. Can be efficiently combined with S3 batch tests.
+
+### Note: `getCipher` 404 Now Handled (RES-2 Fix)
+
+As of the RES-2 fix (commit `e929511`), `cipherAPIService.getCipher(withId:)` returning a 404 is no longer an unhandled failure path. `GetCipherRequest` now has a `validate` method that throws `OfflineSyncError.cipherNotFound` for 404 responses, which is caught explicitly in both `resolveUpdate` (re-creates the cipher on the server) and `resolveSoftDelete` (cleans up locally). Two new tests cover these paths:
+
+- `test_processPendingChanges_update_cipherNotFound_recreates`
+- `test_processPendingChanges_softDelete_cipherNotFound_cleansUp`
+
+The remaining untested failure points in this action plan (non-404 API failures, backup creation failures, etc.) are still valid gaps.
