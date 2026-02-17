@@ -154,6 +154,12 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
     }
 
     /// Resolves a pending create (new item created offline).
+    ///
+    /// After successfully uploading the cipher to the server, this method deletes
+    /// the old cipher record that used a temporary client-side ID. The server
+    /// assigns a new ID, so `addCipherWithServer` creates a new `CipherData`
+    /// record with the server ID. Without this cleanup step, the old temp-ID
+    /// record would persist in Core Data until the next full sync.
     private func resolveCreate(pendingChange: PendingCipherChangeData, userId: String) async throws {
         guard let cipherData = pendingChange.cipherData else {
             throw OfflineSyncError.missingCipherData
@@ -161,8 +167,16 @@ class DefaultOfflineSyncResolver: OfflineSyncResolver {
 
         let responseModel = try JSONDecoder().decode(CipherDetailsResponseModel.self, from: cipherData)
         let cipher = Cipher(responseModel: responseModel)
+        let tempId = cipher.id
 
         try await cipherService.addCipherWithServer(cipher, encryptedFor: userId)
+
+        // Remove the old cipher record that used the temporary client-side ID.
+        // `addCipherWithServer` upserts a new record with the server-assigned ID,
+        // so the temp-ID record is now orphaned.
+        if let tempId {
+            try await cipherService.deleteCipherWithLocalStorage(id: tempId)
+        }
 
         if let recordId = pendingChange.id {
             try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)

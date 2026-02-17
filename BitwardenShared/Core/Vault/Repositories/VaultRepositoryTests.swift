@@ -3,6 +3,7 @@ import BitwardenKitMocks
 import BitwardenResources
 import BitwardenSdk
 import Combine
+import CoreData
 import InlineSnapshotTesting
 import Networking
 import TestHelpers
@@ -157,6 +158,24 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.changeType, .create)
+    }
+
+    /// `addCipher()` assigns a temporary ID before encryption when the cipher has no ID,
+    /// so the ID is baked into the encrypted content and survives the decrypt round-trip.
+    func test_addCipher_offlineFallback_newCipherGetsTempId() async throws {
+        cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        let cipher = CipherView.fixture(id: nil, name: "New Cipher")
+        try await subject.addCipher(cipher)
+
+        // The cipher passed to encrypt should have a non-nil ID (temp UUID assigned before encryption).
+        let encryptedCipher = try XCTUnwrap(clientCiphers.encryptedCiphers.first)
+        XCTAssertNotNil(encryptedCipher.id, "New ciphers should get a temp ID before encryption")
+        XCTAssertEqual(encryptedCipher.name, "New Cipher")
+
+        // The locally stored cipher should have the same temp ID.
+        let storedCipher = try XCTUnwrap(cipherService.updateCipherWithLocalStorageCiphers.first)
+        XCTAssertEqual(storedCipher.id, encryptedCipher.id)
     }
 
     /// `addCipher()` throws for organization ciphers when the server API call fails.
@@ -827,6 +846,35 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.cipherId, "123")
         XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `deleteCipher()` cleans up locally when deleting an offline-created cipher
+    /// that was never synced to the server (pending change type is `.create`).
+    func test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher() async throws {
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // Simulate an existing .create pending change for this cipher.
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        let existingChange = PendingCipherChangeData(
+            context: dataStore.persistentContainer.viewContext,
+            id: "pending-1",
+            cipherId: "123",
+            userId: "1",
+            changeType: .create,
+            cipherData: nil,
+            originalRevisionDate: nil
+        )
+        pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        try await subject.deleteCipher("123")
+
+        // Should delete the cipher from local storage.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "123")
+
+        // Should delete the pending change record instead of upserting a .softDelete.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith, ["pending-1"])
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `deleteCipher()` falls back to offline save when the server returns a 5xx
@@ -1674,6 +1722,37 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .update)
     }
 
+    /// `updateCipher()` preserves the `.create` pending change type when editing
+    /// an offline-created cipher that hasn't been synced to the server yet.
+    /// This prevents the resolver from trying to GET the cipher by its temp ID.
+    func test_updateCipher_offlineFallback_preservesCreateType() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // Simulate an existing .create pending change for this cipher.
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        let existingChange = PendingCipherChangeData(
+            context: dataStore.persistentContainer.viewContext,
+            cipherId: "123",
+            userId: "1",
+            changeType: .create,
+            cipherData: nil,
+            originalRevisionDate: nil
+        )
+        pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        let cipher = CipherView.fixture(id: "123")
+        try await subject.updateCipher(cipher)
+
+        // Should save locally.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+
+        // Should preserve .create type, not overwrite to .update.
+        XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
+        let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
+        XCTAssertEqual(pending?.cipherId, "123")
+        XCTAssertEqual(pending?.changeType, .create)
+    }
+
     /// `updateCipher()` throws for organization ciphers when the server API call fails.
     func test_updateCipher_offlineFallback_orgCipher_throws() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
@@ -1955,6 +2034,38 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.cipherId, "123")
         XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `softDeleteCipher()` cleans up locally when soft-deleting an offline-created cipher
+    /// that was never synced to the server (pending change type is `.create`).
+    func test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher() async throws {
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        cipherService.softDeleteWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // Simulate an existing .create pending change for this cipher.
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        let existingChange = PendingCipherChangeData(
+            context: dataStore.persistentContainer.viewContext,
+            id: "pending-1",
+            cipherId: "123",
+            userId: "1",
+            changeType: .create,
+            cipherData: nil,
+            originalRevisionDate: nil
+        )
+        pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        let cipherView: CipherView = .fixture(id: "123")
+        try await subject.softDeleteCipher(cipherView)
+
+        // Should delete the cipher from local storage instead of updating it.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "123")
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+
+        // Should delete the pending change record instead of upserting a .softDelete.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith, ["pending-1"])
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `softDeleteCipher()` throws for organization ciphers when the server API call fails.

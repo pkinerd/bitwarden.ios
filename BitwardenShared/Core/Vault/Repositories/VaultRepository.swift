@@ -506,7 +506,14 @@ extension DefaultVaultRepository: VaultRepository {
         // Organization ciphers cannot be created offline
         let isOrgCipher = cipher.organizationId != nil
 
-        let cipherEncryptionContext = try await clientService.vault().ciphers().encrypt(cipherView: cipher)
+        // Assign a temporary client-side ID for new ciphers so it's baked into the
+        // encrypted content. This ensures offline-created ciphers can be decrypted
+        // and loaded in the detail view like any other cipher. The server ignores
+        // this ID for new ciphers and assigns its own.
+        let cipherToEncrypt = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
+
+        let cipherEncryptionContext = try await clientService.vault().ciphers()
+            .encrypt(cipherView: cipherToEncrypt)
         do {
             try await cipherService.addCipherWithServer(
                 cipherEncryptionContext.cipher,
@@ -998,26 +1005,14 @@ extension DefaultVaultRepository: VaultRepository {
     ///   - userId: The user ID.
     ///
     private func handleOfflineAdd(encryptedCipher: Cipher, userId: String) async throws {
-        // Assign a temporary client-side ID if the cipher doesn't have one yet.
-        // New ciphers haven't been assigned a server ID; this temp ID allows
-        // local Core Data storage. The server assigns the real ID during sync.
-        let cipher: Cipher
-        if encryptedCipher.id != nil {
-            cipher = encryptedCipher
-        } else {
-            cipher = encryptedCipher.withTemporaryId(UUID().uuidString)
-        }
-
-        try await cipherService.updateCipherWithLocalStorage(cipher)
-
-        let cipherResponseModel = try CipherDetailsResponseModel(cipher: cipher)
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
-        // cipher.id is guaranteed non-nil: either it was already set, or
-        // withTemporaryId assigned one above.
-        guard let cipherId = cipher.id else {
+        guard let cipherId = encryptedCipher.id else {
             throw CipherAPIServiceError.updateMissingId
         }
+
+        try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
+
+        let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
@@ -1079,10 +1074,15 @@ extension DefaultVaultRepository: VaultRepository {
 
         let originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
 
+        // Preserve .create type if this cipher was originally created offline and hasn't been
+        // synced to the server yet. From the server's perspective it's still a new cipher that
+        // needs to be POSTed, not an existing cipher to PUT.
+        let changeType: PendingCipherChangeType = existing?.changeType == .create ? .create : .update
+
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
-            changeType: .update,
+            changeType: changeType,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
             offlinePasswordChangeCount: passwordChangeCount
@@ -1095,6 +1095,19 @@ extension DefaultVaultRepository: VaultRepository {
     ///
     private func handleOfflineDelete(cipherId: String) async throws {
         let userId = try await stateService.getActiveAccountId()
+
+        // If this cipher was created offline and hasn't been synced to the server,
+        // just clean up locally — there's nothing to delete on the server.
+        if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
+            cipherId: cipherId,
+            userId: userId
+        ), existing.changeType == .create {
+            try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
+            if let recordId = existing.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
+            }
+            return
+        }
 
         // Fetch the current cipher to preserve its data
         guard let cipher = try await cipherService.fetchCipher(withId: cipherId) else { return }
@@ -1128,6 +1141,19 @@ extension DefaultVaultRepository: VaultRepository {
     ///
     private func handleOfflineSoftDelete(cipherId: String, encryptedCipher: Cipher) async throws {
         let userId = try await stateService.getActiveAccountId()
+
+        // If this cipher was created offline and hasn't been synced to the server,
+        // just clean up locally — there's nothing to soft-delete on the server.
+        if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
+            cipherId: cipherId,
+            userId: userId
+        ), existing.changeType == .create {
+            try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
+            if let recordId = existing.id {
+                try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
+            }
+            return
+        }
 
         // Persist the soft-deleted cipher locally so it appears in trash
         try await cipherService.updateCipherWithLocalStorage(encryptedCipher)

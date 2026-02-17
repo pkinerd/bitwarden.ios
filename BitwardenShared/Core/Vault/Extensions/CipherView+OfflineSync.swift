@@ -1,20 +1,20 @@
 import BitwardenSdk
 import Foundation
 
-// MARK: - Cipher + OfflineSync
+// MARK: - CipherView + OfflineSync
 
-extension Cipher {
-    /// Returns a copy of the cipher with a temporary client-generated ID.
+extension CipherView {
+    /// Returns a copy of the cipher view with the specified ID.
     ///
-    /// Used when persisting a newly created cipher locally during offline mode.
-    /// The temporary ID allows Core Data storage; the server will assign
-    /// the real ID when the pending change is resolved.
+    /// Used to assign a temporary client-generated ID to a new cipher view before
+    /// encryption for offline support. The ID is baked into the encrypted content
+    /// so it survives the decrypt round-trip without special handling.
     ///
-    /// - Parameter id: The temporary ID to assign.
-    /// - Returns: A copy of the cipher with the specified ID.
+    /// - Parameter id: The ID to assign.
+    /// - Returns: A copy of the cipher view with the specified ID.
     ///
-    func withTemporaryId(_ id: String) -> Cipher {
-        Cipher(
+    func withId(_ id: String) -> CipherView {
+        CipherView(
             id: id,
             organizationId: organizationId,
             folderId: folderId,
@@ -36,20 +36,16 @@ extension Cipher {
             viewPassword: viewPassword,
             localData: localData,
             attachments: attachments,
+            attachmentDecryptionFailures: attachmentDecryptionFailures,
             fields: fields,
             passwordHistory: passwordHistory,
             creationDate: creationDate,
             deletedDate: deletedDate,
             revisionDate: revisionDate,
-            archivedDate: archivedDate,
-            data: nil
+            archivedDate: archivedDate
         )
     }
-}
 
-// MARK: - CipherView + OfflineSync
-
-extension CipherView {
     /// Returns a copy of the cipher with updated name and folder ID.
     ///
     /// Used by the offline sync resolver to create backup copies of conflicting ciphers
