@@ -36,15 +36,15 @@ These issues form a layered defense system:
 
 > **All three issues are resolved/superseded.** The `URLError+NetworkConnection.swift` extension and its tests have been deleted entirely. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save. SEC-1, EXT-1, and T6 no longer exist as actionable items.
 
-### Cluster 3b: Detail View / Publisher Resilience (VI-1, CS-2, R3, U3) **[VI-1 Mitigated]**
+### Cluster 3b: Detail View / Publisher Resilience (VI-1, CS-2, R3, U3) ~~[VI-1 Mitigated]~~ **[VI-1 Resolved]**
 
-VI-1 identifies a failure where offline-created ciphers cannot be loaded in the detail view due to `asyncTryMap` + `decrypt()` terminating the publisher stream on error.
+~~VI-1 identifies a failure where offline-created ciphers cannot be loaded in the detail view due to `asyncTryMap` + `decrypt()` terminating the publisher stream on error.~~
 
-> **VI-1 is mitigated, not resolved.** The symptom (infinite spinner) is fixed via a UI fallback in `ViewItemProcessor.fetchCipherDetailsDirectly()` (PR #31). However, the root cause remains: `Cipher.withTemporaryId()` still sets `data: nil`, causing decryption failures in the publisher stream. The UI fallback catches these failures.
+> ~~**VI-1 is mitigated, not resolved.**~~ **VI-1 is fully resolved.** The symptom (infinite spinner) was fixed via a UI fallback (PR #31). The root cause (`Cipher.withTemporaryId()` setting `data: nil`) was **fixed** by replacing it with `CipherView.withId()` operating before encryption (commit `3f7240a`). All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md).
 >
-> **Cluster relevance:**
-> - **CS-2** scope NOT reduced: Both `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)` still exist as fragile copy methods across two SDK types (`Cipher` + `CipherView`). The `Cipher.withTemporaryId()` `data: nil` problem is the root cause of VI-1.
-> - **R3** is still important independently for sync reliability. Without retry backoff, permanently failing items (including those affected by temp-ID issues) block all syncing.
+> **Cluster relevance (updated):**
+> - **CS-2** scope reduced but not eliminated: `Cipher.withTemporaryId()` removed, but `CipherView.withId(_:)` and `CipherView.update(name:folderId:)` still exist as fragile copy methods on `CipherView`. The `data: nil` problem no longer applies.
+> - **R3** is still important independently for sync reliability. Without retry backoff, permanently failing items block all syncing.
 > - **U3** remains a future enhancement independent of VI-1.
 
 ### Cluster 4: UX Improvements (U1, U2, U3, U4)
@@ -102,4 +102,4 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **PCDS-2** | — | PCDS-1 (same category) |
 | **SS-2** | — | R3 (recovery mechanism) |
 | **RES-9** | — | PCDS-1 (type precision), R3 (expire stuck items) |
-| **VI-1** | CS-2 (withTemporaryId is root cause), S7 (no .create check in delete), ~~T7~~ (now resolved) | R3 (permanently unsynced items stay broken), CS-2 (withTemporaryId fragility), U3 (pending indicator would explain the state) — **Mitigated** via UI fallback in ViewItemProcessor; root cause (`data: nil` in `Cipher.withTemporaryId()`) remains |
+| ~~**VI-1**~~ | ~~CS-2 (withTemporaryId is root cause)~~, ~~S7 (no .create check in delete)~~, ~~T7~~ (now resolved) | ~~R3 (permanently unsynced items stay broken)~~, CS-2 (CipherView.withId fragility), U3 (pending indicator) — **[Resolved]** Root cause fixed by `CipherView.withId()` (commit `3f7240a`); all 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md). |

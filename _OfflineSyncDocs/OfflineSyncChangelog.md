@@ -260,7 +260,7 @@ extension Cipher {
 
 **Purpose:** Assigns a temporary client-generated UUID to a newly created cipher *after encryption*. Called by `handleOfflineAdd()` when the encrypted cipher has no ID (which is always the case for new ciphers, since the server assigns IDs).
 
-**Known issue (VI-1 root cause):** The method sets `data: nil`. The `data` field contains the raw encrypted content needed for decryption. This causes the detail view's `streamCipherDetails` publisher to fail when trying to decrypt the cipher. Mitigated via UI-level fallback (`fetchCipherDetailsDirectly()` in PR #31) but root cause remains. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
+~~**Known issue (VI-1 root cause):** The method sets `data: nil`. The `data` field contains the raw encrypted content needed for decryption. This causes the detail view's `streamCipherDetails` publisher to fail when trying to decrypt the cipher. Mitigated via UI-level fallback (`fetchCipherDetailsDirectly()` in PR #31) but root cause remains.~~ **[RESOLVED]** This method has been replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). The `data: nil` problem no longer exists. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 ### 5b. `CipherView.update(name:folderId:)` (line 63)
 
@@ -891,14 +891,14 @@ Added `CipherAPIServiceError` to the rethrow list in offline fallback catch bloc
 
 `getOrCreateConflictFolder()` was passing plaintext "Offline Sync Conflicts" to `addFolderWithServer(name:)`. Fixed by encrypting via `clientService.vault().folders().encrypt()` before sending. The original code caused a Rust panic when the SDK tried to decrypt plaintext as ciphertext.
 
-### PR #31 (Commits `86b9104`, `01070eb`): VI-1 Mitigation — Direct Fetch Fallback
+### PR #31 (Commits `86b9104`, `01070eb`): VI-1 ~~Mitigation~~ Resolution — Direct Fetch Fallback
 
-Mitigated the VI-1 infinite spinner bug via a UI-level fallback in `ViewItemProcessor`:
+~~Mitigated~~ Addressed the VI-1 infinite spinner bug via a UI-level fallback in `ViewItemProcessor`:
 1. Extracted `buildViewItemState(from:)` helper from existing `buildState(for:)`
 2. Added `fetchCipherDetailsDirectly()` fallback when publisher stream fails
 3. On decrypt failure: catches error → calls fallback → shows item or error message (not spinner)
 
-**Note:** This mitigates the symptom but the root cause remains — `Cipher.withTemporaryId()` still sets `data: nil`.
+~~**Note:** This mitigates the symptom but the root cause remains — `Cipher.withTemporaryId()` still sets `data: nil`.~~ **[UPDATE]** Root cause subsequently fixed by `CipherView.withId()` (commit `3f7240a`). The `data: nil` problem no longer exists. This fallback remains as defense-in-depth.
 
 ### Commit `93143f1`: Reorder Conflict Resolution — Backup Before Push
 
@@ -965,7 +965,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 
 | ID | Title | Priority |
 |----|-------|----------|
-| [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher view failure — **Mitigated** (spinner fixed via UI fallback; root cause `data: nil` remains) | Medium |
+| ~~[VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md)~~ | ~~Offline-created cipher view failure~~ — **[Resolved]** Root cause fixed by `CipherView.withId()` (commit `3f7240a`); all 5 recommended fixes implemented in Phase 2 | ~~Medium~~ N/A |
 | [S6](./_OfflineSyncDocs/ActionPlans/AP-S6_PasswordChangeCountingTest.md) | No password change counting test | Medium |
 | [S7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md) | No cipher-not-found path test — **Partially Resolved** (resolver-level tests added; VaultRepository gap remains) | Medium |
 | [S8](./_OfflineSyncDocs/ActionPlans/AP-S8_FeatureFlag.md) | No feature flag for remote disable | Medium |
@@ -1011,7 +1011,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [T6](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md) | URLError test coverage | Resolved by deletion |
 | [S7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md) | Cipher-not-found path test | **Partially Resolved** — resolver-level 404 tests added (commit `e929511`); VaultRepository-level `handleOfflineDelete` guard clause test gap remains |
 | [T7](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md) | Subsequent offline edit test | **Resolved** — Covered by `test_updateCipher_offlineFallback_preservesCreateType` (Phase 2, commit `12cb225`) |
-| [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher view failure | **Mitigated** — spinner fixed via UI fallback (PR #31); root cause (`data: nil`) remains |
+| [VI-1](./_OfflineSyncDocs/ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) | Offline-created cipher view failure | **Resolved** — spinner fixed via UI fallback (PR #31); root cause (`data: nil`) **fixed** by `CipherView.withId()` (commit `3f7240a`); all 5 recommended fixes implemented in Phase 2 |
 
 **Superseded:**
 

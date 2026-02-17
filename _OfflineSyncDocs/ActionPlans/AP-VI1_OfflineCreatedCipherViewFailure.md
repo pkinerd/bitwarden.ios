@@ -1,9 +1,10 @@
 # Action Plan: VI-1 — Offline-Created Cipher Fails to Load in Detail View
 
-## Status: MITIGATED
+## Status: RESOLVED
 
-**Symptom mitigated by:** `ViewItemProcessor.fetchCipherDetailsDirectly()` fallback (PR #31)
-**Root cause remains:** `Cipher.withTemporaryId()` still sets `data: nil`, causing decryption failures
+> **Symptom fixed by:** `ViewItemProcessor.fetchCipherDetailsDirectly()` fallback (PR #31)
+> **Root cause fixed by:** `CipherView.withId()` replacing `Cipher.withTemporaryId()` (commit `3f7240a`)
+> **All 5 recommended fixes implemented in Phase 2** — see resolution details below.
 
 ---
 
@@ -13,58 +14,50 @@
 |-------|-------|
 | **ID** | VI-1 |
 | **Component** | `ViewItemProcessor` / `VaultRepository` / `Cipher+OfflineSync` |
-| **Severity** | Medium |
+| **Severity** | ~~Medium~~ Resolved |
 | **Type** | Usability / Reliability |
-| **Status** | **Mitigated** |
+| **Status** | **Resolved** |
 
 ## Original Description
 
-When a user creates a new vault item while offline, the item appeared in the vault list but tapping it showed an infinite spinner — the detail view never loaded. The root cause was a chain of three factors:
+When a user created a new vault item while offline, the item appeared in the vault list but tapping it showed an infinite spinner — the detail view never loaded. The root cause was a chain of three factors:
 
 1. `asyncTryMap` in `cipherDetailsPublisher` terminated the publisher stream on decryption error
 2. Offline-created ciphers were stored via `Cipher.withTemporaryId()` which set `data: nil`, causing decryption failures
 3. The `streamCipherDetails()` catch block only logged errors without updating `loadingState` to `.error`
 
-## Current State (Mitigation)
+## Resolution
 
-The **symptom** (infinite spinner) has been fixed via a UI-level fallback in `ViewItemProcessor`. When the publisher-based stream fails to load cipher details, `fetchCipherDetailsDirectly()` performs a direct fetch from the cipher service as a fallback. This prevents the infinite spinner and allows users to view offline-created ciphers.
+### Symptom Fix (PR #31)
 
-### What is fixed
+The **symptom** (infinite spinner) was fixed via a UI-level fallback in `ViewItemProcessor`. When the publisher-based stream fails to load cipher details, `fetchCipherDetailsDirectly()` performs a direct fetch from the cipher service as a fallback. This remains as defense-in-depth.
 
-- Users no longer see an infinite spinner when tapping an offline-created cipher
-- The `ViewItemProcessor` gracefully falls back to a direct fetch when the publisher stream fails
+### Root Cause Fixes (Phase 2)
 
-### What is NOT fixed (root cause)
+All 5 recommended root cause fixes have been implemented:
 
-The root cause remains in place:
+| # | Fix | Commit | Status |
+|---|-----|--------|--------|
+| 1 | **Move temp-ID assignment before encryption** — Temp ID now assigned to `CipherView` before `encrypt(cipherView:)`, baking the ID into encrypted content | `3f7240a` | **DONE** |
+| 2 | **Replace `Cipher.withTemporaryId()` with `CipherView.withId()`** — Operates on decrypted `CipherView` before encryption; eliminates `data: nil` problem entirely | `3f7240a` | **DONE** |
+| 3 | **Preserve `.create` type in `handleOfflineUpdate()`** — Editing a cipher with existing `.create` pending change preserves `.create` type | `12cb225` | **DONE** |
+| 4 | **Clean up offline-created ciphers on delete** — `handleOfflineDelete()`/`handleOfflineSoftDelete()` check for `.create` pending change and clean up locally instead of queuing futile `.softDelete` | `12cb225` | **DONE** |
+| 5 | **Clean up temp-ID records in `resolveCreate()`** — After `addCipherWithServer` succeeds, old `CipherData` record with temp ID is deleted | `8ff7a09`, `53e08ef` | **DONE** |
 
-1. **`Cipher.withTemporaryId()` still sets `data: nil`** — This method in `Cipher+OfflineSync.swift` creates a copy of the `Cipher` with a new temporary ID but sets the `data` field to `nil`. When the cipher is later decrypted, the `nil` data causes a decryption failure. The publisher stream still fails; the UI fallback catches the failure.
+### Test Coverage
 
-2. **Temp-ID is assigned post-encryption** — In `handleOfflineAdd()`, the temp ID is assigned to the encrypted `Cipher` *after* encryption. This means the ID is not baked into the encrypted content. The encrypted `data` field (which is `nil` from `withTemporaryId()`) does not contain the temp ID, so a decrypt round-trip cannot produce a valid `CipherView` with the correct ID.
+| Test | Covers |
+|------|--------|
+| `test_updateCipher_offlineFallback_preservesCreateType` | Fix #3 — `.create` type preserved on subsequent edit |
+| `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on delete |
+| `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on soft delete |
+| `test_processPendingChanges_create_deletesOldTempIdCipher` | Fix #5 — temp-ID record cleanup |
+| `test_processPendingChanges_create_nilId_skipsLocalDelete` | Fix #5 — nil guard |
+| `test_perform_appeared_errors_fallbackFetchThrows` | Symptom fix — fallback fetch |
 
-3. **Editing offline-created ciphers loses `.create` type** — `handleOfflineUpdate()` always sets the pending change type to `.update`, even when the cipher has an existing `.create` pending change. This means if a user edits an offline-created cipher before it syncs, the pending change becomes `.update`, and the resolver will try to GET the cipher by its temp ID (which the server doesn't know about). **Partially mitigated by RES-2 fix (commit `e929511`):** The `resolveUpdate` method now handles 404 responses from `getCipher` by re-creating the cipher on the server via `addCipherWithServer`, which preserves the user's offline edits. However, this is a fallback recovery path — the correct fix is still to preserve the `.create` type so the resolver takes the direct `resolveCreate` path instead of the roundabout update→404→re-create path.
+## Related Issues (Updated)
 
-4. **Deleting offline-created ciphers queues futile `.softDelete`** — `handleOfflineDelete()` and `handleOfflineSoftDelete()` do not check whether the cipher was created offline. They queue a `.softDelete` pending change, which will fail at resolution time because the server has no record of the temp-ID cipher.
-
-5. **No temp-ID record cleanup in `resolveCreate()`** — After `addCipherWithServer` creates the cipher on the server (with a new server-assigned ID), the old local `CipherData` record with the temporary ID is not deleted. It persists until the next full sync's `replaceCiphers()` call.
-
-## Recommended Root Cause Fix
-
-The recommended approach to fully resolve VI-1 is:
-
-1. **Move temp-ID assignment before encryption** — Assign the temporary ID to the `CipherView` *before* calling `encrypt(cipherView:)`. This bakes the ID into the encrypted content so the cipher survives a decrypt round-trip. The server ignores client-provided IDs for new ciphers and assigns its own.
-
-2. **Replace `Cipher.withTemporaryId()` with a `CipherView`-level ID method** — Instead of copying the encrypted `Cipher` with `data: nil`, operate on the decrypted `CipherView` before encryption. This eliminates the `data: nil` problem entirely since the SDK handles all fields correctly during encryption.
-
-3. **Preserve `.create` type in `handleOfflineUpdate()`** — When editing a cipher with an existing `.create` pending change, preserve the `.create` type instead of overwriting to `.update`.
-
-4. **Clean up offline-created ciphers on delete** — In `handleOfflineDelete()`/`handleOfflineSoftDelete()`, check if the cipher has a `.create` pending change. If so, clean up locally instead of queuing a `.softDelete`.
-
-5. **Clean up temp-ID records in `resolveCreate()`** — After `addCipherWithServer` succeeds, delete the old `CipherData` record with the temporary ID to prevent orphaned records.
-
-## Related Issues
-
-- **CS-2**: `Cipher.withTemporaryId()` still exists with `data: nil` — this is the root cause of VI-1's decryption failures. Both `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)` remain as fragile copy methods.
-- **RES-1**: `resolveCreate` does NOT include temp-ID cleanup. The orphan risk described in RES-1 remains.
-- **S7**: `handleOfflineDelete` does not have a `.create` check code path — the original test gap description applies unchanged.
-- **T7**: No `preservesCreateType` test exists — the gap is fully open, with no test for `handleOfflineUpdate` with an existing pending record.
+- **CS-2**: ~~`Cipher.withTemporaryId()` still exists with `data: nil`~~ **Updated** — `Cipher.withTemporaryId()` removed. Fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:folderId:)`. Same fragility concern (manual field copying), different method.
+- **RES-1**: ~~`resolveCreate` does NOT include temp-ID cleanup~~ **Partially Resolved** — Temp-ID cleanup added (commits `8ff7a09`, `53e08ef`). Duplicate-on-retry concern (server already has the cipher) still informational.
+- ~~**S7**~~: ~~`handleOfflineDelete` does not have a `.create` check~~ **[Resolved]** — `.create` check added in commit `12cb225`. Resolver-level 404 tests added in commit `e929511`. See [AP-S7](Resolved/AP-S7_CipherNotFoundPathTest.md).
+- ~~**T7**~~: ~~No `preservesCreateType` test exists~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType` (commit `12cb225`). See [AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md).

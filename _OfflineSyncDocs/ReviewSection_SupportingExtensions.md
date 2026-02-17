@@ -33,7 +33,7 @@ Provides extension methods on `Cipher` and `CipherView` used by the offline sync
 
 This method creates a full copy of the `Cipher` by calling the `Cipher(...)` initializer with all properties explicitly passed through, replacing only `id` with the provided value.
 
-**Known issue — `data: nil` (VI-1 root cause):** The method explicitly sets `data: nil` on the copy. The `data` field on `Cipher` contains the raw encrypted content needed for decryption. When the detail view's `streamCipherDetails` publisher tries to decrypt this cipher, the `decrypt()` call fails because `data` is nil. The publisher's `asyncTryMap` terminates on the error, leaving the detail view in a permanent loading state (infinite spinner). This is mitigated on `dev` by a UI-level fallback (`fetchCipherDetailsDirectly()` in `ViewItemProcessor`, PR #31), but the root cause remains. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
+~~**Known issue — `data: nil` (VI-1 root cause):** The method explicitly sets `data: nil` on the copy. The `data` field on `Cipher` contains the raw encrypted content needed for decryption. When the detail view's `streamCipherDetails` publisher tries to decrypt this cipher, the `decrypt()` call fails because `data` is nil.~~ **[RESOLVED]** This method has been replaced by `CipherView.withId(_:)` operating before encryption (commit `3f7240a`). The `data: nil` problem no longer exists. VI-1 is fully resolved. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 **Property count:** ~27 properties explicitly copied. Same fragility concern as `update` — see Issue EXT-3 / CS-2.
 

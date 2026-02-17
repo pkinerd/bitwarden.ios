@@ -114,7 +114,7 @@ Parameters: encryptedCipher: Cipher, userId: String
 
 **Temporary ID Generation:** Uses `UUID().uuidString` which on iOS/macOS uses `/dev/urandom` (cryptographically secure). The ID is a standard UUID format (e.g., "A1B2C3D4-E5F6-...").
 
-**Known issue (VI-1 root cause):** `Cipher.withTemporaryId()` sets `data: nil` on the copy. This means the locally-stored cipher has a valid ID but no encrypted content, causing decryption failures when the detail view tries to load it. This is mitigated by a UI-level fallback (`fetchCipherDetailsDirectly()`) but the root cause remains. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
+~~**Known issue (VI-1 root cause):** `Cipher.withTemporaryId()` sets `data: nil` on the copy. This means the locally-stored cipher has a valid ID but no encrypted content, causing decryption failures when the detail view tries to load it.~~ **[RESOLVED]** `Cipher.withTemporaryId()` has been replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). The `data: nil` problem no longer exists — the cipher is encrypted with the temp ID already set, so all fields (including `data`) are properly populated. The UI fallback (`fetchCipherDetailsDirectly()`) remains as defense-in-depth. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 **Why `updateCipherWithLocalStorage` instead of `addCipherWithLocalStorage`?** The method name suggests an update, but it's used for a new cipher. This is because `CipherService.updateCipherWithLocalStorage` performs an upsert (insert-or-update) on the local Core Data store. For a cipher with a new (temporary) ID, this effectively inserts.
 
