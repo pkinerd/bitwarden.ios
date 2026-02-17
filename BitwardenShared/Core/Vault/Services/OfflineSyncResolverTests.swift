@@ -71,6 +71,7 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
 
 // MARK: - OfflineSyncResolverTests
 
+// swiftlint:disable:next type_body_length
 class OfflineSyncResolverTests: BitwardenTestCase {
     // MARK: Properties
 
