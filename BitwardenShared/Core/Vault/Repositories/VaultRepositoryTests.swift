@@ -178,13 +178,14 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(storedCipher.id, encryptedCipher.id)
     }
 
-    /// `addCipher()` throws for organization ciphers when the server API call fails.
+    /// `addCipher()` re-throws the original network error for organization ciphers
+    /// when the server API call fails.
     func test_addCipher_offlineFallback_orgCipher_throws() async throws {
         cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
         let cipher = CipherView.fixture(organizationId: "org-1")
 
-        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+        await assertAsyncThrows(error: URLError(.notConnectedToInternet)) {
             try await subject.addCipher(cipher)
         }
 
@@ -896,13 +897,14 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .softDelete)
     }
 
-    /// `deleteCipher()` throws for organization ciphers when the server API call fails.
+    /// `deleteCipher()` re-throws the original network error for organization ciphers
+    /// when the server API call fails.
     func test_deleteCipher_offlineFallback_orgCipher_throws() async throws {
         stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
         cipherService.fetchCipherResult = .success(.fixture(id: "123", organizationId: "org-1"))
 
-        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+        await assertAsyncThrows(error: URLError(.notConnectedToInternet)) {
             try await subject.deleteCipher("123")
         }
 
@@ -1875,13 +1877,14 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         )
     }
 
-    /// `updateCipher()` throws for organization ciphers when the server API call fails.
+    /// `updateCipher()` re-throws the original network error for organization ciphers
+    /// when the server API call fails.
     func test_updateCipher_offlineFallback_orgCipher_throws() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
         let cipher = CipherView.fixture(id: "123", organizationId: "org-1")
 
-        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+        await assertAsyncThrows(error: URLError(.notConnectedToInternet)) {
             try await subject.updateCipher(cipher)
         }
 
@@ -2190,7 +2193,8 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
-    /// `softDeleteCipher()` throws for organization ciphers when the server API call fails.
+    /// `softDeleteCipher()` re-throws the original network error for organization ciphers
+    /// when the server API call fails.
     func test_softDeleteCipher_offlineFallback_orgCipher_throws() async throws {
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()
@@ -2198,7 +2202,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
         let cipherView: CipherView = .fixture(id: "123", organizationId: "org-1")
 
-        await assertAsyncThrows(error: OfflineSyncError.organizationCipherOfflineEditNotSupported) {
+        await assertAsyncThrows(error: URLError(.notConnectedToInternet)) {
             try await subject.softDeleteCipher(cipherView)
         }
 
