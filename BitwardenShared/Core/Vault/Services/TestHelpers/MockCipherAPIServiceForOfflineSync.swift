@@ -15,7 +15,7 @@ import Networking
 /// compilation. Consider adding `// sourcery: AutoMockable` to `CipherAPIService` to eliminate
 /// this manual maintenance.
 class MockCipherAPIServiceForOfflineSync: CipherAPIService {
-    var getCipherResult: Result<CipherDetailsResponseModel, Error> = .success(.fixture())
+    var getCipherResult: Result<CipherDetailsResponseModel, Error>!
     var getCipherCalledWith = [String]()
 
     func getCipher(withId id: String) async throws -> CipherDetailsResponseModel {
