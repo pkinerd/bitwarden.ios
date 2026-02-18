@@ -111,16 +111,12 @@ Keep "Offline Sync Conflicts" as a fixed English string. The folder is a system-
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: `OfflineSyncResolver.swift:340` hardcodes `let folderName = "Offline Sync Conflicts"`. The folder search at lines 343-349 decrypts ALL folders and compares names using `==`. The backup cipher name format at line 314: `"\(decryptedCipher.name) - offline conflict \(timestampString)"`.
+**Superseded status verified** (2026-02-18): The code references in the original review findings below are now historical — none of this code exists in the current codebase.
 
-2. **Cross-device scenario analysis**: Bitwarden syncs folders across all devices. If the folder name were localized:
-   - English device creates folder "Offline Sync Conflicts"
-   - French device looks for "Conflits de synchronisation hors ligne" — doesn't find it — creates another folder
-   - User now has 2 conflict folders on different devices
-   - This is a worse UX than a single English folder
+1. ~~**Code verification**: `OfflineSyncResolver.swift:340` hardcodes `let folderName = "Offline Sync Conflicts"`.~~ **Confirmed removed.** No references to "Offline Sync Conflicts", `conflictFolderId`, or `getOrCreateConflictFolder` exist anywhere in `OfflineSyncResolver.swift` or the broader codebase.
 
-3. **Platform consistency**: Other Bitwarden clients (Android, desktop, web) would need the same folder name for cross-platform consistency. Using a fixed English name ensures all platforms find the same folder.
+2. **Current backup behavior** (verified in `OfflineSyncResolver.swift:337`): The backup cipher name format is now `"\(decryptedCipher.name) - \(timestampString)"` — the "offline conflict" text has been removed as noted in the superseded header. The `createBackupCipher` method (lines 325-348) uses `decryptedCipher.update(name: backupName)` which retains the original cipher's `folderId` (confirmed in `CipherView+OfflineSync.swift:34-41` — `update(name:)` copies `folderId` from the receiver).
 
-4. **Folder decryption overhead**: `getOrCreateConflictFolder` (lines 334-359) decrypts all folders to find the conflict folder by name. This O(n) scan is mitigated by the `conflictFolderId` cache at line 86. The cache is reset per batch (line 126) and populated on first access. For users with many folders, this single-per-batch decryption is acceptable.
+3. **No folder logic remains**: The `FolderService` is not used by `OfflineSyncResolver`. There is no folder creation, no folder name comparison, no `conflictFolderId` cache. The superseded status is fully confirmed.
 
-**Updated conclusion**: Original recommendation (Option C - accept English-only) confirmed. Cross-device and cross-platform consistency is the deciding factor. Localization would create multiple folders per locale, which is worse UX than a single English folder. Priority: Informational, no change needed.
+**Updated conclusion** (2026-02-18): This action plan remains correctly marked as SUPERSEDED. All the code it originally described has been removed. No action needed.

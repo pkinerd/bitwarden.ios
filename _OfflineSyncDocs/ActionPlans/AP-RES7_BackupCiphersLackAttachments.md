@@ -117,15 +117,15 @@ If this becomes a user concern, **Option B** (note in backup) is a simple improv
 
 The review confirms the original assessment with code-level detail. After reviewing the implementation:
 
-1. **Code verification**: `CipherView+OfflineSync.swift` explicitly sets `attachments: nil` in the `update(name:)` method. The comment reads `// Attachments are not duplicated to backup copies`. This is a deliberate design choice, not an oversight. **[Updated]** `folderId` parameter removed — backup ciphers now retain the original cipher's folder assignment.
+1. **Code verification**: `CipherView+OfflineSync.swift:34-42` `update(name:)` delegates to `makeCopy(id: nil, key: nil, name: name, attachments: nil, attachmentDecryptionFailures: nil)` at line 35. The `makeCopy` helper (line 66) is a single consolidated method that both `withId(_:)` and `update(name:)` use, and it explicitly passes `attachments: nil` for backup copies. This is a deliberate design choice, not an oversight. **[Updated]** The previous inline comment `// Attachments are not duplicated to backup copies` has been replaced by the consolidated `makeCopy` architecture; the nil attachment behavior is now implicit in the `update(name:)` call. `folderId` parameter was removed — backup ciphers retain the original cipher's folder assignment.
 
-2. **Backup creation flow**: `OfflineSyncResolver.swift` `createBackupCipher`:
-   - Decrypts the original via `clientService.vault().ciphers().decrypt(cipher: cipher)`
-   - Creates backup view with `decryptedCipher.update(name:)` — `attachments: nil`, retains original `folderId`
-   - Line 323: `clientService.vault().ciphers().encrypt(cipherView: backupCipherView)` — encrypts backup
-   - Line 324: `cipherService.addCipherWithServer(...)` — pushes backup to server
+2. **Backup creation flow**: `OfflineSyncResolver.swift:325-348` `createBackupCipher`:
+   - Line 331: Decrypts the original via `clientService.vault().ciphers().decrypt(cipher: cipher)`
+   - Line 340: Creates backup view with `decryptedCipher.update(name: backupName)` — `attachments: nil`, retains original `folderId`
+   - Line 343: `clientService.vault().ciphers().encrypt(cipherView: backupCipherView)` — encrypts backup
+   - Line 344-347: `cipherService.addCipherWithServer(encryptionContext.cipher, encryptedFor: encryptionContext.encryptedFor)` — pushes backup to server
 
-   The backup cipher is pushed as a NEW cipher. Attachment duplication would require downloading attachment files, re-uploading them to the new cipher, and managing attachment encryption keys — a complex multi-step process.
+   **[Updated]** The `addCipherWithServer` call now uses the `encryptionContext` pattern, unpacking `.cipher` and `.encryptedFor` from the encryption result. The backup cipher is pushed as a NEW cipher. Attachment duplication would require downloading attachment files, re-uploading them to the new cipher, and managing attachment encryption keys — a complex multi-step process.
 
 3. **Original cipher preservation**: In conflict scenarios where the backup is of the SERVER version (local wins), the original server cipher with its attachments is overwritten by the local version via `updateCipherWithServer`. The original attachments are lost from the active cipher. They exist only in the server's version history (if available) or are gone.
 

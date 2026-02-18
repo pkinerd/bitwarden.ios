@@ -58,12 +58,12 @@ Add a server-controlled feature flag using the existing `FeatureFlag` system and
 - Minimal code change at the two entry points
 
 **Cons:**
-- VaultRepository currently does not have a `configService` dependency — needs to be added (or the flag check moved to the calling layer)
+- ~~VaultRepository currently does not have a `configService` dependency — needs to be added (or the flag check moved to the calling layer)~~ **[Resolved]** VaultRepository now has `configService` (line 332)
 - Feature flag check adds a small async call to every cipher operation's error path
 - Pending changes created before flag is disabled will remain orphaned until re-enabled or logout
 - Does not address what happens to existing pending changes when the flag is turned off
 
-**Note on VaultRepository dependency:** SyncService already has access to `configService` (used for vault migration). VaultRepository would need `HasConfigService` added to its `Services` typealias, or the flag check could be done at the SyncService level only (for resolution gating), with VaultRepository offline fallback always active. The latter is simpler but provides less control.
+**Note on VaultRepository dependency:** ~~SyncService already has access to `configService` (used for vault migration). VaultRepository would need `HasConfigService` added to its `Services` typealias.~~ **[Updated]** Both SyncService and VaultRepository now have `configService` dependencies, so the flag can be checked at both entry points without additional wiring.
 
 ### Option B: Local Feature Flag (App Configuration)
 
@@ -130,8 +130,8 @@ Accept the current state — no feature flag. Rely on the feature's built-in saf
 
 ## Estimated Impact
 
-- **Files changed:** 3-4 (VaultRepository, SyncService, feature flag registration, possibly Services.swift)
-- **Lines added:** ~20-30
+- **Files changed:** 3 (VaultRepository, SyncService, FeatureFlag.swift) — **[Updated]** Services.swift no longer needed since VaultRepository already has `configService`
+- **Lines added:** ~15-20
 - **Risk:** Low — additive check at two entry points
 
 ## Related Issues
@@ -145,18 +145,18 @@ Accept the current state — no feature flag. Rely on the feature's built-in saf
 
 The review confirms the original assessment with important code-level details. After reviewing the implementation:
 
-1. **Feature flag system verification**: `FeatureFlag.swift` defines 9 existing flags as static properties on `FeatureFlag` extension (line 7). The pattern is `static let flagName = FeatureFlag(rawValue: "server-flag-name")`. The `allCases` array at line 35 lists all flags. Adding `.offlineSync` would follow this exact pattern.
+1. **Feature flag system verification**: `FeatureFlag.swift` defines 9 existing flags as static properties on `FeatureFlag` extension (line 7). The pattern is `static let flagName = FeatureFlag(rawValue: "server-flag-name")`. The `allCases` array at line 35 lists all 9 flags. Adding `.offlineSync` would follow this exact pattern. **No offline sync feature flag has been added yet.**
 
-2. **SyncService precedent verified**: `SyncService.swift` already uses `configService.getFeatureFlag(.migrateMyVaultToMyItems)` (confirmed in the code review). The pre-sync resolution block at lines 331-341 is the natural place for the offline sync flag check.
+2. **SyncService precedent verified**: `SyncService.swift` already uses `configService.getFeatureFlag(.migrateMyVaultToMyItems)` at line 561. The pre-sync resolution block at lines 329-343 is the natural place for the offline sync flag check.
 
-3. **VaultRepository dependency issue confirmed**: `VaultRepository.swift` does NOT currently have a `configService` dependency. Adding `HasConfigService` would be needed if the flag gates the offline fallback in VaultRepository's catch blocks. This is a moderate change since VaultRepository's `Services` typealias would need updating, and `ServiceContainer` wiring would need the dependency added.
+3. **VaultRepository dependency resolved**: **[Updated]** `VaultRepository.swift` now HAS a `configService` dependency (line 332). This removes the previously identified blocker for Tier 2 gating. Both SyncService and VaultRepository can check the feature flag without additional dependency wiring.
 
 4. **Pragmatic approach - two-tier gating**:
-   - **Tier 1 (simple, immediate)**: Gate only the SyncService resolution path. Add flag check before `pendingCipherChangeDataStore.pendingChangeCount` at line 334. When flag is off: skip resolution, proceed to normal sync. Existing pending changes remain in Core Data silently.
-   - **Tier 2 (complete, more work)**: Also gate VaultRepository offline fallback. When flag is off: network errors propagate normally (no offline save). Requires adding `configService` dependency to VaultRepository.
+   - **Tier 1 (simple, immediate)**: Gate only the SyncService resolution path. Add flag check before `pendingCipherChangeDataStore.pendingChangeCount` at line 335. When flag is off: skip resolution, proceed to normal sync. Existing pending changes remain in Core Data silently.
+   - **Tier 2 (complete, now straightforward)**: Also gate VaultRepository offline fallback. When flag is off: network errors propagate normally (no offline save). **[Updated]** VaultRepository already has `configService` (line 332), so this is now a simple guard addition at each catch block — no dependency wiring needed.
 
 5. **Important consideration**: Tier 1 alone creates an asymmetry: offline saves still happen (VaultRepository catches errors), but resolution never runs (SyncService skips it). Pending changes accumulate and sync is permanently aborted by the early-abort pattern. This is actually WORSE than no flag. **Recommendation refinement**: If implementing only Tier 1, the SyncService flag check should skip BOTH the resolution AND the early-abort. When flagged off, the pre-sync block should be entirely skipped, allowing normal sync to proceed. This means pending changes are not resolved and their local data may be overwritten by `replaceCiphers`, but the feature is effectively disabled.
 
-6. **Recommendation updated**: **Option A (server-controlled flag)** remains correct, but the implementation should be **Tier 1 with modified abort behavior**: when flag is off, skip the entire pre-sync pending-changes block (both resolution and abort check), not just the resolution. This allows normal sync flow while the feature is disabled. For production safety, implementing Tier 2 (also gating VaultRepository catch blocks) provides complete control.
+6. **Recommendation updated**: **Option A (server-controlled flag)** remains correct. **[Updated]** Now that VaultRepository has `configService`, both tiers can be implemented together with minimal effort. The implementation should gate both entry points: (a) the SyncService pre-sync block at lines 329-343 (skip entire block when flag is off), and (b) VaultRepository's offline catch blocks (let errors propagate normally when flag is off). This provides complete control without the asymmetry risk of Tier 1 alone.
 
-**Updated conclusion**: Recommendation stands with the refinement above. The Tier 1 approach (SyncService gating only, skipping entire pre-sync block) is the minimum viable feature flag. Tier 2 (VaultRepository gating) provides complete control but requires adding a `configService` dependency. Priority remains Medium.
+**Updated conclusion**: Recommendation stands. **The feature flag has NOT been implemented yet** — no `.offlineSync` flag exists in `FeatureFlag.swift` and no flag check gates the offline sync code paths. The implementation cost is now lower than originally estimated since VaultRepository already has `configService`. Priority remains Medium — this should be implemented before production release.

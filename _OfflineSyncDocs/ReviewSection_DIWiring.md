@@ -53,7 +53,7 @@ These are added:
 
 ### 3. ServiceContainer.swift — Object Graph Wiring
 
-In the `ServiceContainer` static factory method (`defaultServices()`), the wiring is:
+In the `ServiceContainer` convenience initializer (`init(appContext:application:errorReporter:nfcReaderService:)`), the wiring is:
 
 ```swift
 // 1. Create the resolver (before SyncService, after its dependencies exist)
@@ -97,7 +97,7 @@ DataStore (PendingCipherChangeDataStore)
     └── → DefaultVaultRepository (offline save operations)
 ```
 
-**Important naming note:** The local variable is named `preSyncOfflineSyncResolver` to distinguish it from the `let offlineSyncResolver` variable that's assigned later for the container. Both refer to the same instance. This two-step approach is necessary because the container assignment happens much later in the factory method.
+**Important naming note:** The local variable is named `preSyncOfflineSyncResolver` to distinguish it from the `let offlineSyncResolver` variable that's assigned later for the container. Both refer to the same instance. This two-step approach is necessary because the container assignment happens much later in the convenience initializer.
 
 ### 4. ServiceContainer+Mocks.swift — Test Helper
 

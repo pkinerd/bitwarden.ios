@@ -4,8 +4,8 @@
 
 | File | Type | Lines |
 |------|------|-------|
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 354 |
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 940 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 349 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 933 |
 | `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | Mock | 13 |
 
 ---
@@ -14,15 +14,16 @@
 
 ### 1. Error Enum (`OfflineSyncError`)
 
-Defines five error cases for offline sync operations:
+Defines four error cases for offline sync operations:
 
 | Error | Description | User-Facing Message |
 |-------|-------------|---------------------|
 | `.missingCipherData` | Pending change record has no `cipherData` | "The pending change record is missing cipher data." |
 | `.missingCipherId` | Pending change record has no cipher ID | "The pending change record is missing a cipher ID." |
 | `.vaultLocked` | Vault is locked; resolution cannot proceed | "The vault is locked. Please unlock to sync offline changes." |
-| `.organizationCipherOfflineEditNotSupported` | Organization items cannot be edited offline | "Organization items cannot be edited while offline. Please try again when connected." |
 | `.cipherNotFound` | The cipher was not found on the server (HTTP 404) | "The cipher was not found on the server." |
+
+**[Updated]** The `.organizationCipherOfflineEditNotSupported` case has been removed. Organization cipher protection is now handled in `VaultRepository` by rethrowing the original network error rather than using a custom `OfflineSyncError` case.
 
 All errors conform to `LocalizedError` with `errorDescription` and to `Equatable` for test assertions.
 
@@ -53,7 +54,7 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 | `clientService: ClientService` | Encrypt/decrypt operations via SDK |
 | ~~`folderService: FolderService`~~ | ~~Creating/fetching the "Offline Sync Conflicts" folder~~ **[Removed]** |
 | `pendingCipherChangeDataStore: PendingCipherChangeDataStore` | Fetching/deleting pending change records |
-| `stateService: StateService` | Managing account state |
+| `stateService: StateService` | **Unused** — injected but never called; `userId` is passed as a parameter from `SyncService`. Should be removed (~4 lines cleanup). |
 
 ~~**Instance State:**~~
 
@@ -248,7 +249,6 @@ processPendingChanges(userId:)
 | ~~`test_processPendingChanges_update_conflict_createsConflictFolder`~~ | ~~Verifies folder creation and backup cipher assignment~~ **[Removed]** — Conflict folder eliminated |
 | `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
 | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
-| `test_offlineSyncError_localizedDescription` | Error description verification |
 | `test_offlineSyncError_vaultLocked_localizedDescription` | Error description verification |
 | `test_processPendingChanges_update_conflict_localNewer_preservesPasswordHistory` | **[New]** Hard conflict (local wins) preserves separate password histories |
 | `test_processPendingChanges_update_conflict_serverNewer_preservesPasswordHistory` | **[New]** Hard conflict (server wins) preserves separate password histories |
@@ -291,7 +291,7 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 ### Issue RES-6: `MockCipherAPIServiceForOfflineSync` is Fragile (Low) **[Updated]**
 
-**[Updated]** The mock has been extracted from the test file into its own file at `BitwardenShared/Core/Vault/Services/TestHelpers/MockCipherAPIServiceForOfflineSync.swift`. It implements `CipherAPIService` with `fatalError()` stubs for 15 unused methods. Any change to the `CipherAPIService` protocol will require updating this mock at compile time. The file includes a DocC comment explaining why the manual mock exists (no `// sourcery: AutoMockable` annotation on `CipherAPIService`) and a `// MARK: Unused stubs - required by protocol` section.
+**[Updated]** The mock has been extracted from the test file into its own file at `BitwardenShared/Core/Vault/Services/TestHelpers/MockCipherAPIServiceForOfflineSync.swift`. It implements `CipherAPIService` with `fatalError()` stubs for 16 unused methods. Any change to the `CipherAPIService` protocol will require updating this mock at compile time. The file includes a DocC comment explaining why the manual mock exists (no `// sourcery: AutoMockable` annotation on `CipherAPIService`) and a `// MARK: Unused stubs - required by protocol` section.
 
 **Recommendation:** Consider adding `// sourcery: AutoMockable` to `CipherAPIService` to eliminate this manual maintenance, as suggested in the mock file's documentation.
 

@@ -88,9 +88,9 @@ Replace `if let` with force-unwrap (`id!`) with a comment explaining the schema 
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: `PendingCipherChangeData.swift:31` declares `@NSManaged var id: String?`. The convenience init at line 85 has `id: String = UUID().uuidString` — always provides a value. The Core Data schema would need the attribute marked as optional since `@NSManaged` properties of reference types are always optional.
+1. **Code verification**: `PendingCipherChangeData.swift:31` declares `@NSManaged var id: String?`. The convenience init at line 83 has `id: String = UUID().uuidString` — always provides a value. The Core Data schema would need the attribute marked as optional since `@NSManaged` properties of reference types are always optional.
 
-2. **Impact of optionality**: The resolver checks `if let recordId = pendingChange.id` at lines 172, 222, and 287 before calling `deletePendingChange`. If `id` were somehow nil, the pending record would NOT be deleted after successful resolution — a memory leak of sorts, but the user's data is already synced.
+2. **Impact of optionality**: The resolver checks `if let recordId = pendingChange.id` at lines 169, 197, 231, 284, and 310 in `OfflineSyncResolver.swift` before calling `deletePendingChange`. If `id` were somehow nil, the pending record would NOT be deleted after successful resolution — a memory leak of sorts, but the user's data is already synced.
 
 3. **Core Data constraint**: Core Data's `@NSManaged` properties for `String` are inherently `String?` in Swift. Making `id` non-optional would require a computed property wrapper or a different persistence approach. This is a Core Data limitation, not a design flaw.
 

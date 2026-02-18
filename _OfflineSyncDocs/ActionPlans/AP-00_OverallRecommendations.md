@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The offline sync feature code review identified **31 distinct issues** across the implementation. None are critical blockers — the feature is architecturally sound, secure, and well-tested. The issues range from test gaps (highest priority) through reliability improvements to UX enhancements (future considerations). **[Updated]** A subsequent error handling simplification resolved/superseded 3 issues (SEC-1, EXT-1, T6) by deleting `URLError+NetworkConnection.swift` and simplifying VaultRepository catch blocks to plain `catch`. **[Updated]** Manual testing identified VI-1: offline-created ciphers fail to load in the detail view (infinite spinner).
+The offline sync feature code review identified **31 distinct issues** across the implementation. None are critical blockers — the feature is architecturally sound, secure, and well-tested. The issues range from test gaps (highest priority) through reliability improvements to UX enhancements (future considerations). **[Updated]** A subsequent error handling simplification resolved/superseded 3 issues (SEC-1, EXT-1, T6) by deleting `URLError+NetworkConnection.swift` and simplifying VaultRepository catch blocks to plain `catch`. **[Updated]** Manual testing identified VI-1: offline-created ciphers fail to load in the detail view (infinite spinner). **[Updated 2026-02-18]** Of the 31 original issues, **24 are now resolved, superseded, or accepted-as-is** (15 resolved/superseded + 9 accept-no-change). The remaining **7 items requiring attention** are: **S8** (feature flag), **R4** (logging), **R3** (retry backoff), **R1** (data format versioning), **S7** (VaultRepository-level test gap -- partially resolved), **U2** (offline errors), **U3** (future enhancement). Of these, 6 require code changes: S8, R4, R3, R1, S7 (VaultRepository-level test), and U2. The two highest-impact remaining items are **S8** (production kill switch) and **R3** (prevents permanently blocked sync).
 
 This document summarizes the recommended approach for each issue and proposes an implementation order.
 
@@ -14,7 +14,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 
 2. **Swift actors are a proven pattern.** 7 existing services use `actor` instead of `class` (`DefaultPolicyService`, `DefaultStateService`, `DefaultClientService`, `DefaultTokenService`, etc.). Converting `DefaultOfflineSyncResolver` to an actor follows established project conventions.
 
-3. **No project-level `MockCipherAPIService` exists.** The inline mock in the test file is the only one. The project uses Sourcery `@AutoMockable` for mock generation, but `CipherAPIService` is not annotated with it.
+3. ~~**No project-level `MockCipherAPIService` exists.** The inline mock in the test file is the only one.~~ **[Updated]** `MockCipherAPIServiceForOfflineSync` has been extracted to its own dedicated file at `TestHelpers/MockCipherAPIServiceForOfflineSync.swift` with a maintenance comment. The project uses Sourcery `@AutoMockable` for mock generation, but `CipherAPIService` is not annotated with it (deferred -- Sourcery not available in CI).
 
 4. **Test patterns are well-established.** `VaultRepositoryTests` uses 30+ mock dependencies with explicit setUp/tearDown. `MockPendingCipherChangeDataStore` tracks all method calls including `upsertPendingChangeCalledWith` tuples with `offlinePasswordChangeCount`. `MockClientCiphers` supports configured decrypt results.
 
@@ -56,14 +56,14 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | ~~**R2** — Thread safety~~ | ~~Convert to actor (Option A)~~ **[Resolved]** — `DefaultOfflineSyncResolver` converted from `class` to `actor` | ~~5 lines~~ 0 | N/A |
 | **R3** — Retry backoff | TTL + retry count (Options A+B) | ~30-50 lines | Low-Medium |
 | **R1** — Data format versioning | Add version field (Option A) | ~15-20 lines | Low |
-| **CS-2** — Fragile SDK copies | Add review comments (Option A) | ~6 lines | None |
+| ~~**CS-2** — Fragile SDK copies~~ | ~~Add review comments (Option A)~~ **[Resolved]** — Review comments added to `CipherView+OfflineSync.swift` (Option A) AND property count guard tests added to `CipherViewOfflineSyncTests.swift` (variant of Option B). Both `CipherView` (28 properties) and `LoginView` (7 properties) are covered. Copy methods consolidated into single `makeCopy` helper. | ~~6 lines~~ 0 | N/A |
 | ~~**T6** — URLError test coverage~~ | ~~Add individual tests~~ **[Resolved]** — Extension and tests deleted. | ~~35 lines~~ 0 | N/A |
 | ~~**T7** — Subsequent edit test~~ | ~~Add dedicated test~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType`. See [Resolved/AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md). | ~~50-80 lines~~ 0 | N/A |
 | ~~**T8** — Hard error test~~ | ~~Add single test (Option A)~~ **[Resolved]** — Test `test_fetchSync_preSyncResolution_resolverThrows_syncFails` added in `SyncServiceTests.swift`. See [Resolved/AP-T8](Resolved/AP-T8_HardErrorInPreSyncResolution.md). | ~~30-40 lines~~ 0 | N/A |
-| ~~**T5** — Inline mock fragility~~ | ~~Add `@AutoMockable` to CipherAPIService (Option A)~~ **[Resolved]** — Maintenance comment added to inline `MockCipherAPIServiceForOfflineSync`. AutoMockable annotation deferred (Sourcery not available in CI). See [Resolved/AP-T5](Resolved/AP-T5_InlineMockFragility.md). | ~~5 lines~~ 0 | N/A |
+| ~~**T5** — Inline mock fragility~~ | ~~Add `@AutoMockable` to CipherAPIService (Option A)~~ **[Resolved]** — Mock extracted from inline test code to dedicated file `MockCipherAPIServiceForOfflineSync.swift` in `TestHelpers/`, with maintenance comment documenting protocol conformance burden. AutoMockable annotation deferred (Sourcery not available in CI). See [Resolved/AP-T5](Resolved/AP-T5_InlineMockFragility.md). | ~~5 lines~~ 0 | N/A |
 | **DI-1** — UI layer exposure | Accept current pattern (Option A) | 0 lines | None |
 
-**Rationale:** ~~R2 (actor conversion) and~~ R3 (retry backoff) ~~are~~ is the most impactful improvement~~s~~ here. R3 prevents permanently blocked sync. R2 is now resolved. The remaining items are cleanup and additional test coverage.
+**Rationale:** ~~R2 (actor conversion) and~~ R3 (retry backoff) ~~are~~ is the most impactful improvement~~s~~ here. R3 prevents permanently blocked sync. R2 is now resolved. CS-2 is now resolved (review comments + property count guard tests). The remaining items are R3, R1, and DI-1 (accept-as-is).
 
 ### Phase 4: Accept / Future Enhancement (Informational)
 
@@ -93,7 +93,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 5. ~~**VI-1** — **Mitigated** — spinner fixed via UI fallback, root cause remains~~ **[Resolved]** — All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 ### Batch 2: Test Coverage (1-2 hours)
-5. ~~**T5** — Evaluate/replace inline mock (1 file)~~ **[Resolved]** — Maintenance comment added to inline mock
+5. ~~**T5** — Evaluate/replace inline mock (1 file)~~ **[Resolved]** — Mock extracted to dedicated `MockCipherAPIServiceForOfflineSync.swift` in `TestHelpers/` with maintenance comment
 6. ~~**S3 + S4** — Batch + API failure tests (1 file, ~400-600 lines)~~ **[Resolved]** — 7 tests added to `OfflineSyncResolverTests.swift`
 7. ~~**S6** — Password counting tests (1 file, ~100-150 lines)~~ **[Resolved]** — 4 tests added to `VaultRepositoryTests.swift`
 8. ~~**S7** — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added; VaultRepository-level test gap remains
@@ -110,7 +110,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 15. **U2** — Offline-specific error messages (1 file, ~20-30 lines)
 
 ### Batch 5: UX Enhancements (Future)
-16. **CS-2** — Add SDK update review comments (1 file, ~6 lines)
+16. ~~**CS-2** — Add SDK update review comments~~ **[Resolved]** — Review comments + property count guard tests implemented in `CipherView+OfflineSync.swift` and `CipherViewOfflineSyncTests.swift`
 17. **U3** — Pending changes toast/indicator (future sprint)
 
 ---
@@ -127,44 +127,49 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 **Recommendation: Implement.** The project already uses actors for 7 services (DefaultPolicyService, DefaultStateService, DefaultClientService, DefaultTokenService, etc.). Converting `DefaultOfflineSyncResolver` from `class` to `actor` is a single keyword change that follows established project conventions and provides compile-time thread safety.
 
 ### 4. ~~`.secureConnectionFailed` (SEC-1) — Remove from offline triggers?~~ **[Superseded]**
-~~**Recommendation: Keep but log.**~~ This decision point is superseded. The `URLError+NetworkConnection` extension has been deleted. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save. The fine-grained URLError classification was solving a problem that doesn't exist.
+~~**Recommendation: Keep but log.**~~ This decision point is superseded. The `URLError+NetworkConnection` extension has been deleted. VaultRepository catch blocks now use a denylist pattern (re-throwing `ServerError`, `ResponseValidationError` where status < 500, and `CipherAPIServiceError`; all other errors fall through to offline handlers). The fine-grained URLError classification was solving a problem that doesn't exist.
 
 ### 5. ~~`.timedOut` (EXT-1) — Remove from offline triggers?~~ **[Superseded]**
-~~**Recommendation: Keep.**~~ This decision point is superseded. The `URLError+NetworkConnection` extension has been deleted. All API errors now trigger offline save by design.
+~~**Recommendation: Keep.**~~ This decision point is superseded. The `URLError+NetworkConnection` extension has been deleted. VaultRepository catch blocks use a denylist pattern where all errors except explicit server/validation/API-service errors trigger offline save.
 
-### 6. Inline Mock (T5) — Keep, replace, or auto-generate?
-**Recommendation: Add `// sourcery: AutoMockable` to `CipherAPIService`.** The project uses Sourcery for mock generation (`Sourcery/Templates/AutoMockable.stencil`). Annotating `CipherAPIService` (at `CipherAPIService.swift:17`) auto-generates a mock that updates when the protocol changes, eliminating the inline mock's maintenance burden. This is especially important since S3/S4 batch tests will add more weight to the mock.
+### ~~6. Inline Mock (T5) — Keep, replace, or auto-generate?~~ **[Resolved]**
+~~**Recommendation: Add `// sourcery: AutoMockable` to `CipherAPIService`.**~~ **[UPDATE]** T5 is resolved. The inline mock was extracted to its own dedicated file (`MockCipherAPIServiceForOfflineSync.swift` in `TestHelpers/`) with a maintenance comment documenting the protocol conformance burden and recommending AutoMockable annotation when feasible. The AutoMockable annotation was deferred because Sourcery is not available in CI. The mock infrastructure proved adequate for all S3/S4 batch and failure tests.
 
 ---
 
 ## Total Estimated Impact
 
-| Phase | Files Changed | Lines Added/Changed | Risk |
-|-------|--------------|---------------------|------|
-| Phase 1 (Must-address) | 1 | ~400-600 | Very low |
-| Phase 2 (Should-address) | 6-9 | ~230-350 | Low |
-| Phase 3 (Nice-to-have) | 6-8 | ~200-300 | Low |
-| Phase 4 (Accept/Future) | 0-1 | ~20-30 | None |
-| **Total** | **~13-19** | **~830-1,250** | **Low** |
+**[Updated 2026-02-18]** The table below reflects the current state after all Phase 1, most Phase 2, and several Phase 3 items have been resolved.
+
+| Phase | Original Estimate | Resolved | Remaining |
+|-------|------------------|----------|-----------|
+| Phase 1 (Must-address) | 1 file, ~400-600 lines | **All resolved** (S3, S4) | None |
+| Phase 2 (Should-address) | 6-9 files, ~230-350 lines | S6, S7 (partial), SEC-1, EXT-1, A3, CS-1, VI-1 resolved/superseded | **S8** (~20-30 lines), **R4** (~2 lines), **S7** VaultRepository test (~30-40 lines) |
+| Phase 3 (Nice-to-have) | 6-8 files, ~200-300 lines | R2, T6, T7, T8, T5, **CS-2** resolved | **R3** (~30-50 lines), **R1** (~15-20 lines), **DI-1** (accept) |
+| Phase 4 (Accept/Future) | 0-1 files, ~20-30 lines | U4 superseded | **U2** (~20-30 lines), others accept-as-is |
+| **Remaining Total** | — | — | **~4-6 files, ~90-130 lines** |
 
 ---
 
 ## Risk Assessment
 
-The overall risk of implementing all recommended changes is **low**:
+**[Updated 2026-02-18]** The overall risk profile has improved significantly since the initial review:
 
-1. **Phase 1-2 are mostly test-only** — ~~VI-1's root cause fix (moving temp-ID before encryption, replacing `Cipher.withTemporaryId()`) is a behavioral change but is additive and low-risk. The UI fallback mitigation is already in place as a safety net.~~ **[UPDATE]** VI-1 is fully resolved. Remaining Phase 2 items are test-only (S6, S7 VaultRepository-level).
-2. **Phase 3 reliability improvements** are additive — they add safety mechanisms without changing existing behavior
-3. **Phase 4 items** are mostly accept-as-is — no changes needed
-4. **The feature flag (S8)** reduces overall production risk by providing a kill switch
+1. **Phase 1 is fully resolved.** All must-address test gaps (S3, S4) are covered.
+2. **Phase 2 is nearly complete.** VI-1 fully resolved. S6 tests added. S7 partially resolved (VaultRepository-level gap remains). SEC-1, EXT-1 superseded. A3, CS-1 resolved. Remaining: **S8** (feature flag) and **R4** (logging) -- both low-risk additive changes.
+3. **Phase 3 is mostly resolved.** R2 (actor), T5, T6, T7, T8, and now **CS-2** (review comments + property count guard tests) are all resolved. Remaining: **R3** (retry backoff) and **R1** (format versioning) -- both require Core Data schema changes.
+4. **Phase 4 items** are mostly accept-as-is -- no changes needed. U4 superseded.
 
-The most significant risk is the **Core Data schema changes** in Phase 3 (R1 format version, R3 retry count). These require lightweight migration, which Core Data handles automatically for new attributes, but should be tested carefully.
+The most significant remaining risks:
+- **Without S8 (feature flag):** No remote kill switch exists. This is the highest-impact remaining item for production safety.
+- **Without R3 (retry backoff):** A single permanently failing item blocks ALL syncing. This is the most impactful reliability concern.
+- **Core Data schema changes** for R1 and R3 require lightweight migration, which Core Data handles automatically for new attributes, but should be tested carefully.
 
 ---
 
 ## Updated Review Findings (Post-Individual Action Plan Review)
 
-After completing a detailed code-level review of all 30 individual action plans against the actual implementation source code, the following updates and refinements are noted. Each individual action plan has been updated with an "Updated Review Findings" section containing code-verified analysis.
+After completing a detailed code-level review of all 31 individual action plans against the actual implementation source code, the following updates and refinements are noted. Each individual action plan has been updated with an "Updated Review Findings" section containing code-verified analysis.
 
 ### Summary of Recommendation Changes
 
@@ -183,7 +188,7 @@ After completing a detailed code-level review of all 30 individual action plans 
 | **S8** — Feature flag | When the flag is off, the entire pre-sync pending-changes block should be skipped (both resolution AND abort check), not just the resolution. Otherwise, pending changes accumulate and permanently block sync. Two-tier approach: Tier 1 gates SyncService (simple); Tier 2 also gates VaultRepository catch blocks (requires adding `configService` dependency). |
 | **R1** — Data format versioning | Priority should be deprioritized if R3 (retry backoff/TTL) is implemented, since R3 provides a more general solution for permanently stuck items. If R3 is deferred, R1 becomes important as the only graceful degradation path for format mismatches. |
 | ~~**SEC-1** — secureConnectionFailed~~ | **[Superseded]** Extension deleted. The entire URLError classification approach was removed in favor of plain `catch` blocks. |
-| **CS-2** — Fragile SDK copies | Mirror-based reflection testing (originally mentioned as Option B) should be explicitly NOT recommended — Rust FFI-generated Swift structs may not accurately reflect properties via `Mirror`. |
+| ~~**CS-2** — Fragile SDK copies~~ | **[Resolved]** Review comments (Option A) added to `CipherView+OfflineSync.swift`. Property count guard tests using `Mirror` added to `CipherViewOfflineSyncTests.swift` for both `CipherView` (28 properties) and `LoginView` (7 properties). Original concern about Rust FFI-generated structs not reflecting via `Mirror` did not materialize -- the tests work correctly. Copy methods consolidated into single `makeCopy` helper, reducing the fragile SDK initializer call to a single site. |
 | ~~**A3** vs **R3** interaction~~ | **[Resolved]** — `timeProvider` has been removed per A3 (commit `a52d379`). If R3 is implemented, `timeProvider` can be re-added with a clear purpose. |
 
 #### Confirmed Accept-as-Is (No Changes)
@@ -211,7 +216,7 @@ The following 11 issues were confirmed as correct to accept without code changes
 
 4. **The early-abort pattern at `SyncService.swift:338-340` is the single most impactful reliability concern.** Without R3 (retry backoff), a permanently failing item blocks all syncing indefinitely. This makes R3 more important than originally assessed.
 
-5. **Mock infrastructure is adequate for all proposed tests.** `MockCipherService`, `MockPendingCipherChangeDataStore`, and `MockClientCiphers` all support the configurations needed for S3, S4, S6, S7, T7, and T8 tests. Only T5 (inline mock) requires attention if protocol changes are expected.
+5. **Mock infrastructure is adequate for all proposed tests.** `MockCipherService`, `MockPendingCipherChangeDataStore`, and `MockClientCiphers` all support the configurations needed for S3, S4, S6, S7, T7, and T8 tests. ~~Only T5 (inline mock) requires attention if protocol changes are expected.~~ **[UPDATE]** T5 is resolved -- the mock was extracted to its own file (`MockCipherAPIServiceForOfflineSync.swift`) with a maintenance comment. The mock infrastructure proved adequate for all implemented tests.
 
 ### Updated Implementation Priority Order
 
@@ -225,7 +230,7 @@ Based on the code review, the recommended implementation order is refined:
 5. ~~**VI-1** — **Mitigated** — spinner fixed via UI fallback (PR #31), root cause remains~~ **[Resolved]** — All 5 recommended fixes implemented in Phase 2
 
 **Batch 2: Critical Test Coverage** (updated) **[All Resolved]**
-5. ~~T5 — Evaluate/replace inline mock~~ **[Resolved]** — Maintenance comment added
+5. ~~T5 — Evaluate/replace inline mock~~ **[Resolved]** — Mock extracted to dedicated file with maintenance comment
 6. ~~S3 + S4 — Batch + API failure tests~~ **[Resolved]** — 7 tests added
 7. ~~S6 — Password counting tests~~ **[Resolved]** — 4 tests added
 8. ~~S7 — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added
@@ -241,6 +246,6 @@ Based on the code review, the recommended implementation order is refined:
 14. S8 — Feature flag (skip entire pre-sync block when off, not just resolution)
 15. U2 — Offline-specific error messages
 
-**Batch 5: Future Enhancements** (unchanged)
-16. CS-2 — SDK update review comments
+**Batch 5: Future Enhancements** (updated)
+16. ~~CS-2 — SDK update review comments~~ **[Resolved]** — Review comments + property count guard tests implemented
 17. U3 — Pending changes indicator

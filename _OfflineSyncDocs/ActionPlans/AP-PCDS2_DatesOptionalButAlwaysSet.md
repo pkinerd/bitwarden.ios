@@ -68,7 +68,7 @@ Keep the optional schema with the always-set convenience init pattern. The fallb
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: `PendingCipherChangeData.swift:49-51`:
+1. **Code verification**: `PendingCipherChangeData.swift:49,52`:
    ```swift
    @NSManaged var createdDate: Date?
    @NSManaged var updatedDate: Date?
@@ -76,7 +76,7 @@ The review confirms the original assessment. After reviewing the implementation:
    The convenience init at lines 100-101 sets both: `self.createdDate = Date()` and `self.updatedDate = Date()`.
 
 2. **Usage of dates**:
-   - `OfflineSyncResolver.swift:234`: `let localTimestamp = pendingChange.updatedDate ?? pendingChange.createdDate ?? Date.distantPast` — the fallback chain handles nil gracefully
+   - `OfflineSyncResolver.swift:243`: `let localTimestamp = pendingChange.updatedDate ?? pendingChange.createdDate ?? Date.distantPast` — the fallback chain handles nil gracefully
    - The dates are used for timestamp comparison in conflict resolution. The fallback to `Date.distantPast` means a nil date would cause the local version to lose any timestamp comparison — a safe default (server wins when local timestamp is unknown).
 
 3. **Core Data constraint**: Same as PCDS-1 — `@NSManaged` `Date` properties are inherently `Date?` in Swift. This is a Core Data limitation.

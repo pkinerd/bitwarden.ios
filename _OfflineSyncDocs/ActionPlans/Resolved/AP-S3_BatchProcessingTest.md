@@ -1,12 +1,14 @@
 # Action Plan: S3 (RES-3) — No Batch Processing Test for OfflineSyncResolver
 
+> **Status: [RESOLVED]** — All three recommended batch tests from Option B have been implemented in `OfflineSyncResolverTests.swift`: `test_processPendingChanges_batch_allSucceed` (3 change types processed in one batch), `test_processPendingChanges_batch_mixedFailure_successfulItemResolved` (catch-and-continue verified), and `test_processPendingChanges_batch_allFail` (all pending records retained on failure). The critical catch-and-continue reliability property is now fully tested.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | S3 / RES-3 |
 | **Component** | `OfflineSyncResolverTests` |
-| **Severity** | High |
+| **Severity** | ~~High~~ **Resolved** |
 | **Type** | Test Gap |
 | **File** | `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` |
 

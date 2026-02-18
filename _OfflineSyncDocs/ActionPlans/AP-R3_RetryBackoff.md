@@ -16,11 +16,11 @@ Failed resolution items are retried on every subsequent sync attempt with no bac
 
 ## Context
 
-The early-abort pattern in `SyncService.swift` (lines 325-341) means that if any pending changes remain after resolution, the sync is aborted entirely (`return` at line ~339). A permanently failing item therefore permanently blocks sync for that user. While the per-item catch-and-continue in `OfflineSyncResolver.swift:130-135` allows other items to resolve, the remaining count check (`pendingChangeCount(userId:)`) will always find at least one remaining item.
+The early-abort pattern in `SyncService.swift` (lines 334-343) means that if any pending changes remain after resolution, the sync is aborted entirely (`return` at line 340). A permanently failing item therefore permanently blocks sync for that user. While the per-item catch-and-continue in `OfflineSyncResolver.swift:113-117` allows other items to resolve, the remaining count check (`pendingChangeCount(userId:)`) will always find at least one remaining item.
 
 This is the most impactful consequence: **a single permanently failing pending change blocks ALL syncing.** Given that sync is critical for the user's vault being current across devices, this is a significant reliability concern.
 
-**Codebase pattern for time-based logic:** The project uses `TimeProvider` for injectable time (see `MockTimeProvider` in tests). If time-based expiry is implemented, using `timeProvider.presentTime` rather than `Date()` ensures testability. Note: `timeProvider` is currently injected but unused in the resolver (see A3), so it could be repurposed for this feature.
+**Codebase pattern for time-based logic:** The project uses `TimeProvider` for injectable time (see `MockTimeProvider` in tests). If time-based expiry is implemented, using `timeProvider.presentTime` rather than `Date()` ensures testability. Note: `timeProvider` has been removed from the resolver (A3 implemented — YAGNI), so it would need to be re-added with a clear purpose if time-based expiry is implemented.
 
 ---
 
@@ -152,7 +152,7 @@ If implementing a full retry backoff (Option C) is feasible, it is the technical
 
 The review confirms this is the most impactful reliability issue. After reviewing the implementation:
 
-1. **Code verification**: `SyncService.swift:334-340` shows the critical flow:
+1. **Code verification**: `SyncService.swift:335-341` shows the critical flow:
    ```
    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
    if pendingCount > 0 {
@@ -165,7 +165,7 @@ The review confirms this is the most impactful reliability issue. After reviewin
    ```
    A single permanently failing item causes `remainingCount > 0` on every sync, permanently blocking `replaceCiphers` and all server-to-local updates.
 
-2. **Error handling verification**: `OfflineSyncResolver.swift:128-136` shows the per-item catch. When resolution fails, the error is logged but the pending record survives. On every subsequent sync trigger (periodic ~30min, foreground, pull-to-refresh), the same failing item is retried with the same result.
+2. **Error handling verification**: `OfflineSyncResolver.swift:113-117` shows the per-item catch. When resolution fails, the error is logged but the pending record survives. On every subsequent sync trigger (periodic ~30min, foreground, pull-to-refresh), the same failing item is retried with the same result.
 
 3. **Failure scenarios that cause permanent blocking**:
    - Server returns 404 for a deleted cipher (permanent failure)
@@ -173,7 +173,7 @@ The review confirms this is the most impactful reliability issue. After reviewin
    - Server-side permission change prevents update (permanent failure)
    - Cipher exceeds server-side size limits (permanent failure)
 
-4. **timeProvider reuse assessment**: The unused `timeProvider` in the resolver (A3) could be repurposed for TTL checking. However, if A3 removes it first (which it should per YAGNI), R3 would re-add it with a clear purpose. This is the correct sequence.
+4. **timeProvider status**: The `timeProvider` has been removed from the resolver (A3 implemented). If R3 TTL is implemented, `timeProvider` would need to be re-added with a clear purpose (time-based expiry checking). This is the correct sequence per YAGNI.
 
 5. **Recommendation refinement**: After code review, the combined approach (Option A + B) is confirmed as the best balance. Specifically:
    - Add `retryCount: Int16` (default 0) to Core Data entity

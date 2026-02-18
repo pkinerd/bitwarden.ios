@@ -1,12 +1,14 @@
 # Action Plan: S6 (T3) — Password Change Counting Not Directly Tested
 
+> **Status: [RESOLVED]** — All four recommended tests from Option A have been implemented in `VaultRepositoryTests.swift`: `test_updateCipher_offlineFallback_passwordChanged_incrementsCount` (first edit, password changed, count = 1), `test_updateCipher_offlineFallback_passwordUnchanged_zeroCount` (first edit, unchanged, count = 0), `test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount` (subsequent edit, changed, count = existing + 1), and `test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount` (subsequent edit, unchanged, count preserved). Both the first-edit and subsequent-edit code paths are now fully covered.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | S6 / T3 |
 | **Component** | `VaultRepositoryTests` |
-| **Severity** | Medium |
+| **Severity** | ~~Medium~~ **Resolved** |
 | **Type** | Test Gap |
 | **File** | `BitwardenShared/Core/Vault/Repositories/VaultRepositoryTests.swift` |
 

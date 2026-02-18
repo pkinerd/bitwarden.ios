@@ -106,27 +106,34 @@ Keep the current inconsistency and track it as a future enhancement.
 
 The review confirms the original assessment with code-level detail. After reviewing the implementation:
 
-1. **Supported operations verified**: VaultRepository has offline fallback handlers for:
-   - `addCipher` → `handleOfflineAdd` (line 520)
-   - `updateCipher` → `handleOfflineUpdate` (line 931)
-   - `deleteCipher` → `handleOfflineDelete` (line 645)
-   - `softDeleteCipher` → `handleOfflineSoftDelete` (line 904)
+1. **Supported operations verified** (reviewed 2026-02-18): VaultRepository has offline fallback handlers for:
+   - `addCipher` (line 505) → `handleOfflineAdd` (line 1007) — via catch-all at line 535
+   - `updateCipher` (line 959) → `handleOfflineUpdate` (line 1034) — via catch-all at line 982
+   - `deleteCipher` (line 659) → `handleOfflineDelete` (line 1099) — via catch-all at line 674
+   - `softDeleteCipher` (line 921) → `handleOfflineSoftDelete` (line 1145) — via catch-all at line 942
+
+   The catch pattern now uses a broader catch-all that re-throws `ServerError`, `ResponseValidationError` (client-side), and `CipherAPIServiceError`, then falls through to the offline handler for any other errors (including network failures).
 
 2. **Unsupported operations verified** (no offline catch block):
-   - `archiveCipher` — calls `cipherAPIService.archiveCipher(withID:)` with no catch for URLError
-   - `unarchiveCipher` — calls `cipherAPIService.unarchiveCipher(withID:)` with no catch
-   - `updateCipherCollections` — calls `cipherAPIService.updateCipherCollections()` with no catch
-   - `shareCipher` — calls API with no catch (correctly excluded due to org key requirements)
-   - `restoreCipher` — calls `cipherAPIService.restoreCipher(withID:)` with no catch
+   - `archiveCipher` (line 546) — calls `cipherService.archiveCipherWithServer(id:_:)` with no catch
+   - `unarchiveCipher` (line 950) — calls `cipherService.unarchiveCipherWithServer(id:_:)` with no catch
+   - `updateCipherCollections` (line 994) — calls `cipherService.updateCipherCollectionsWithServer(_:)` with no catch
+   - `shareCipher` (line 890) — calls API with no catch (correctly excluded due to org key requirements)
+   - `restoreCipher` (line 856) — calls `cipherService.restoreCipherWithServer(id:_:)` with no catch
 
-3. **Archive feature flag interaction**: `FeatureFlag.swift:9` defines `.archiveVaultItems`. If archive is still behind a feature flag, adding offline support for it is premature. This is correctly noted in the original action plan.
+3. **Archive feature flag interaction**: `.archiveVaultItems` feature flag is still actively used throughout the codebase (VaultListProcessor, ViewItemProcessor, VaultItemMoreOptionsHelper, Fido2CredentialStoreService, ExportVaultService, AutofillCredentialService). The archive feature is still gated behind this flag, so adding offline support for archive is premature until the feature is fully stable.
 
-4. **Option B assessment**: Adding specific error messages for unsupported operations is the right minimum improvement. The pattern would be adding a catch block similar to:
+4. **Option B assessment**: Adding specific error messages for unsupported operations remains the right minimum improvement. The `OfflineSyncError.operationNotSupportedOffline` case has NOT been added yet. The current `OfflineSyncError` enum contains: `.missingCipherData`, `.missingCipherId`, `.vaultLocked`, `.cipherNotFound`. To implement Option B, a new `.operationNotSupportedOffline` case would need to be added, along with a catch block in each unsupported operation matching the same pattern used by supported operations:
    ```swift
-   catch let error as URLError where error.isNetworkConnectionError {
+   } catch let error as ServerError {
+       throw error
+   } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+       throw error
+   } catch let error as CipherAPIServiceError {
+       throw error
+   } catch {
        throw OfflineSyncError.operationNotSupportedOffline
    }
    ```
-   This requires a new error case in `OfflineSyncError`. The implementation is ~5 lines per unsupported operation.
 
-**Updated conclusion**: Original recommendation (Option B as minimum, Option C acceptable for initial release) confirmed. Adding clear error messages for unsupported operations is low-effort and high-value for UX. If the initial release scope is tight, Option C (accept and document) is fine. Priority: Informational for initial release; Low for follow-up.
+**Updated conclusion** (2026-02-18): Original recommendation (Option B as minimum, Option C acceptable for initial release) confirmed. Neither Option A nor Option B has been implemented yet — the unsupported operations still have no offline-specific error handling. Adding clear error messages for unsupported operations is low-effort and high-value for UX. If the initial release scope is tight, Option C (accept and document) is fine. Priority: Informational for initial release; Low for follow-up.

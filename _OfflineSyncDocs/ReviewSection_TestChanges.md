@@ -7,8 +7,8 @@ Three pre-existing test/mock files were modified since the fork at `0283b1f`:
 | File | Type | Lines Removed | Lines Added |
 |---|---|---|---|
 | `ServiceContainer+Mocks.swift` | Mock factory | 0 | 4 |
-| `VaultRepositoryTests.swift` | Test file | 0 | 108 |
-| `SyncServiceTests.swift` | Test file | 0 | 67 |
+| `VaultRepositoryTests.swift` | Test file | 0 | ~590 (32 new test methods + setup/teardown plumbing) |
+| `SyncServiceTests.swift` | Test file | 0 | ~79 (5 new test methods + setup/teardown plumbing) |
 
 **No existing test code was removed or modified.** All changes are purely additive:
 new mock properties in setup/teardown plumbing and new test methods.
@@ -23,18 +23,44 @@ Two new parameters added to the mock factory with defaults:
 - `offlineSyncResolver: OfflineSyncResolver = MockOfflineSyncResolver()`
 - `pendingCipherChangeDataStore: PendingCipherChangeDataStore = MockPendingCipherChangeDataStore()`
 
-131 call sites across 17 test files now silently receive these mocks.
+131 call sites across 107 test files now silently receive these mocks.
 
 ### 2. VaultRepositoryTests.swift
 
 **Setup/teardown plumbing (4 insertions):** Added `pendingCipherChangeDataStore` mock property,
 initialization, constructor wiring, and teardown.
 
-**8 new test methods:**
-- `test_addCipher_offlineFallback` / `test_addCipher_offlineFallback_orgCipher_throws`
-- `test_deleteCipher_offlineFallback` / `test_deleteCipher_offlineFallback_orgCipher_throws`
-- `test_updateCipher_offlineFallback` / `test_updateCipher_offlineFallback_orgCipher_throws`
-- `test_softDeleteCipher_offlineFallback` / `test_softDeleteCipher_offlineFallback_orgCipher_throws`
+**32 new test methods** (24 offline fallback + 8 error rethrow):
+
+Offline fallback — add:
+- `test_addCipher_offlineFallback` / `test_addCipher_offlineFallback_newCipherGetsTempId`
+- `test_addCipher_offlineFallback_orgCipher_throws` / `test_addCipher_offlineFallback_unknownError`
+- `test_addCipher_offlineFallback_responseValidationError5xx`
+
+Offline fallback — delete:
+- `test_deleteCipher_offlineFallback` / `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher`
+- `test_deleteCipher_offlineFallback_orgCipher_throws` / `test_deleteCipher_offlineFallback_unknownError`
+- `test_deleteCipher_offlineFallback_responseValidationError5xx`
+
+Offline fallback — update:
+- `test_updateCipher_offlineFallback` / `test_updateCipher_offlineFallback_preservesCreateType`
+- `test_updateCipher_offlineFallback_passwordChanged_incrementsCount`
+- `test_updateCipher_offlineFallback_passwordUnchanged_zeroCount`
+- `test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount`
+- `test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount`
+- `test_updateCipher_offlineFallback_orgCipher_throws` / `test_updateCipher_offlineFallback_unknownError`
+- `test_updateCipher_offlineFallback_responseValidationError5xx`
+
+Offline fallback — soft delete:
+- `test_softDeleteCipher_offlineFallback` / `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher`
+- `test_softDeleteCipher_offlineFallback_orgCipher_throws` / `test_softDeleteCipher_offlineFallback_unknownError`
+- `test_softDeleteCipher_offlineFallback_responseValidationError5xx`
+
+Error rethrow (denylist verification):
+- `test_addCipher_serverError_rethrows` / `test_addCipher_responseValidationError4xx_rethrows`
+- `test_deleteCipher_serverError_rethrows` / `test_deleteCipher_responseValidationError4xx_rethrows`
+- `test_updateCipher_serverError_rethrows` / `test_updateCipher_responseValidationError4xx_rethrows`
+- `test_softDeleteCipher_serverError_rethrows` / `test_softDeleteCipher_responseValidationError4xx_rethrows`
 
 ### 3. SyncServiceTests.swift
 
@@ -42,42 +68,54 @@ initialization, constructor wiring, and teardown.
 `pendingCipherChangeDataStore` mock properties with initialization, constructor wiring,
 and teardown.
 
-**4 new test methods:**
+**5 new test methods:**
 - `test_fetchSync_preSyncResolution_triggersPendingChanges`
 - `test_fetchSync_preSyncResolution_skipsWhenVaultLocked`
 - `test_fetchSync_preSyncResolution_noPendingChanges`
 - `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain`
+- `test_fetchSync_preSyncResolution_resolverThrows_syncFails`
 
 ---
 
 ## Deep Dive Findings
 
-### DEEP DIVE 1: Catch-All Error Handling (CRITICAL)
+### DEEP DIVE 1: Catch-All Error Handling (RESOLVED)
 
-**Severity: HIGH**
+**Severity: HIGH (original) → LOW (current)**
 
 The production code was initially implemented (commit `fd4a60b`) with precise error filtering:
 ```swift
 } catch let error as URLError where error.isNetworkConnectionError {
 ```
 
-This was removed in commit `e13aefe` and simplified to a bare `catch`, meaning ALL errors
-from `addCipherWithServer`, `updateCipherWithServer`, `deleteCipherWithServer`, and
-`softDeleteCipherWithServer` are now caught and routed to offline fallback -- including
-HTTP 401 (auth expired), 403 (forbidden), 400 (bad request), 404 (not found),
-`DecodingError`, and `ResponseValidationError`.
+This was temporarily simplified to a bare `catch` in commit `e13aefe`, but has since been
+replaced with a denylist pattern in all four CRUD methods (`addCipher`, `deleteCipher`,
+`updateCipher`, `softDeleteCipher`):
+```swift
+} catch let error as ServerError {
+    throw error
+} catch let error as ResponseValidationError where error.response.statusCode < 500 {
+    throw error
+} catch let error as CipherAPIServiceError {
+    throw error
+} catch {
+    // Only reaches here for URLError, 5xx ResponseValidationError, etc.
+    try await handleOffline...()
+}
+```
+
+Client-side validation errors (`CipherAPIServiceError`), server errors (`ServerError`), and
+4xx `ResponseValidationError` are now properly rethrown. Only truly transient failures
+(network errors, 5xx server errors) fall through to offline handling.
 
 **Impact on pre-existing tests:**
-- `test_deleteCipher_idError_nil` (VaultRepositoryTests.swift:689) sets
+- `test_deleteCipher_idError_nil` (VaultRepositoryTests.swift:779) sets
   `deleteCipherWithServerResult = .failure(CipherAPIServiceError.updateMissingId)`.
-  Pre-fork this propagated directly. Now it's caught and routed to `handleOfflineDelete()`,
-  which fails on `stateService.getActiveAccountId()` (unconfigured) -- the test may pass
-  but for the wrong reason.
-- A pre-existing test `test_updateCipher_nonNetworkError_rethrows` was removed in commit
-  `e13aefe` with rationale "no longer applicable."
+  With the denylist pattern, `CipherAPIServiceError` is now rethrown correctly.
+- New rethrow tests (`test_*_serverError_rethrows`, `test_*_responseValidationError4xx_rethrows`)
+  verify the denylist behavior for all four CRUD operations.
 
-**Conclusion:** The catch-all error handling is a production code design concern that
-degrades correctness. The original `URLError.isNetworkConnectionError` filtering was safer.
+**Conclusion:** This issue is resolved. The denylist pattern correctly filters error types.
 
 ---
 
@@ -90,10 +128,10 @@ assertion that offline handling was not triggered:
 
 | Test | Line | Asserts server call? | Asserts no offline? |
 |---|---|---|---|
-| `test_addCipher` | 119 | Yes | No |
-| `test_updateCipher` | 1436 | Partial | No |
-| `test_deleteCipher` | 684 | Yes | No |
-| `test_softDeleteCipher` | 1596 | Yes | No |
+| `test_addCipher` | 126 | Yes | No |
+| `test_updateCipher` | 1694 | Partial | No |
+| `test_deleteCipher` | 807 | Yes | No |
+| `test_softDeleteCipher` | 2115 | Yes | No |
 
 If a bug caused the server mock to throw unexpectedly, tests would still pass via
 catch block + offline handler, because `MockPendingCipherChangeDataStore` defaults to
@@ -162,28 +200,27 @@ test_fetchSync_needsSync_lastSyncTime_older30MinsWithRevisions, and 20 others.
 
 ---
 
-### DEEP DIVE 7: Narrow Error Type Coverage (CRITICAL)
+### DEEP DIVE 7: Narrow Error Type Coverage (PARTIALLY ADDRESSED)
 
-**Severity: HIGH**
+**Severity: HIGH (original) → MODERATE (current)**
 
-All 8 new offline fallback tests use only `URLError(.notConnectedToInternet)`. The
-production catch block catches all error types. Error types NOT tested:
+The offline fallback tests primarily use `URLError(.notConnectedToInternet)` as the trigger
+error. However, the production code now uses a denylist pattern (not a bare `catch`), and
+rethrow tests verify that non-network errors propagate correctly.
 
 | Error Type | Should Trigger Offline? | Tested? |
 |---|---|---|
-| URLError(.notConnectedToInternet) | Yes | Yes |
+| URLError(.notConnectedToInternet) | Yes | Yes (offline fallback tests) |
 | URLError(.timedOut) | Probably yes | No |
 | URLError(.networkConnectionLost) | Yes | No |
-| ServerError (HTTP 401) | **No** -- auth failure | No |
-| ServerError (HTTP 403) | **No** -- permission denied | No |
-| ServerError (HTTP 400) | **No** -- bad request | No |
-| ServerError (HTTP 404) | **No** -- not found | No |
-| DecodingError | **No** -- parse failure | No |
-| ResponseValidationError | **No** -- protocol error | No |
+| ServerError | **No** -- rethrown by denylist | Yes (`test_*_serverError_rethrows`) |
+| ResponseValidationError (4xx) | **No** -- rethrown by denylist | Yes (`test_*_responseValidationError4xx_rethrows`) |
+| ResponseValidationError (5xx) | Yes -- falls through to offline | Yes (`test_*_offlineFallback_responseValidationError5xx`) |
+| CipherAPIServiceError | **No** -- rethrown by denylist | Yes (pre-existing `test_*_idError_nil` tests) |
+| DecodingError | Falls through to offline | No |
 
-The original implementation used `catch let error as URLError where error.isNetworkConnectionError`
-which correctly limited offline fallback to ~10 specific URLError codes. The simplification
-to bare `catch` (commit `e13aefe`) creates a critical correctness gap.
+The denylist pattern addresses the most critical error types. Remaining gaps are limited to
+`URLError` variants other than `.notConnectedToInternet` and `DecodingError`.
 
 ---
 
@@ -191,9 +228,9 @@ to bare `catch` (commit `e13aefe`) creates a critical correctness gap.
 
 **Severity: LOW-MODERATE**
 
-131 calls to `ServiceContainer.withMocks()` across 17 test files now silently receive
+131 calls to `ServiceContainer.withMocks()` across 107 test files now silently receive
 the new mocks. Zero customize them. ServiceContainer forwards both dependencies to
-`DefaultVaultRepository` (line 849) and `DefaultSyncService` (lines 655, 657).
+`DefaultVaultRepository` (line 848) and `DefaultSyncService` (lines 654, 656).
 
 Primary risk is discoverability: future test authors may not know these dependencies
 exist unless they inspect the factory signature.
@@ -204,20 +241,21 @@ exist unless they inspect the factory signature.
 
 | Deep Dive | Severity | Quality Degraded? |
 |---|---|---|
-| 1. Catch-all error handling | **HIGH** | **Yes** -- errors that should propagate are silently caught |
+| 1. Catch-all error handling | ~~HIGH~~ → LOW | **Resolved** -- denylist pattern rethrows ServerError, CipherAPIServiceError, 4xx ResponseValidationError |
 | 2. Missing negative assertions | MODERATE | Partial -- tests pass but miss regression signals |
 | 3. deleteCipher to softDelete | LOW | No -- intentional and documented |
 | 4. isVaultLocked caching | LOW | No -- reasonable optimization |
 | 5. @MainActor annotation | LOW-MOD | No -- follows existing pattern |
 | 6. Mock default bypass | MODERATE | Partial -- tests fragile on mock defaults |
-| 7. Narrow error type coverage | **HIGH** | **Yes** -- critical error types untested |
+| 7. Narrow error type coverage | ~~HIGH~~ → MODERATE | **Partially addressed** -- denylist rethrow tests added; URLError variants and DecodingError still untested |
 | 8. ServiceContainer wiring | LOW-MOD | No -- discoverability concern only |
 
-**The two critical findings (1 and 7) are related:** The catch-all error handling
-is a production code defect, and the narrow test coverage fails to catch it. Together
-they represent the most significant quality regression: server-side errors (401, 403,
-400, etc.) are silently swallowed into offline fallback, and no test verifies this
-is wrong.
+**The original two critical findings (1 and 7) have been substantially addressed.**
+The denylist pattern ensures `ServerError`, `CipherAPIServiceError`, and 4xx
+`ResponseValidationError` are rethrown rather than silently caught. Rethrow tests
+(`test_*_serverError_rethrows`, `test_*_responseValidationError4xx_rethrows`) and 5xx
+offline fallback tests (`test_*_responseValidationError5xx`) verify this behavior.
+Remaining gaps are limited to untested `URLError` variants and `DecodingError`.
 
 ---
 
@@ -229,18 +267,18 @@ Several PRs added test improvements on `dev`:
 
 | Test File | What Was Added |
 |-----------|---------------|
-| `CipherServiceTests.swift` | URLError propagation tests verifying errors flow through `CipherService` → `APIService` → `HTTPService` chain |
-| `AddEditItemProcessorTests.swift` | Network error alert tests documenting user-visible symptoms when offline fallback fails |
-| (Both files) | Non-network error rethrow tests (`CipherAPIServiceError`, `ServerError`) verifying these propagate rather than trigger offline save |
+| `CipherServiceTests.swift` | URLError propagation tests (`test_addCipherWithServer_networkError_throwsURLError`, `test_updateCipherWithServer_networkError_throwsURLError`) verifying errors flow through `CipherService` → `APIService` → `HTTPService` chain |
+| `AddEditItemProcessorTests.swift` | Network error alert tests (`test_perform_savePressed_networkError_showsErrorAlert`, `test_perform_savePressed_existing_networkError_showsErrorAlert`) documenting user-visible symptoms when offline fallback fails |
+| `VaultRepositoryTests.swift` | Non-network error rethrow tests (`test_*_serverError_rethrows`, `test_*_responseValidationError4xx_rethrows`) verifying `ServerError` and 4xx `ResponseValidationError` propagate rather than trigger offline save; 5xx offline fallback tests (`test_*_offlineFallback_responseValidationError5xx`) verifying server errors do trigger offline handling |
 
 ### PR #33: Test Assertion Fix (Commit `a10fe15`)
 
-Fixed `test_softDeleteCipher_pendingChangeCleanup` userId assertion from `"1"` to `"13512467-9cfe-43b0-969f-07534084764b"` to match `fixtureAccountLogin()`.
+Fixed `test_softDeleteCipher` (VaultRepositoryTests.swift:2115) userId assertion from `"1"` to `"13512467-9cfe-43b0-969f-07534084764b"` to match `fixtureAccountLogin()`.
 
 ### Impact on Earlier Findings
 
-- **Deep Dive 1 (catch-all error handling)** — **Partially addressed.** The production code now uses a denylist pattern (`catch ServerError`, `catch CipherAPIServiceError`, `catch ResponseValidationError < 500`) rather than bare `catch`. Client-side validation errors and 4xx HTTP errors are properly rethrown. PR #28 tests verify this behavior.
-- **Deep Dive 7 (narrow error coverage)** — **Partially addressed.** PR #27 added non-network error rethrow tests, but most offline fallback tests still only use `URLError(.notConnectedToInternet)`.
+- **Deep Dive 1 (catch-all error handling)** — **Resolved.** The production code now uses a denylist pattern (`catch ServerError`, `catch CipherAPIServiceError`, `catch ResponseValidationError < 500`) rather than bare `catch`. Client-side validation errors and 4xx HTTP errors are properly rethrown. Rethrow tests in VaultRepositoryTests verify this behavior for all four CRUD operations.
+- **Deep Dive 7 (narrow error coverage)** — **Partially addressed.** Rethrow tests (`test_*_serverError_rethrows`, `test_*_responseValidationError4xx_rethrows`) and 5xx fallback tests (`test_*_responseValidationError5xx`) were added to VaultRepositoryTests. URLError propagation tests were added to CipherServiceTests. However, most offline fallback tests still only use `URLError(.notConnectedToInternet)` as the trigger error.
 - **Deep Dive 2 (missing negative assertions)** — Still relevant. No negative assertions added to happy-path tests.
 
 ### Branch-Only Changes: Backup Reorder and RES-2 404 Handling

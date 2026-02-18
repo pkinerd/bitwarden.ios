@@ -32,7 +32,7 @@ encrypt(cipherView) → addCipherWithServer(encrypted) → done
 4. [New] On success: clean up any orphaned pending change from a prior offline add
 5. catch (denylist pattern):
    a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
-   b. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
+   b. If isOrgCipher → rethrow the original caught error
    c. Otherwise → handleOfflineAdd(encryptedCipher, userId)
 ```
 
@@ -42,7 +42,7 @@ encrypt(cipherView) → addCipherWithServer(encrypted) → done
 
 **Security Flow:** The encryption step (`clientService.vault().ciphers().encrypt(cipherView:)`) occurs BEFORE the server call attempt. The encrypted cipher is available in the catch block, so no additional encryption is needed for offline storage. This preserves the encrypt-before-queue invariant.
 
-**Organization Guard:** The org check captures `isOrgCipher` before the API call but only evaluates it in the catch block. This means org ciphers will still attempt the API call first, and only fail with the offline error if the API call fails. When online, org ciphers proceed normally through `addCipherWithServer`.
+**Organization Guard:** The org check captures `isOrgCipher` before the API call but only evaluates it in the catch block. This means org ciphers will still attempt the API call first, and only fail if the API call fails. When online, org ciphers proceed normally through `addCipherWithServer`. When offline, org ciphers rethrow the original caught error (e.g. `URLError(.notConnectedToInternet)`) rather than a dedicated offline error type. There is no `organizationCipherOfflineEditNotSupported` error — the same pattern (`guard !isOrgCipher else { throw error }`) is used across `addCipher`, `updateCipher`, and `softDeleteCipher`.
 
 ### 2. Modified Method: `updateCipher(_ cipherView: CipherView)`
 
@@ -58,7 +58,7 @@ encrypt(cipherView) → updateCipherWithServer(encrypted) → done
 3. [New] On success: clean up any orphaned pending change from a prior offline save
 4. catch (denylist pattern):
    a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
-   b. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
+   b. If isOrgCipher → rethrow the original caught error
    c. Otherwise → handleOfflineUpdate(cipherView, encryptedCipher, userId)
 ```
 
@@ -81,7 +81,7 @@ deleteCipherWithServer(id:) → done
 2. [New] On success: clean up any orphaned pending change from a prior offline operation
 3. catch (denylist pattern):
    a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
-   b. Otherwise → handleOfflineDelete(cipherId: id)
+   b. Otherwise → handleOfflineDelete(cipherId: id, originalError: error)
 ```
 
 **[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
@@ -105,7 +105,7 @@ create softDeletedCipher (with deletedDate) → encrypt → softDeleteCipherWith
 4. [New] On success: clean up any orphaned pending change from a prior offline operation
 5. catch (denylist pattern):
    a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
-   b. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
+   b. If isOrgCipher → rethrow the original caught error
    c. Otherwise → handleOfflineSoftDelete(cipherId, encryptedCipher)
 ```
 
@@ -168,24 +168,26 @@ Both comparisons happen entirely in-memory. The decrypted values are not persist
 ### 7. New Helper: `handleOfflineDelete`
 
 ```
-Parameters: cipherId: String
+Parameters: cipherId: String, originalError: Error
 
 1. Get active account userId via stateService
 2. [New] If existing pending change has changeType == .create:
    → deleteCipherWithLocalStorage(id:) + deletePendingChange(id:) → return
 3. Fetch cipher from local storage via cipherService.fetchCipher(withId:)
 4. If cipher not found → return (silent no-op)
-5. If cipher has organizationId → throw organizationCipherOfflineEditNotSupported
+5. If cipher has organizationId → throw originalError (the network error passed in from deleteCipher)
 6. Soft-delete locally via cipherService.deleteCipherWithLocalStorage(id:)
 7. Convert cipher to CipherDetailsResponseModel → JSON-encode
 8. Upsert pending change: changeType = .softDelete, originalRevisionDate = cipher.revisionDate
 ```
 
+**`originalError` parameter:** The `originalError` is the network error caught by `deleteCipher`'s catch block and forwarded to this helper. It is only used to rethrow for organization ciphers (step 5), ensuring the caller receives the original network error rather than a synthetic one.
+
 ~~**Known gap:** If a cipher was created offline (pending type `.create`) and the user deletes it before sync, a `.softDelete` pending change is queued for a temp-ID that doesn't exist on the server.~~ **[RESOLVED]** A `.create`-check cleanup has been added: if the existing pending change has `changeType == .create`, the method deletes the local cipher and pending record and returns — no server operation is queued for a cipher that never existed on the server.
 
 **Important Design Decision:** `deleteCipher` (permanent delete) is converted to a soft delete in offline mode. This is because a permanent delete cannot be undone, and if there's a conflict (server version was edited), the resolver needs the ability to create a backup. By soft-deleting locally, the cipher moves to trash rather than being permanently removed, giving the resolver more options during conflict resolution.
 
-**Organization Guard:** Unlike the other methods where the org check happens in the public method before the offline handler, `handleOfflineDelete` checks `cipher.organizationId` internally. This is because `deleteCipher(_:)` only receives an ID (not a `CipherView`), so the org check must happen after fetching the cipher.
+**Organization Guard:** Unlike the other methods where the org check happens in the public method before the offline handler, `handleOfflineDelete` checks `cipher.organizationId` internally. This is because `deleteCipher(_:)` only receives an ID (not a `CipherView`), so the org check must happen after fetching the cipher. When the org guard triggers, the method throws `originalError` (the network error from `deleteCipher`'s catch block) rather than a dedicated offline error type.
 
 **Silent Return on Not-Found:** If `cipherService.fetchCipher(withId:)` returns `nil`, the method returns silently. This could happen if the cipher was already deleted locally (race condition or double-tap). No pending change is queued.
 
@@ -250,7 +252,7 @@ This creates an inconsistency: add, update, delete, and soft-delete work offline
 | Encrypt-before-queue | **Pass** | All offline handlers receive already-encrypted ciphers from the encrypt step before the API call |
 | No plaintext persistence | **Pass** | `cipherData` stored in pending record is encrypted JSON |
 | Password comparison in-memory only | **Pass** | Decrypted values for password change detection are not persisted |
-| Organization cipher restriction | **Pass** | Consistently enforced across all four operations |
+| Organization cipher restriction | **Pass** | Consistently enforced across all four operations by rethrowing the original caught error for org ciphers (no dedicated error type; uses `guard !isOrgCipher else { throw error }` pattern in add/update/softDelete, and `guard cipher.organizationId == nil else { throw originalError }` in handleOfflineDelete) |
 
 ### Test Coverage
 
@@ -310,17 +312,17 @@ This creates an inconsistency: add, update, delete, and soft-delete work offline
 
 ### Issue VR-1: Org Cipher Check Timing for `addCipher` and `softDeleteCipher` (Low)
 
-The organization cipher check happens before the offline handler but **after** the network request fails. This means the user must wait for the network timeout (potentially 30-60 seconds for `URLError.timedOut`) before seeing the "organization ciphers not supported offline" error.
+The organization cipher check happens before the offline handler but **after** the network request fails. This means the user must wait for the network timeout (potentially 30-60 seconds for `URLError.timedOut`) before seeing the error. Note that the code rethrows the original caught error (e.g. `URLError(.notConnectedToInternet)`) rather than a dedicated "organization ciphers not supported offline" error, so the user sees a generic network error.
 
 **Possible improvement:** Check connectivity proactively before the API call. However, this requires knowing the connectivity state upfront, which the current architecture deliberately avoids (it detects offline by actual API failure). The timing issue is a UX concern, not a correctness issue.
 
-### Issue VR-2: `handleOfflineDelete` Converts Permanent Delete to Soft Delete (Informational)
+### Issue VR-2: `handleOfflineDelete` Converts Permanent Delete to Soft Delete on Server (Informational)
 
-`deleteCipher` is meant to permanently delete a cipher, but the offline handler performs a soft delete (`deleteCipherWithLocalStorage`). This means the cipher appears in the trash locally rather than being permanently removed. The resolver then performs a soft delete on the server, not a permanent delete.
+`deleteCipher` is meant to permanently delete a cipher. The offline handler removes the CipherData record locally via `deleteCipherWithLocalStorage` (hard delete), but queues a pending change with `changeType = .softDelete`. On sync, the resolver performs a soft delete on the server rather than a permanent delete.
 
-**Implication:** If a user permanently deletes a cipher while offline, the cipher ends up in trash (locally and server-side) rather than being permanently removed. The user would need to empty trash or delete again after reconnecting.
+**Implication:** If a user permanently deletes a cipher while offline, the cipher is removed from local storage immediately. On the server side, it ends up in trash rather than being permanently removed. The user would need to empty trash or delete again after reconnecting.
 
-**Assessment:** This is a reasonable safety compromise. Permanent deletes are irreversible, and in an offline scenario where conflicts can occur, converting to soft delete gives the resolver flexibility to create backups if needed.
+**Assessment:** This is a reasonable safety compromise. Permanent deletes are irreversible, and in an offline scenario where conflicts can occur, converting to soft delete on the server gives the resolver flexibility to create backups if needed.
 
 ### Issue VR-3: `handleOfflineUpdate` Password Detection Compares Only `login?.password` (Low)
 

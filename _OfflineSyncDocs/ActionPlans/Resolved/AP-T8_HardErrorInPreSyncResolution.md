@@ -1,12 +1,14 @@
 # Action Plan: T8 (SS-1) — No Test for Hard Error in Pre-Sync Resolution
 
+> **Status: [RESOLVED]** — Option A has been implemented in `SyncServiceTests.swift` as `test_fetchSync_preSyncResolution_resolverThrows_syncFails`. The test configures `processPendingChangesResult = .failure(BitwardenTestError.example)`, verifies the error is thrown from `fetchSync()`, confirms the resolver was called, and asserts that no API sync request was made and no ciphers were replaced.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | T8 / SS-1 |
 | **Component** | `SyncServiceTests` |
-| **Severity** | Low |
+| **Severity** | ~~Low~~ **Resolved** |
 | **Type** | Test Gap |
 | **File** | `BitwardenShared/Core/Vault/Services/SyncServiceTests.swift` |
 

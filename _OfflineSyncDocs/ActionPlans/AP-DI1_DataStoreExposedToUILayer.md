@@ -95,7 +95,7 @@ Remove the `Has*` protocols from `Services` and inject the services directly via
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: `Services.swift:41` includes `HasOfflineSyncResolver` and line 45 includes `HasPendingCipherChangeDataStore` in the `Services` typealias. The typealias is used as a constraint for UI-layer types (coordinators, processors).
+1. **Code verification**: `Services.swift:40` includes `HasOfflineSyncResolver` and line 44 includes `HasPendingCipherChangeDataStore` in the `Services` typealias. The typealias is used as a constraint for UI-layer types (coordinators, processors).
 
 2. **Existing precedent verified**: Other data stores and services in the `Services` typealias include items that are primarily core-layer concerns. The pattern of including all `Has*` protocols in a single typealias is consistent throughout the project.
 

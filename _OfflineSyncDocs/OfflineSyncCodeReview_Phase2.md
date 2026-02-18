@@ -152,7 +152,7 @@ if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(...)
 
 ### 2.5 Temp-ID Cleanup in `resolveCreate` (Important)
 
-**`OfflineSyncResolver.swift:163-176` (master):**
+**`OfflineSyncResolver.swift:158-167` (master):**
 ```swift
 let tempId = cipher.id
 try await cipherService.addCipherWithServer(cipher, encryptedFor: userId)
@@ -311,9 +311,9 @@ The phase 2 commits add significant test coverage:
 
 | Area | New Tests | Coverage Quality |
 |------|-----------|-----------------|
-| Error type filtering (ServerError, 4xx, CipherAPIServiceError rethrow) | 6 tests (2 per operation: add, delete, softDelete) | **Good** — Verifies each error type is rethrown, not caught |
-| 5xx ResponseValidationError offline fallback | 3 tests (add, delete, softDelete) | **Good** — Verifies 502 triggers offline save |
-| Unknown error offline fallback | 3 tests (add, delete, softDelete) | **Good** — Verifies arbitrary errors trigger offline save |
+| Error type filtering (ServerError, 4xx rethrow) | 8 tests (2 per operation: add, delete, softDelete, update) | **Good** — Verifies ServerError and 4xx ResponseValidationError are rethrown, not caught |
+| 5xx ResponseValidationError offline fallback | 4 tests (add, delete, softDelete, update) | **Good** — Verifies 502 triggers offline save |
+| Unknown error offline fallback | 4 tests (add, delete, softDelete, update) | **Good** — Verifies arbitrary errors trigger offline save |
 | Preserve .create type on update | 1 test | **Good** |
 | Local cleanup for offline-created delete/softDelete | 2 tests | **Good** |
 | Temp ID assigned before encryption | 1 test | **Good** |
@@ -324,21 +324,21 @@ The phase 2 commits add significant test coverage:
 | Network error propagation through CipherService | 2 tests | **Good** |
 | AddEditItemProcessor network error alert | 2 tests | **Good** — Documents user-visible symptom |
 
-**Total new tests in phase 2: ~30 tests**
+**Total new tests in phase 2: ~35 tests** (including subsequently added `updateCipher` error type tests)
 
 ### 5.3 Test Gaps Remaining
 
 | ID | Component | Gap | Severity |
 |----|-----------|-----|----------|
-| P2-T1 | `VaultRepository` | `updateCipher` error type filtering not tested (only add/delete/softDelete have ServerError and 4xx rethrow tests) | Medium |
+| ~~P2-T1~~ | ~~`VaultRepository`~~ | ~~`updateCipher` error type filtering not tested~~ | ~~Medium~~ **[Resolved]** — `test_updateCipher_serverError_rethrows` and `test_updateCipher_responseValidationError4xx_rethrows` now exist |
 | P2-T2 | `OfflineSyncResolver` | `resolveCreate` failure after `addCipherWithServer` succeeds but `deleteCipherWithLocalStorage` fails — duplicate cipher scenario | Low |
 | P2-T3 | `VaultRepository` | Orphaned pending change cleanup failure doesn't roll back the successful server operation | Low |
 | P2-T4 | `ViewItemProcessor` | Fallback fetch doesn't re-establish subscription — no test for cipher update after fallback | Low |
 
 **Update on original review gaps:**
-- **S3 (batch processing):** Still not tested
-- **S4 (API failure during resolution):** Still not tested
-- **S6 (password change counting):** Still not tested
+- ~~**S3 (batch processing):**~~ **[Resolved]** — `test_processPendingChanges_batch_allSucceed`, `test_processPendingChanges_batch_mixedFailure_successfulItemResolved`, and `test_processPendingChanges_batch_allFail` now exist in `OfflineSyncResolverTests.swift`
+- ~~**S4 (API failure during resolution):**~~ **[Resolved]** — `test_processPendingChanges_create_apiFailure_pendingRecordRetained` and `test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained` now exist in `OfflineSyncResolverTests.swift`
+- ~~**S6 (password change counting):**~~ **[Resolved]** — Four password change counting tests now exist in `VaultRepositoryTests.swift`: `test_updateCipher_offlineFallback_passwordChanged_incrementsCount`, `test_updateCipher_offlineFallback_passwordUnchanged_zeroCount`, `test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount`, `test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount`. Additionally, `test_processPendingChanges_update_softConflict` covers the soft conflict threshold path in `OfflineSyncResolverTests.swift`.
 - ~~**T7 (subsequent offline edit):**~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType`. See [Resolved/AP-T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md).
 
 ---
@@ -425,8 +425,8 @@ The file header has `// MARK: - CipherView + OfflineSync` but only contains one 
 |-------------|--------|
 | `ResponseValidationError.response.statusCode` — `Int` comparison | **Safe** — standard HTTP status code comparison |
 | `PendingCipherChangeData.changeType` — `PendingCipherChangeType` enum | **Safe** — typed enum with `.create`/`.update`/`.softDelete` |
-| `FolderView(id:name:revisionDate:)` — SDK init | **Safe** — uses existing SDK type |
-| `clientService.vault().folders().encrypt(folder:)` — SDK method | **Safe** — existing SDK API |
+| ~~`FolderView(id:name:revisionDate:)` — SDK init~~ | ~~**Safe**~~ **[Superseded]** — Conflict folder removed; no longer used in offline sync |
+| ~~`clientService.vault().folders().encrypt(folder:)` — SDK method~~ | ~~**Safe**~~ **[Superseded]** — Conflict folder removed; no longer used in offline sync |
 
 ### 9.2 Potential Build Issues
 
@@ -442,9 +442,11 @@ None identified. All changes use existing types and APIs. The `@testable import`
 
 ### Medium Priority
 
-| ID | Component | Issue |
-|----|-----------|-------|
-| P2-T1 | `VaultRepositoryTests` | `updateCipher` error type filtering (ServerError, 4xx rethrow) not tested — only add/delete/softDelete have coverage |
+~~| ID | Component | Issue |~~
+~~|----|-----------|-------|~~
+~~| P2-T1 | `VaultRepositoryTests` | `updateCipher` error type filtering (ServerError, 4xx rethrow) not tested — only add/delete/softDelete have coverage |~~
+
+**No medium-priority issues remain.** P2-T1 has been resolved — `test_updateCipher_serverError_rethrows` and `test_updateCipher_responseValidationError4xx_rethrows` now provide coverage.
 
 ### Low Priority
 
@@ -461,9 +463,11 @@ None identified. All changes use existing types and APIs. The `@testable import`
 |-------------|--------|-------|
 | CS-2 (`Cipher.withTemporaryId` fragile) | **Updated** | Now applies to `CipherView.withId(_:)` — same fragility concern |
 | ~~SEC-1~~ | **[Superseded]** | See [AP-SEC1](ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md). Error filtering now catches specific types; unknown errors fall through to offline save. |
-| S3 (batch processing test) | **Still open** | Not addressed in phase 2 |
-| S4 (API failure during resolution test) | **Still open** | Not addressed in phase 2 |
+| ~~S3~~ (batch processing test) | **[Resolved]** | Three batch processing tests now exist in `OfflineSyncResolverTests.swift` |
+| ~~S4~~ (API failure during resolution test) | **[Resolved]** | Four API failure tests now exist in `OfflineSyncResolverTests.swift`: `test_processPendingChanges_create_apiFailure_pendingRecordRetained`, `test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained`, `test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained`, `test_processPendingChanges_update_backupFailure_pendingRecordRetained` |
+| ~~S6~~ (password change counting) | **[Resolved]** | Four password change counting tests now exist in `VaultRepositoryTests.swift` plus soft conflict threshold test in `OfflineSyncResolverTests.swift` |
 | ~~T7~~ (subsequent offline edit) | **[Resolved]** | See [AP-T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md). Covered by `test_updateCipher_offlineFallback_preservesCreateType`. |
+| ~~P2-T1~~ (`updateCipher` error filtering tests) | **[Resolved]** | `test_updateCipher_serverError_rethrows` and `test_updateCipher_responseValidationError4xx_rethrows` now exist |
 
 ---
 
@@ -490,6 +494,6 @@ The phase 2 changes address all known bugs from testing and significantly harden
 5. ~~**Folder name encryption** — preserves zero-knowledge architecture for conflict folder~~ **[Superseded]** — Conflict folder removed entirely
 6. **ViewItemProcessor fallback** — eliminates infinite spinner for offline-created ciphers
 
-The code quality remains high, following project architecture and style guidelines. Test coverage is substantially improved with ~30 new tests. The remaining open items from the original review (S3, S4 — batch processing and API failure tests for the resolver) are pre-existing gaps that were not the focus of this phase.
+The code quality remains high, following project architecture and style guidelines. Test coverage is substantially improved with ~35 new tests. All previously open items from the original review (S3 batch processing, S4 API failure, S6 password change counting, T7 subsequent offline edit) have now been resolved with dedicated tests.
 
-**Recommendation:** The phase 2 changes are ready for merge. The one medium-priority gap (P2-T1 — `updateCipher` error type filter tests) should be tracked but is not blocking since the same pattern is tested for the other three operations.
+**Recommendation:** The phase 2 changes are ready for merge. The previously identified medium-priority gap (P2-T1 — `updateCipher` error type filter tests) has been resolved. Only low-priority gaps remain (P2-T2 through P2-T4).

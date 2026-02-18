@@ -108,7 +108,7 @@ enum SyncResult {
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: `SyncService.swift:338-340` shows:
+1. **Code verification**: `SyncService.swift:339-341` shows:
    ```swift
    if remainingCount > 0 {
        return
@@ -116,11 +116,11 @@ The review confirms the original assessment. After reviewing the implementation:
    ```
    No logging, no notification, just a bare `return`. This makes it impossible to distinguish between "sync completed normally", "sync was skipped because nothing changed", and "sync was aborted due to pending changes" from logs alone.
 
-2. **Existing logging patterns**: The resolver already logs at `OfflineSyncResolver.swift:132-134` with `Logger.application.error()`. Adding a `.info()` level log at the SyncService abort point follows the established pattern and provides the orchestration-level counterpart.
+2. **Existing logging patterns**: The resolver already logs at `OfflineSyncResolver.swift:114` with `Logger.application.error()`. Adding a `.info()` level log at the SyncService abort point follows the established pattern and provides the orchestration-level counterpart.
 
-3. **Logger import**: `SyncService.swift` imports `OSLog` (confirmed by reviewing imports). `Logger.application` is available.
+3. **Logger import**: `SyncService.swift` does **not** currently import `OSLog`. The imports are `BitwardenKit`, `BitwardenSdk`, `Combine`, `Foundation`. Adding `import OSLog` would be required to use `Logger.application`.
 
-4. **Proposed insertion point**: The log should be added immediately before the `return` at line 339:
+4. **Proposed insertion point**: The log should be added immediately before the `return` at line 340, and `import OSLog` should be added to the imports:
    ```swift
    if remainingCount > 0 {
        Logger.application.info("SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved")
@@ -128,4 +128,4 @@ The review confirms the original assessment. After reviewing the implementation:
    }
    ```
 
-**Updated conclusion**: Original recommendation (Option A - single log line) confirmed. This is a trivial 1-line addition with zero risk and significant debugging value. Priority: Low but should be implemented as part of any commit touching SyncService.
+**Updated conclusion**: Original recommendation (Option A - single log line) confirmed. This is a trivial change (1 log line + 1 import) with zero risk and significant debugging value. The issue remains **open** — no logging has been added yet. Priority: Low but should be implemented as part of any commit touching SyncService.

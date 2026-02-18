@@ -108,8 +108,12 @@ A comprehensive mock capturing all method calls and supporting configurable resu
 - `fetchPendingChangesResult` / `fetchPendingChangesCalledWith` — Track fetch-all calls
 - `fetchPendingChangeResult` / `fetchPendingChangeCalledWith` — Track fetch-by-cipher calls
 - `upsertPendingChangeCalledWith` — Captures full parameter tuple for assertion
-- `pendingChangeCountResult: Int` / `pendingChangeCountResults: [Int]` — Supports both a single default count and a sequential-return mechanism. When `pendingChangeCountResults` is non-empty, the mock returns (and removes) the first element; otherwise it falls back to `pendingChangeCountResult`.
 - `upsertPendingChangeResult: Result<Void, Error>` — Supports configurable error injection
+- `deletePendingChangeByIdCalledWith` — Tracks delete-by-record-ID calls
+- `deletePendingChangeByCipherIdCalledWith` — Tracks delete-by-cipher/user pair calls
+- `deleteAllPendingChangesCalledWith` — Tracks delete-all-for-user calls
+- `pendingChangeCountResult: Int` / `pendingChangeCountResults: [Int]` — Supports both a single default count and a sequential-return mechanism. When `pendingChangeCountResults` is non-empty, the mock returns (and removes) the first element; otherwise it falls back to `pendingChangeCountResult`.
+- `pendingChangeCountCalledWith` — Tracks count calls with user ID
 
 ### 5. User Data Cleanup (`DataStore.swift:105`)
 

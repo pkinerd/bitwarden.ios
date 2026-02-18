@@ -1,12 +1,14 @@
 # Action Plan: S4 (RES-4) — No API Failure During Resolution Test
 
+> **Status: [RESOLVED]** — Option B (representative failure tests) has been fully implemented in `OfflineSyncResolverTests.swift` with four tests: `test_processPendingChanges_create_apiFailure_pendingRecordRetained`, `test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained`, `test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained`, and `test_processPendingChanges_update_backupFailure_pendingRecordRetained`. Each test verifies the critical invariant that pending records are NOT deleted when resolution fails.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | S4 / RES-4 |
 | **Component** | `OfflineSyncResolverTests` |
-| **Severity** | High |
+| **Severity** | ~~High~~ **Resolved** |
 | **Type** | Test Gap |
 | **File** | `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` |
 
