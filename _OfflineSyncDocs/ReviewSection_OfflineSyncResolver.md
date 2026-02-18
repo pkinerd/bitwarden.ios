@@ -307,4 +307,4 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 ### Observation RES-9: `resolveSoftDelete` Requires `cipherData` but Creates Should Use Only `cipherId`
 
-For soft delete resolution, the implementation decodes `cipherData` to get a local `Cipher` for the `softDeleteCipherWithServer(id:, localCipher)` call. If `cipherData` is nil, it throws `missingCipherData`. This means the `handleOfflineSoftDelete` caller must always provide cipher data. This is guaranteed by the current `VaultRepository` implementation but is an implicit contract.
+For soft delete resolution, the implementation decodes `cipherData` to get a local `Cipher` for the `softDeleteCipherWithServer(id: cipherId, localCipher)` call. If `cipherData` is nil, it throws `missingCipherData`. This means the `handleOfflineSoftDelete` caller must always provide cipher data. This is guaranteed by the current `VaultRepository` implementation but is an implicit contract.

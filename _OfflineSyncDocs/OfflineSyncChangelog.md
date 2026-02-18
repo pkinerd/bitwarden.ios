@@ -516,13 +516,14 @@ Routes to the appropriate resolver based on `changeType`:
 
 For creates, there is no conflict scenario — the cipher didn't exist on the server before.
 
-#### `resolveUpdate(pendingChange:cipherId:userId:)` (line 173)
+#### `resolveUpdate(pendingChange:cipherId:userId:)` (line 180)
 
 The most complex resolution path:
 
 ```
 1. Decode local cipher from pending cipherData
 2. Fetch current server cipher via cipherAPIService.getCipher()
+   └─ If 404 → re-create cipher via addCipherWithServer, delete record, return
 3. Check for HARD CONFLICT:
    originalRevisionDate ≠ server.revisionDate?
    ├─ YES → resolveConflict() (timestamp-based winner)
@@ -533,11 +534,11 @@ The most complex resolution path:
 4. Delete pending change record
 ```
 
-**Conflict detection** (line 192): The `originalRevisionDate` captured during the first offline edit is compared with the server's current `revisionDate`. If they differ, someone else edited the cipher on the server while the user was offline.
+**Conflict detection** (line 211): The `originalRevisionDate` captured during the first offline edit is compared with the server's current `revisionDate`. If they differ, someone else edited the cipher on the server while the user was offline.
 
-**Soft conflict** (line 199): Even without a server revision change, if the user made 4+ password changes offline, a backup is created as a safety measure. This protects against the edge case where password history (capped at 5 entries by Bitwarden) would lose intermediate passwords.
+**Soft conflict** (line 222): Even without a server revision change, if the user made 4+ password changes offline, a backup is created as a safety measure. This protects against the edge case where password history (capped at 5 entries by Bitwarden) would lose intermediate passwords.
 
-#### `resolveConflict(localCipher:serverCipher:pendingChange:userId:)` (line 222)
+#### `resolveConflict(localCipher:serverCipher:pendingChange:userId:)` (line 242)
 
 Timestamp-based winner determination:
 
@@ -558,7 +559,7 @@ if localTimestamp > serverTimestamp {
 
 **Note:** Uses strict `>` comparison — if timestamps are equal, the server version wins (conservative choice).
 
-#### `resolveSoftDelete(pendingChange:cipherId:userId:)` (line 252)
+#### `resolveSoftDelete(pendingChange:cipherId:userId:)` (line 275)
 
 1. Fetches current server cipher
 2. Compares `originalRevisionDate` with server `revisionDate`
@@ -566,7 +567,7 @@ if localTimestamp > serverTimestamp {
 4. Calls `cipherService.softDeleteCipherWithServer()`
 5. Deletes pending change record
 
-#### `createBackupCipher(from:timestamp:userId:)` (line 293) **[Updated]**
+#### `createBackupCipher(from:timestamp:userId:)` (line 330) **[Updated]**
 
 Creates a backup copy for the losing side of a conflict:
 
@@ -574,7 +575,7 @@ Creates a backup copy for the losing side of a conflict:
 2. Formats a timestamp string (`yyyy-MM-dd HH:mm:ss`)
 3. Modifies the name: `"{original name} - {timestamp}"`
 4. Creates the backup with `CipherView.update(name:)` (nullifies id, key, attachments; retains original folderId)
-5. Encrypts and pushes to server via `addCipherWithServer()`
+5. Encrypts via `clientService.vault().ciphers().encrypt()` and pushes to server via `cipherService.addCipherWithServer(encryptionContext.cipher, encryptedFor: encryptionContext.encryptedFor)`
 
 **[Updated]** The `getOrCreateConflictFolder()` step has been removed. Backup ciphers now retain the original cipher's folder assignment instead of being placed in a dedicated "Offline Sync Conflicts" folder.
 
@@ -603,7 +604,7 @@ Two new properties added to `DefaultSyncService`:
 - `offlineSyncResolver: OfflineSyncResolver` (line 157)
 - `pendingCipherChangeDataStore: PendingCipherChangeDataStore` (line 163)
 
-### Pre-Sync Resolution Logic (line 326)
+### Pre-Sync Resolution Logic (line 325)
 
 Inserted at the beginning of `fetchSync()`, before the existing `needsSync` check:
 
@@ -700,8 +701,14 @@ Added `PendingCipherChangeData` to the user data cleanup in `deleteDataForUser()
 
 ```swift
 func deleteDataForUser(userId: String) async throws {
-    // ... existing deletes ...
-    try executeBatchDelete(PendingCipherChangeData.deleteByUserIdRequest(userId: userId))
+    try await backgroundContext.perform {
+        try self.backgroundContext.executeAndMergeChanges(
+            batchDeleteRequests: [
+                // ... existing deletes ...
+                PendingCipherChangeData.deleteByUserIdRequest(userId: userId),
+            ]
+        )
+    }
 }
 ```
 
@@ -730,7 +737,7 @@ static func withMocks(
 
 ## 10. Test Coverage: PendingCipherChangeDataStoreTests
 
-**File:** `BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests.swift` (new, 286 lines)
+**File:** `BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests.swift` (new, 287 lines)
 
 Tests the Core Data persistence layer for pending cipher changes. Uses a real in-memory `DataStore` (`.memory` store type) rather than mocks.
 
@@ -752,7 +759,7 @@ Tests the Core Data persistence layer for pending cipher changes. Uses a real in
 
 ## 11. Test Coverage: CipherViewOfflineSyncTests
 
-**File:** `BitwardenShared/Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` (new, 128 lines)
+**File:** `BitwardenShared/Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` (new, 119 lines)
 
 Tests the cipher extension helpers used for offline sync operations.
 
@@ -761,7 +768,7 @@ Tests the cipher extension helpers used for offline sync operations.
 | ~~`test_withTemporaryId_setsNewId`~~ → `test_withId_setsId` | ID correctly assigned to cipher view |
 | ~~`test_withTemporaryId_preservesOtherProperties`~~ → `test_withId_preservesOtherProperties` | Key properties preserved during ID assignment |
 | (New) `test_withId_replacesExistingId` | Can replace an existing non-nil ID |
-| ~~`test_update_setsNameAndFolderId`~~ → `test_update_setsName` | Name correctly updated for backup copies (folderId retained from original) |
+| ~~`test_update_setsNameAndFolderId`~~ → `test_update_setsNameAndPreservesFolderId` | Name correctly updated and original folderId retained for backup copies |
 | `test_update_setsIdToNil` | Backup cipher has nil ID (server assigns new) |
 | `test_update_setsKeyToNil` | Backup cipher has nil key (SDK generates fresh) |
 | `test_update_setsAttachmentsToNil` | Attachments excluded from backup copies |

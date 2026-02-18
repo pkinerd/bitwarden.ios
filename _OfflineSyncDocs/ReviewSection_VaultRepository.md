@@ -27,9 +27,10 @@ encrypt(cipherView) → addCipherWithServer(encrypted) → done
 **After: [Updated]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
-2. encrypt(cipherView) → try addCipherWithServer(encrypted)
-3. [New] On success: clean up any orphaned pending change from a prior offline add
-4. catch (denylist pattern):
+2. [New] If cipher.id is nil, assign temp UUID via cipher.withId(UUID().uuidString)
+3. encrypt(cipherView) → try addCipherWithServer(encrypted, encryptedFor)
+4. [New] On success: clean up any orphaned pending change from a prior offline add
+5. catch (denylist pattern):
    a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
    b. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
    c. Otherwise → handleOfflineAdd(encryptedCipher, userId)
@@ -170,12 +171,14 @@ Both comparisons happen entirely in-memory. The decrypted values are not persist
 Parameters: cipherId: String
 
 1. Get active account userId via stateService
-2. Fetch cipher from local storage via cipherService.fetchCipher(withId:)
-3. If cipher not found → return (silent no-op)
-4. If cipher has organizationId → throw organizationCipherOfflineEditNotSupported
-5. Soft-delete locally via cipherService.deleteCipherWithLocalStorage(id:)
-6. Convert cipher to CipherDetailsResponseModel → JSON-encode
-7. Upsert pending change: changeType = .softDelete, originalRevisionDate = cipher.revisionDate
+2. [New] If existing pending change has changeType == .create:
+   → deleteCipherWithLocalStorage(id:) + deletePendingChange(id:) → return
+3. Fetch cipher from local storage via cipherService.fetchCipher(withId:)
+4. If cipher not found → return (silent no-op)
+5. If cipher has organizationId → throw organizationCipherOfflineEditNotSupported
+6. Soft-delete locally via cipherService.deleteCipherWithLocalStorage(id:)
+7. Convert cipher to CipherDetailsResponseModel → JSON-encode
+8. Upsert pending change: changeType = .softDelete, originalRevisionDate = cipher.revisionDate
 ```
 
 ~~**Known gap:** If a cipher was created offline (pending type `.create`) and the user deletes it before sync, a `.softDelete` pending change is queued for a temp-ID that doesn't exist on the server.~~ **[RESOLVED]** A `.create`-check cleanup has been added: if the existing pending change has `changeType == .create`, the method deletes the local cipher and pending record and returns — no server operation is queued for a cipher that never existed on the server.
@@ -192,9 +195,11 @@ Parameters: cipherId: String
 Parameters: cipherId: String, encryptedCipher: Cipher
 
 1. Get active account userId via stateService
-2. Persist soft-deleted cipher locally via cipherService.updateCipherWithLocalStorage(encryptedCipher)
-3. Convert to CipherDetailsResponseModel → JSON-encode
-4. Upsert pending change: changeType = .softDelete
+2. [New] If existing pending change has changeType == .create:
+   → deleteCipherWithLocalStorage(id:) + deletePendingChange(id:) → return
+3. Persist soft-deleted cipher locally via cipherService.updateCipherWithLocalStorage(encryptedCipher)
+4. Convert to CipherDetailsResponseModel → JSON-encode
+5. Upsert pending change: changeType = .softDelete
 ```
 
 ~~**Same gap as `handleOfflineDelete`:** No `.create`-check cleanup.~~ **[RESOLVED]** Same `.create`-check cleanup as `handleOfflineDelete` has been added. If the existing pending change has `changeType == .create`, the method deletes the local cipher and pending record and returns — no server operation is queued.

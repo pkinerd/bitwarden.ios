@@ -8,7 +8,7 @@
 | `BitwardenShared/Core/Platform/Services/ServiceContainer.swift` | DI container (modified) | +30 lines |
 | `BitwardenShared/Core/Platform/Services/TestHelpers/ServiceContainer+Mocks.swift` | Test helper (modified) | +6 lines |
 | `BitwardenShared/Core/Platform/Services/Stores/DataStore.swift` | Data store (modified) | +1 line |
-| `BitwardenShared/UI/Platform/Application/AppProcessor.swift` | UI layer (modified) | +1 line (whitespace) |
+| `BitwardenShared/UI/Platform/Application/AppProcessor.swift` | UI layer (modified) | ~~+1 line (whitespace)~~ Net zero (reverted) |
 
 ---
 
@@ -61,11 +61,10 @@ let preSyncOfflineSyncResolver = DefaultOfflineSyncResolver(
     cipherAPIService: apiService,
     cipherService: cipherService,
     clientService: clientService,
-    // folderService: folderService,  // [REMOVED] — conflict folder eliminated
     pendingCipherChangeDataStore: dataStore,
     stateService: stateService,
 )
-// NOTE: [Updated] timeProvider removed in commit a52d379; folderService removed (conflict folder eliminated)
+// NOTE: timeProvider and folderService were removed in earlier commits (conflict folder eliminated)
 
 // 2. Inject into SyncService
 let syncService = DefaultSyncService(
@@ -184,6 +183,12 @@ Similarly, `HasOfflineSyncResolver` is added to the `Services` typealias. The re
 ### ~~Issue DI-3~~ [Resolved]
 
 Same as CS-1 (stray blank line). See [AP-CS1](ActionPlans/Resolved/AP-CS1_StrayBlankLine.md). Removed in commit `a52d379`.
+
+### Issue DI-5: DocC Parameter Order Mismatch in `ServiceContainer` Init (Low)
+
+The DocC parameter documentation block in `ServiceContainer.swift` init lists `pendingAppIntentActionMediator` and `pendingCipherChangeDataStore` after `rehydrationHelper` and `reviewPromptService` (lines 259–262), but the actual init parameter list has them in correct alphabetical order before `policyService` (lines 323–324). This means the DocC parameter order does not match the actual parameter order. The mismatch appears to be from the offline sync parameters being appended to the DocC block near where they semantically fit rather than in strict alphabetical position.
+
+**Assessment:** Low severity. The actual init parameters, stored properties, and assignments are all in correct alphabetical order. Only the DocC parameter documentation block is out of order.
 
 ### Observation DI-4: Same Resolver Instance Shared Between SyncService and Container
 
