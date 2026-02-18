@@ -1204,14 +1204,14 @@ class SyncServiceTests: BitwardenTestCase {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
         configService.featureFlagsBool[.enableOfflineSyncResolution] = false
-        // Pending changes exist, but resolution is disabled.
-        pendingCipherChangeDataStore.pendingChangeCountResult = 3
 
         try await subject.fetchSync(forceSync: false)
 
-        // Resolver should NOT be called.
+        // The entire resolution block should be skipped — no pending-count
+        // check, no resolver call.
+        XCTAssertTrue(pendingCipherChangeDataStore.pendingChangeCountCalledWith.isEmpty)
         XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
-        // Sync should proceed (resolution block skipped entirely).
+        // Sync should proceed normally.
         XCTAssertEqual(client.requests.count, 1)
     }
 
