@@ -6,7 +6,7 @@ Add support for saving vault items locally while offline, with automatic syncing
 
 **Scope:** Client-side only. No server, API, or data model changes required.
 
-**Initial scope exclusions:** Organisation-owned ciphers are excluded from offline editing. A clear user-facing message is shown when attempting to edit an org item offline.
+**Initial scope exclusions:** Organization-owned ciphers are excluded from offline editing. A clear user-facing message is shown when attempting to edit an org item offline.
 
 ---
 
@@ -17,7 +17,7 @@ Add support for saving vault items locally while offline, with automatic syncing
 3. Conflicting older versions are preserved as backup copies for manual user resolution
 4. No password history merging in conflict cases - each item retains its own faithful history
 5. No server-side or API changes required
-6. Organisation-owned ciphers excluded from offline editing in initial implementation
+6. Organization-owned ciphers excluded from offline editing in initial implementation
 7. **Security: Encrypt before queue** - cipher data MUST be encrypted via the SDK before being stored in the pending changes queue. The pending queue stores encrypted data only - never plaintext `CipherView` objects
 8. **Security: Zero-knowledge preservation** - all encryption/decryption remains client-side. No new plaintext is transmitted or stored at rest
 
@@ -78,7 +78,7 @@ Add support for saving vault items locally while offline, with automatic syncing
 **Changes to `updateCipher()`: [Updated to reflect current code]**
 
 ```
-1. Check if cipher is organisation-owned (isOrgCipher flag set before try block)
+1. Check if cipher is organization-owned (isOrgCipher flag set before try block)
 
 2. Encrypt via clientService.vault().ciphers().encrypt()
    SECURITY NOTE: Encryption occurs BEFORE the API call attempt (outside the
@@ -102,7 +102,7 @@ Add support for saving vault items locally while offline, with automatic syncing
 **Changes to `addCipher()`: [Updated to reflect current code]**
 
 ```
-1. Check if cipher is organisation-owned (isOrgCipher flag set before try block)
+1. Check if cipher is organization-owned (isOrgCipher flag set before try block)
 2. Assign a temporary client-side UUID via CipherView.withId(UUID().uuidString) BEFORE
    encryption if the cipher has no ID. This ensures the ID is baked into the encrypted
    content and survives the decrypt round-trip.
@@ -468,29 +468,29 @@ For each PendingCipherChangeData:
 
 ---
 
-## 8. Organisation Cipher Exclusion
+## 8. Organization Cipher Exclusion
 
 ### Rationale
 
-Organisation-owned ciphers have complications that make offline editing risky:
+Organization-owned ciphers have complications that make offline editing risky:
 - Read-only permissions for some users
 - Other org members (especially admins) likely to edit shared items
 - Collection access controls could change while offline
-- Organisation policies could change while offline
-- Organisation key rotation would invalidate locally encrypted data
+- Organization policies could change while offline
+- Organization key rotation would invalidate locally encrypted data
 
 ### Implementation [Updated to reflect current code]
 
 **Modified File: `BitwardenShared/Core/Vault/Repositories/VaultRepository.swift`**
 
-Organisation cipher exclusion is applied in all offline-capable methods:
+Organization cipher exclusion is applied in all offline-capable methods. **[Updated]** The `.organizationCipherOfflineEditNotSupported` case has been removed from `OfflineSyncError`. Organization cipher protection is now handled by re-throwing the original network error rather than using a custom error case:
 
-- **`updateCipher()`**: Checks `organizationId` before the API call. If org-owned and API fails: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
-- **`addCipher()`**: Checks `organizationId` before the API call. If org-owned and API fails: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
-- **`softDeleteCipher()`**: Checks `organizationId` before the API call. If org-owned and API fails: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
-- **`deleteCipher()`** (hard delete): The org check is inside `handleOfflineDelete`, which checks `cipher.organizationId` after fetching the cipher from local storage. If org-owned: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
+- **`updateCipher()`**: Sets `isOrgCipher` flag before the API call. If org-owned and API fails: re-throws the original error (`guard !isOrgCipher else { throw error }`).
+- **`addCipher()`**: Sets `isOrgCipher` flag before the API call. If org-owned and API fails: re-throws the original error (`guard !isOrgCipher else { throw error }`).
+- **`softDeleteCipher()`**: Sets `isOrgCipher` flag before the API call. If org-owned and API fails: re-throws the original error (`guard !isOrgCipher else { throw error }`).
+- **`deleteCipher()`** (hard delete): The org check is inside `handleOfflineDelete`, which checks `cipher.organizationId` after fetching the cipher from local storage. If org-owned: re-throws the original error (`guard cipher.organizationId == nil else { throw originalError }`).
 
-In all cases, the error propagates through existing generic error handling in the UI layer.
+In all cases, the original network error propagates through existing generic error handling in the UI layer.
 
 This cleanly excludes org ciphers without affecting any other flow.
 
@@ -525,7 +525,7 @@ This cleanly excludes org ciphers without affecting any other flow.
 | `GetCipherRequest.swift` | `BitwardenShared/Core/Vault/Services/API/Cipher/Requests/` | Added `validate(_:)` method to translate HTTP 404 into `OfflineSyncError.cipherNotFound` |
 | ~~`CipherService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — Existing protocol methods were sufficient. No changes needed. |
 | ~~`FolderService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — ~~Existing API sufficient for conflict folder creation.~~ **[Updated]** `FolderService` is no longer used by the resolver; the conflict backup folder has been removed. |
-| ~~`AddEditItemProcessor.swift`~~ | ~~`BitwardenShared/UI/Vault/VaultItem/AddEditItem/`~~ | **[Not modified]** — `OfflineSyncError.organizationCipherOfflineEditNotSupported` propagates through existing generic error handling. |
+| ~~`AddEditItemProcessor.swift`~~ | ~~`BitwardenShared/UI/Vault/VaultItem/AddEditItem/`~~ | **[Not modified]** — Organization cipher errors (re-thrown original network errors) propagate through existing generic error handling. |
 
 ### Test Files (New)
 
@@ -622,7 +622,7 @@ This is comparable to metadata already exposed by `CipherData` (which stores `id
 4. Modify `VaultRepository.updateCipher()` - catch API failures, queue pending changes
 5. Modify `VaultRepository.addCipher()` - offline creation with temp IDs
 6. Modify `VaultRepository.deleteCipher()` and `softDeleteCipher()` - offline delete queueing
-7. Organisation cipher exclusion in save flow
+7. Organization cipher exclusion in save flow
 8. Modify `AddEditItemProcessor` - handle offline state in UI
 
 ### Phase 3: Sync Resolution

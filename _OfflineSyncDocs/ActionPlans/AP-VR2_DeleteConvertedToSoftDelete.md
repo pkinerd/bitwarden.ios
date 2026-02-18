@@ -92,23 +92,26 @@ Add user-facing documentation or an in-app note explaining that permanent delete
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: `VaultRepository.swift:1048-1073` shows `handleOfflineDelete`:
-   - Line 1060: `try await cipherService.deleteCipherWithLocalStorage(id: cipherId)` — this performs a LOCAL soft delete (moves to trash)
-   - Lines 1065-1072: Queues pending change as `.softDelete` type
+1. **Code verification** (reviewed 2026-02-18): `VaultRepository.swift:1099-1137` shows `handleOfflineDelete`:
+   - Lines 1102-1113: First checks if the cipher was created offline (`.create` pending change). If so, cleans up locally and returns — no server action needed.
+   - Line 1124: `try await cipherService.deleteCipherWithLocalStorage(id: cipherId)` — this performs a LOCAL soft delete (moves to trash)
+   - Lines 1129-1136: Queues pending change as `.softDelete` type
 
-   Then in `OfflineSyncResolver.swift:258-290` `resolveSoftDelete`:
-   - Line 285: `try await cipherService.softDeleteCipherWithServer(id: cipherId, localCipher)` — performs SERVER soft delete
+   Then in `OfflineSyncResolver.swift:270-313` `resolveSoftDelete`:
+   - Lines 280-288: Handles 404 (cipher already deleted on server) — cleans up locally
+   - Lines 293-300: If conflict detected, backs up the server version before deleting
+   - Line 308: `try await cipherService.softDeleteCipherWithServer(id: cipherId, localCipher)` — performs SERVER soft delete
 
    So: user intends permanent delete → local soft delete → server soft delete. The cipher ends up in trash on both local and server.
 
 2. **Design rationale validated**: The soft delete approach is correct because:
    - The resolver may detect a conflict (server version was modified while offline)
-   - If there's a conflict, the resolver backs up the server version before deleting (lines 270-277)
+   - If there's a conflict, the resolver backs up the server version before deleting (lines 293-300)
    - A permanent delete would destroy the server version with no recovery path
    - Soft delete preserves the ability to create a backup of the conflicting server version
 
 3. **User impact**: The user must empty trash to complete the permanent delete. This is a minor inconvenience compared to the risk of irreversible data loss in a conflict scenario.
 
-4. **PendingCipherChangeType consideration**: Currently there is no `.permanentDelete` type. If permanent delete support were added (Option B), it would require adding a new enum case and a new resolution path. This complexity is not justified for the initial release.
+4. **PendingCipherChangeType consideration**: Currently there is no `.permanentDelete` type (`PendingCipherChangeData.swift:8-17` defines only `.update`, `.create`, `.softDelete`). If permanent delete support were added (Option B), it would require adding a new enum case and a new resolution path. This complexity is not justified for the initial release.
 
-**Updated conclusion**: Original recommendation (Option A - accept current behavior) confirmed. The soft-delete-in-offline approach is the correct safety-first design. Data preservation in trash is strongly preferred over irreversible deletion in offline conflict scenarios. Priority: Informational, no change needed.
+**Updated conclusion** (2026-02-18): Original recommendation (Option A - accept current behavior) confirmed. The soft-delete-in-offline approach is the correct safety-first design. Data preservation in trash is strongly preferred over irreversible deletion in offline conflict scenarios. The `handleOfflineDelete` method has also been enhanced since the original review with a `.create` pending change check (lines 1102-1113) that cleans up offline-created ciphers locally rather than queuing them for server deletion. Priority: Informational, no change needed.

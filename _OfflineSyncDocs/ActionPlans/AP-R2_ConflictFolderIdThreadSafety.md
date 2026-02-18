@@ -128,25 +128,16 @@ Keep the class but protect `conflictFolderId` with an `NSLock` or `os_unfair_loc
 
 ## Updated Review Findings
 
-The review confirms the original assessment with code-level detail:
+**[Fully Resolved]** Both changes have been implemented:
 
-1. **Code verification**: `OfflineSyncResolver.swift:55` declares `class DefaultOfflineSyncResolver`. Line 86 declares `private var conflictFolderId: String?`. This is mutable state on a reference type without any concurrency protection.
+1. **Actor conversion verified**: `OfflineSyncResolver.swift:55` now declares `actor DefaultOfflineSyncResolver: OfflineSyncResolver`. Option A (convert to `actor`) was implemented successfully.
 
-2. **Mutation points verified**:
-   - Line 126: `conflictFolderId = nil` (reset at start of batch)
-   - Line 347: `conflictFolderId = folderId` (set after finding existing folder)
-   - Line 357: `conflictFolderId = id` (set after creating new folder)
-   - Lines 336-337: `if let conflictFolderId { return conflictFolderId }` (read for cache hit)
+2. **`conflictFolderId` removed**: The `conflictFolderId` mutable state that originally motivated this action plan has been completely removed from the resolver. The dedicated "Offline Sync Conflicts" folder feature was eliminated. Backup ciphers now retain the original cipher's folder assignment instead.
 
-3. **Actor conversion feasibility**: The `OfflineSyncResolver` protocol (line 40) defines `func processPendingChanges(userId: String) async throws` - already async. Converting `DefaultOfflineSyncResolver` from `class` to `actor` would:
-   - Automatically isolate `conflictFolderId` mutations
-   - Require no protocol changes (already async)
-   - Require `nonisolated` on init if called from non-async context (check ServiceContainer)
+3. **Actor still valuable**: Even without `conflictFolderId`, the `actor` designation provides compiler-enforced thread safety for the resolver as a whole, which is beneficial given the shared instance in `ServiceContainer`.
 
-4. **ServiceContainer init context**: `ServiceContainer.swift` creates the resolver in `defaultServices()` which is a synchronous factory method. The `DefaultOfflineSyncResolver.init` would need to be `nonisolated` when the type becomes an actor. Swift actors allow `nonisolated init` by default for stored property initialization, so this should work without annotation.
+4. **Protocol unchanged**: The `OfflineSyncResolver` protocol (line 40) still defines `func processPendingChanges(userId: String) async throws` — no protocol changes were needed.
 
-5. **Codebase precedent confirmed**: 7 existing services use `actor` in the project. This is a well-established pattern. The conversion is a single keyword change from `class` to `actor`.
+5. **Mock compatibility confirmed**: `MockOfflineSyncResolver` at `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` remains a `class`, which is correct for test-only mocks.
 
-6. **Mock compatibility**: `MockOfflineSyncResolver` is a separate `class` (in TestHelpers). It does NOT need to be an actor since mocks are test-only and called from controlled contexts.
-
-**Updated conclusion**: Original recommendation (Option A - convert to actor) confirmed strongly. This is a single-keyword change that follows established project conventions and provides compile-time thread safety. No protocol changes needed. Priority: Low but trivial and follows best practices.
+**Updated conclusion**: Fully resolved. Option A implemented (actor conversion). The mutable state that motivated the issue has also been eliminated. No further action needed.

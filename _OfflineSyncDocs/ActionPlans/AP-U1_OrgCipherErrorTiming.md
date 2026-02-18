@@ -90,22 +90,27 @@ Accept the timeout delay as an inherent tradeoff of detecting offline status by 
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: In `VaultRepository.swift`, the offline catch blocks for `addCipher` (~line 515), `updateCipher` (~line 928), and `softDeleteCipher` (~line 901) all follow the same pattern:
+1. **Code verification** (reviewed 2026-02-18): In `VaultRepository.swift`, the offline catch blocks for `addCipher` (line 535), `updateCipher` (line 982), and `softDeleteCipher` (line 942) now use a catch-all pattern rather than the `URLError where error.isNetworkConnectionError` pattern originally documented. The current pattern explicitly re-throws `ServerError`, `ResponseValidationError` (client-side status codes), and `CipherAPIServiceError`, then falls through to the generic `catch` block for offline handling:
    ```swift
-   } catch let error as URLError where error.isNetworkConnectionError {
-       let isOrgCipher = cipher.organizationId != nil
+   } catch let error as ServerError {
+       throw error
+   } catch let error as ResponseValidationError where error.response.statusCode < 500 {
+       throw error
+   } catch let error as CipherAPIServiceError {
+       throw error
+   } catch {
        guard !isOrgCipher else {
-           throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+           throw error
        }
        // ... offline handler
    }
    ```
-   The org check happens AFTER the URLError is caught, which means after the full network timeout.
+   The `isOrgCipher` check is pre-computed BEFORE the API call (e.g., `addCipher` line 507, `softDeleteCipher` line 924, `updateCipher` line 961), but the guard that throws for org ciphers is still inside the catch block. The original error is re-thrown (not `OfflineSyncError.organizationCipherOfflineEditNotSupported` — that error case does not exist). For `deleteCipher` (line 675), the org check happens inside `handleOfflineDelete` after fetching the cipher (line 1119), which is correct since that method only receives an ID.
 
 2. **Timeout analysis**: iOS default URLSession timeout is 60 seconds. For `.timedOut` errors, the user waits the full timeout. For `.notConnectedToInternet`, the error is typically near-instant. The issue is most impactful for `.timedOut` and `.cannotConnectToHost` codes which can have significant delays.
 
 3. **Pre-check feasibility**: The `organizationId` is available on the `CipherView`/`Cipher` before the API call. A pre-check would be: `if cipher.organizationId != nil && !isOnline { throw .organizationCipherOfflineEditNotSupported }`. But the "isOnline" check is the complexity - the architecture deliberately avoids proactive connectivity checking.
 
-4. **Alternative: check BEFORE API call, throw AFTER**: Could cache `isOrgCipher` before the API call, but this doesn't save the wait time since the error is thrown in the catch block either way.
+4. **Alternative: check BEFORE API call, throw AFTER**: The `isOrgCipher` flag IS now captured before the API call, but this doesn't save the wait time since the error is still thrown in the catch block after the network timeout.
 
-**Updated conclusion**: Original recommendation (Option C - accept current behavior) confirmed. The timeout delay is inherent to the error-detection-by-failure design. Changing this would require reintroducing connectivity monitoring, which was deliberately removed. The scenario is narrow (org cipher edits while offline with slow timeout). Priority: Informational, no change needed.
+**Updated conclusion** (2026-02-18): Original recommendation (Option C - accept current behavior) remains correct. The catch block pattern has evolved from `URLError where error.isNetworkConnectionError` to a broader catch-all that re-throws known server/client errors and only falls through to offline handling for truly unexpected errors (including network failures). The timeout delay is inherent to the error-detection-by-failure design. The scenario is narrow (org cipher edits while offline with slow timeout). Priority: Informational, no change needed.

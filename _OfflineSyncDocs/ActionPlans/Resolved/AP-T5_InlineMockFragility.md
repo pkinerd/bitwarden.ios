@@ -1,12 +1,14 @@
 # Action Plan: T5 (RES-6) — Inline Mock `MockCipherAPIServiceForOfflineSync` is Fragile
 
+> **Status: [PARTIALLY RESOLVED]** — The inline mock has been extracted from `OfflineSyncResolverTests.swift` to a dedicated file at `BitwardenShared/Core/Vault/Services/TestHelpers/MockCipherAPIServiceForOfflineSync.swift` with a maintenance comment explaining the rationale and suggesting the `AutoMockable` annotation approach. This addresses the Option C recommendation (keep with maintenance comment + extraction). However, Option A (adding `// sourcery: AutoMockable` to `CipherAPIService`) has NOT been implemented — the mock still uses manual `fatalError()` stubs for 15+ unused protocol methods and requires manual updates when the protocol changes.
+
 ## Issue Summary
 
 | Field | Value |
 |-------|-------|
 | **ID** | T5 / RES-6 |
 | **Component** | `OfflineSyncResolverTests` |
-| **Severity** | Low |
+| **Severity** | ~~Low~~ **Partially Resolved** |
 | **Type** | Test Maintenance |
 | **File** | `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` |
 

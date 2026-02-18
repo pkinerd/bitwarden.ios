@@ -46,18 +46,30 @@ All 5 recommended root cause fixes have been implemented:
 
 ### Test Coverage
 
-| Test | Covers |
-|------|--------|
-| `test_updateCipher_offlineFallback_preservesCreateType` | Fix #3 — `.create` type preserved on subsequent edit |
-| `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on delete |
-| `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on soft delete |
-| `test_processPendingChanges_create_deletesOldTempIdCipher` | Fix #5 — temp-ID record cleanup |
-| `test_processPendingChanges_create_nilId_skipsLocalDelete` | Fix #5 — nil guard |
-| `test_perform_appeared_errors_fallbackFetchThrows` | Symptom fix — fallback fetch |
+| Test | Covers | Status (verified 2026-02-18) |
+|------|--------|------|
+| `test_updateCipher_offlineFallback_preservesCreateType` | Fix #3 — `.create` type preserved on subsequent edit | Present (`VaultRepositoryTests.swift:1730`) |
+| `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on delete | Present (`VaultRepositoryTests.swift:854`) |
+| `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on soft delete | Present (`VaultRepositoryTests.swift:2166`) |
+| ~~`test_processPendingChanges_create_deletesOldTempIdCipher`~~ | ~~Fix #5 — temp-ID record cleanup~~ | **Not found** — temp-ID cleanup is covered implicitly by `test_processPendingChanges_create` (`OfflineSyncResolverTests.swift:69`) which tests the full create resolution path, but does not explicitly assert on `deleteCipherWithLocalStorage` for the temp ID |
+| ~~`test_processPendingChanges_create_nilId_skipsLocalDelete`~~ | ~~Fix #5 — nil guard~~ | **Not found** — no dedicated test for the `if let tempId` nil guard in `resolveCreate` |
+| `test_perform_appeared_errors_fallbackFetchThrows` | Symptom fix — fallback fetch | Present (`ViewItemProcessorTests.swift:310`) |
+
+> **Note** (2026-02-18): Two tests originally listed for Fix #5 (`test_processPendingChanges_create_deletesOldTempIdCipher` and `test_processPendingChanges_create_nilId_skipsLocalDelete`) do not exist in the codebase. The temp-ID cleanup code is present in `OfflineSyncResolver.swift:162-167` and is exercised through `test_processPendingChanges_create`, but explicit assertions on the temp-ID deletion and nil-ID guard are missing. Consider adding dedicated tests for these edge cases.
+
+## Code Verification (2026-02-18)
+
+All 5 fixes verified present in the codebase:
+
+1. **Fix #1 & #2**: `VaultRepository.swift:513` — `cipher.withId(UUID().uuidString)` assigns temp ID to `CipherView` before encryption. `CipherView.withId(_:)` defined in `CipherView+OfflineSync.swift:16`. No `Cipher.withTemporaryId()` exists anywhere in the codebase.
+2. **Fix #3**: `VaultRepository.swift:1077-1080` — `handleOfflineUpdate` preserves `.create` type: `let changeType: PendingCipherChangeType = existing?.changeType == .create ? .create : .update`
+3. **Fix #4**: `VaultRepository.swift:1104-1113` (`handleOfflineDelete`) and `VaultRepository.swift:1150-1159` (`handleOfflineSoftDelete`) — both check for `.create` pending change and clean up locally.
+4. **Fix #5**: `OfflineSyncResolver.swift:158-167` — `resolveCreate` deletes temp-ID record after `addCipherWithServer` succeeds.
+5. **Symptom fix**: `ViewItemProcessor.swift:611,619` — `fetchCipherDetailsDirectly()` fallback present.
 
 ## Related Issues (Updated)
 
-- **CS-2**: ~~`Cipher.withTemporaryId()` still exists with `data: nil`~~ **Updated** — `Cipher.withTemporaryId()` removed. Fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:)`. Same fragility concern (manual field copying), different method. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original cipher's folder assignment.
+- **CS-2**: ~~`Cipher.withTemporaryId()` still exists with `data: nil`~~ **Updated** — `Cipher.withTemporaryId()` removed. Fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:)`. Same fragility concern (manual field copying), different method. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original cipher's folder assignment. (Verified 2026-02-18: `CipherView+OfflineSync.swift` has `makeCopy` at line 66 that manually copies all 28 `CipherView` properties — fragility concern remains but is well-documented.)
 - **RES-1**: ~~`resolveCreate` does NOT include temp-ID cleanup~~ **Partially Resolved** — Temp-ID cleanup added (commits `8ff7a09`, `53e08ef`). Duplicate-on-retry concern (server already has the cipher) still informational.
 - ~~**S7**~~: ~~`handleOfflineDelete` does not have a `.create` check~~ **[Resolved]** — `.create` check added in commit `12cb225`. Resolver-level 404 tests added in commit `e929511`. See [AP-S7](Resolved/AP-S7_CipherNotFoundPathTest.md).
 - ~~**T7**~~: ~~No `preservesCreateType` test exists~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType` (commit `12cb225`). See [AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md).

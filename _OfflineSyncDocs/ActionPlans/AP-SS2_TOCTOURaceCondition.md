@@ -104,7 +104,7 @@ Accept the theoretical race condition given its extremely low probability and th
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Code verification**: `SyncService.swift:334-341`:
+1. **Code verification**: `SyncService.swift:335-342`:
    ```swift
    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
    if pendingCount > 0 {
@@ -116,7 +116,7 @@ The review confirms the original assessment. After reviewing the implementation:
    }
    // ... sync proceeds, eventually calls replaceCiphers
    ```
-   The gap between `remainingCount == 0` (line 337) and `replaceCiphers` (later in fetchSync) is the TOCTOU window.
+   The gap between `remainingCount == 0` (line 338) and `replaceCiphers` (later in fetchSync) is the TOCTOU window.
 
 2. **Race window analysis**: For the race to occur:
    - `remainingCount` returns 0 (all pending changes resolved)

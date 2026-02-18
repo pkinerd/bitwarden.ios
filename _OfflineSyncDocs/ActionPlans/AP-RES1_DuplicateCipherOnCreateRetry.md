@@ -117,16 +117,20 @@ Accept the very low probability of this scenario. A duplicate cipher is a minor 
 
 The review confirms the original assessment with code-level detail. After reviewing the implementation:
 
-1. **Code verification**: `OfflineSyncResolver.swift:163-176` shows `resolveCreate`:
+1. **Code verification**: `OfflineSyncResolver.swift:151-172` shows `resolveCreate`:
    ```swift
    let responseModel = try JSONDecoder().decode(CipherDetailsResponseModel.self, from: cipherData)
    let cipher = Cipher(responseModel: responseModel)
+   let tempId = cipher.id
    try await cipherService.addCipherWithServer(cipher, encryptedFor: userId)
+   if let tempId {
+       try await cipherService.deleteCipherWithLocalStorage(id: tempId)
+   }
    if let recordId = pendingChange.id {
        try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
    }
    ```
-   The critical sequence: `addCipherWithServer` → `deletePendingChange`. If the server call succeeds but `deletePendingChange` fails (Core Data error), the next sync retries `addCipherWithServer` for the same cipher data, creating a duplicate on the server.
+   **[Updated]** The method now has an intermediate step: after `addCipherWithServer`, it deletes the orphaned temp-ID cipher record via `deleteCipherWithLocalStorage(id: tempId)` before deleting the pending change. The critical sequence is now: `addCipherWithServer` → `deleteCipherWithLocalStorage` → `deletePendingChange`. The fundamental concern remains unchanged: if `addCipherWithServer` succeeds but `deletePendingChange` fails (Core Data error), the next sync retries `addCipherWithServer` for the same cipher data, creating a duplicate on the server.
 
 2. **Probability assessment**: For `deletePendingChange` to fail after `addCipherWithServer` succeeds:
    - Core Data write must fail (disk full, database corruption, etc.)
@@ -134,7 +138,7 @@ The review confirms the original assessment with code-level detail. After review
    - In practice, a Core Data failure severe enough to prevent deletion would likely also prevent the fetch in the next sync attempt
    - Extremely low probability
 
-3. **Server-side idempotency**: The Bitwarden server does NOT provide client-generated IDs for create operations. The `Cipher` passed to `addCipherWithServer` uses a temporary client-side ID (assigned in `handleOfflineAdd` at VaultRepository.swift:956-960). The server assigns a NEW server ID each time. Two calls with the same cipher data produce two different server-side ciphers — a genuine duplicate.
+3. **Server-side idempotency**: The Bitwarden server does NOT provide client-generated IDs for create operations. The `Cipher` passed to `addCipherWithServer` uses a temporary client-side ID (assigned in `handleOfflineAdd` at VaultRepository.swift:1007-1025). The server assigns a NEW server ID each time. Two calls with the same cipher data produce two different server-side ciphers — a genuine duplicate.
 
 4. **Mitigation approaches verified**:
    - **Delete-before-push** (swap order): Delete pending record first, then push to server. If push fails, the pending record is already deleted — the user's change is lost. This is WORSE than the current approach.

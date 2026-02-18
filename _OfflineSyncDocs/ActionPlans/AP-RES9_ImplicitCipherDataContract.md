@@ -91,15 +91,15 @@ Accept the implicit contract. The `missingCipherData` error handling in the reso
 The review confirms the original assessment. After reviewing the implementation:
 
 1. **Code verification**: All three resolution methods check for nil `cipherData`:
-   - `resolveCreate` (line 164): `guard let cipherData = pendingChange.cipherData else { throw .missingCipherData }`
-   - `resolveUpdate` (line 184): `guard let localCipherData = pendingChange.cipherData else { throw .missingCipherData }`
-   - `resolveSoftDelete` (line 280): `guard let cipherData = pendingChange.cipherData else { throw .missingCipherData }`
+   - `resolveCreate` (line 152): `guard let cipherData = pendingChange.cipherData else { throw OfflineSyncError.missingCipherData }`
+   - `resolveUpdate` (line 180): `guard let localCipherData = pendingChange.cipherData else { throw OfflineSyncError.missingCipherData }`
+   - `resolveSoftDelete` (line 303): `guard let cipherData = pendingChange.cipherData else { throw OfflineSyncError.missingCipherData }`
 
 2. **Contract enforcement in VaultRepository**: All four offline handlers set `cipherData` to non-nil values:
-   - `handleOfflineAdd` (line 966): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
-   - `handleOfflineUpdate` (line 1038): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
-   - `handleOfflineDelete` (line 1069): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
-   - `handleOfflineSoftDelete` (line 1094): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
+   - `handleOfflineAdd` (line 1015): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
+   - `handleOfflineUpdate` (line 1047): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
+   - `handleOfflineDelete` (line 1127): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
+   - `handleOfflineSoftDelete` (line 1165): `cipherData: cipherData` from `JSONEncoder().encode(cipherResponseModel)`
 
 3. **Core Data schema**: `PendingCipherChangeData.swift:43` declares `@NSManaged var cipherData: Data?` — optional in Core Data. The convenience init at line 89 accepts `cipherData: Data?` — also optional. The contract is enforced by the callers (VaultRepository), not by the type system.
 

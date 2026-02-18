@@ -124,12 +124,12 @@ Track this as a future enhancement and ship the initial feature without a pendin
 
 The review confirms the original assessment. After reviewing the implementation:
 
-1. **Current state**: No user-facing indication exists when changes are saved offline. The `handleOffline*` methods in VaultRepository silently save locally and queue pending changes. The user's edit appears applied (local storage updated), but there's no visible distinction between "saved to server" and "saved locally, pending sync."
+1. **Current state** (reviewed 2026-02-18): No user-facing indication exists when changes are saved offline. The `handleOffline*` methods in VaultRepository (lines 1007, 1034, 1099, 1145) silently save locally and queue pending changes. The user's edit appears applied (local storage updated), but there's no visible distinction between "saved to server" and "saved locally, pending sync." No toast, banner, badge, or settings entry has been added since the original assessment.
 
-2. **Infrastructure availability**: `PendingCipherChangeDataStore` provides `pendingChangeCount(userId:)` which can be used to check if pending changes exist. This method is already called in `SyncService.swift:334`. Exposing it through a UI-observable mechanism would require threading through the repository or creating a new service.
+2. **Infrastructure availability**: `PendingCipherChangeDataStore` provides `pendingChangeCount(userId:)` which can be used to check if pending changes exist. This method is called in `SyncService.swift:335` and `SyncService.swift:338`. Exposing it through a UI-observable mechanism would require threading through the repository or creating a new service.
 
 3. **Toast infrastructure assessment**: The project uses toast notifications in various places. If an existing toast/notification system exists, Option B (toast on offline save) could be implemented by emitting a notification from the VaultRepository offline handlers. This would require the active coordinator/processor to subscribe to the notification.
 
 4. **DI-1 interaction**: The DI-1 action plan noted that `HasPendingCipherChangeDataStore` is exposed in the `Services` typealias. If U3 is implemented, this exposure is actually needed for UI-layer access to pending change counts.
 
-**Updated conclusion**: Original recommendation (Option D for initial release, Option B as first enhancement) confirmed. This is a UX feature that goes beyond the current offline sync scope. The core feature can ship without it. However, it should be prioritized for the first follow-up release. Priority: Informational for initial release.
+**Updated conclusion** (2026-02-18): Original recommendation (Option D for initial release, Option B as first enhancement) confirmed. No work has been done on any of the options. This is a UX feature that goes beyond the current offline sync scope. The core feature can ship without it. However, it should be prioritized for the first follow-up release. Priority: Informational for initial release.
