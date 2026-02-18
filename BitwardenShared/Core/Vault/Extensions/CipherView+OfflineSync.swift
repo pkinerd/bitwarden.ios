@@ -14,6 +14,62 @@ extension CipherView {
     /// - Returns: A copy of the cipher view with the specified ID.
     ///
     func withId(_ id: String) -> CipherView {
+        makeCopy(
+            id: id,
+            key: key,
+            name: name,
+            attachments: attachments,
+            attachmentDecryptionFailures: attachmentDecryptionFailures
+        )
+    }
+
+    /// Returns a copy of the cipher with an updated name.
+    ///
+    /// Used by the offline sync resolver to create backup copies of conflicting ciphers
+    /// with a modified name. The backup retains the original cipher's folder assignment.
+    ///
+    /// - Parameter name: The new name for the cipher.
+    /// - Returns: A copy of the cipher with the updated name.
+    ///
+    func update(name: String) -> CipherView {
+        makeCopy(
+            id: nil,
+            key: nil,
+            name: name,
+            attachments: nil,
+            attachmentDecryptionFailures: nil
+        )
+    }
+
+    // MARK: Private
+
+    /// Returns a copy of this cipher view, overriding the specified properties.
+    ///
+    /// Both ``withId(_:)`` and ``update(name:)`` delegate to this single helper so
+    /// that the full `CipherView` initializer is called in exactly one place within
+    /// this file. When the `BitwardenSdk` `CipherView` type gains new properties,
+    /// only this method needs updating.
+    ///
+    /// - Important: This method manually copies all 28 `CipherView` properties.
+    ///   When the `BitwardenSdk` `CipherView` type is updated, this method must be
+    ///   reviewed to include any new properties. Property count as of last review: 28.
+    ///
+    /// - Parameters:
+    ///   - id: The ID for the copy.
+    ///   - key: The encryption key for the copy.
+    ///   - name: The name for the copy.
+    ///   - attachments: The attachments for the copy.
+    ///   - attachmentDecryptionFailures: The attachment decryption failures for the copy.
+    /// - Returns: A `CipherView` with the specified properties overridden and all others
+    ///   copied from the receiver.
+    ///
+    private func makeCopy( // swiftlint:disable:this function_parameter_count
+        id: String?,
+        key: String?,
+        name: String,
+        attachments: [AttachmentView]?,
+        attachmentDecryptionFailures: [AttachmentView]?
+    ) -> CipherView {
         CipherView(
             id: id,
             organizationId: organizationId,
@@ -37,47 +93,6 @@ extension CipherView {
             localData: localData,
             attachments: attachments,
             attachmentDecryptionFailures: attachmentDecryptionFailures,
-            fields: fields,
-            passwordHistory: passwordHistory,
-            creationDate: creationDate,
-            deletedDate: deletedDate,
-            revisionDate: revisionDate,
-            archivedDate: archivedDate
-        )
-    }
-
-    /// Returns a copy of the cipher with an updated name.
-    ///
-    /// Used by the offline sync resolver to create backup copies of conflicting ciphers
-    /// with a modified name. The backup retains the original cipher's folder assignment.
-    ///
-    /// - Parameter name: The new name for the cipher.
-    /// - Returns: A copy of the cipher with the updated name.
-    ///
-    func update(name: String) -> CipherView {
-        CipherView(
-            id: nil, // New cipher, no ID
-            organizationId: organizationId,
-            folderId: folderId,
-            collectionIds: collectionIds,
-            key: nil, // New cipher gets its own key from the SDK
-            name: name,
-            notes: notes,
-            type: type,
-            login: login,
-            identity: identity,
-            card: card,
-            secureNote: secureNote,
-            sshKey: sshKey,
-            favorite: favorite,
-            reprompt: reprompt,
-            organizationUseTotp: organizationUseTotp,
-            edit: edit,
-            permissions: permissions,
-            viewPassword: viewPassword,
-            localData: localData,
-            attachments: nil, // Attachments are not duplicated to backup copies
-            attachmentDecryptionFailures: nil,
             fields: fields,
             passwordHistory: passwordHistory,
             creationDate: creationDate,

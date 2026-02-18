@@ -135,6 +135,11 @@ extension CipherView {
     }
 
     /// Updates the cipher view with the state information from `AddEditItemState`.
+    ///
+    /// - Important: This method manually lists all 28 `CipherView` properties.
+    ///   When the `BitwardenSdk` `CipherView` type is updated, this method must be
+    ///   reviewed to include any new properties. Property count as of last review: 28.
+    ///
     /// - Parameters:
     ///   - addEditState: The `AddEditItemState` containing the updated state information.
     ///   - timeProvider: The `TimeProvider` to use to get current time.
@@ -333,6 +338,10 @@ extension CipherView {
 
     /// Returns a copy of the existing cipher, updating any of the specified properties.
     ///
+    /// - Important: This method manually copies all 28 `CipherView` properties.
+    ///   When the `BitwardenSdk` `CipherView` type is updated, this method must be
+    ///   reviewed to include any new properties. Property count as of last review: 28.
+    ///
     /// - Parameters:
     ///   - archivedDate: The archived date of the cipher.
     ///   - collectionIds: The identifiers of any collections containing the cipher.
@@ -385,6 +394,10 @@ extension CipherView {
 
 extension BitwardenSdk.LoginView {
     /// Returns a copy of the existing login with an updated TOTP key.
+    ///
+    /// - Important: This method manually copies all 7 `LoginView` properties.
+    ///   When the `BitwardenSdk` `LoginView` type is updated, this method must be
+    ///   reviewed to include any new properties. Property count as of last review: 7.
     ///
     /// - Parameter totp: The TOTP key to update.
     /// - Returns: A copy of the existing login, with the specified properties updated.
