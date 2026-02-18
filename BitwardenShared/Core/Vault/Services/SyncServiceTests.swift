@@ -1116,6 +1116,7 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_skipsWhenVaultLocked() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
         vaultTimeoutService.isClientLocked["1"] = true
 
         try await subject.fetchSync(forceSync: false)
