@@ -1,6 +1,6 @@
 # Cross-Reference Matrix: Inter-Issue Implications
 
-This document maps dependencies and implications between all 31 action plans. An entry means that the resolution of one issue affects or is affected by another.
+This document maps dependencies and implications between all 32 action plans. An entry means that the resolution of one issue affects or is affected by another.
 
 ## Critical Implication Clusters
 
@@ -30,11 +30,13 @@ These issues form a layered defense system:
 
 **Implication:** R1 (format versioning) and R3 (retry backoff with expiry) both address the "permanently stuck item" problem. Implementing R3 with TTL-based expiry covers the format versioning case (old items expire) without needing a version field. Both together provide defense in depth.
 
-### ~~Cluster 3: Error Classification (SEC-1, EXT-1, T6)~~ **[Resolved]**
+### ~~Cluster 3: Error Classification & Security (SEC-1, SEC-2, EXT-1, T6)~~ **[Resolved]**
 
 ~~These three issues all relate to `URLError+NetworkConnection`:~~
 
-> **All three issues are resolved/superseded.** The `URLError+NetworkConnection.swift` extension and its tests have been deleted entirely. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save. SEC-1, EXT-1, and T6 no longer exist as actionable items.
+> **All four issues are resolved/superseded.** The `URLError+NetworkConnection.swift` extension and its tests have been deleted entirely. VaultRepository catch blocks now use plain `catch` — all API errors trigger offline save. SEC-1, EXT-1, and T6 no longer exist as actionable items.
+>
+> **SEC-2** (encryption of `offlinePasswordChangeCount`) was explored via a full AES-256-GCM prototype implementation, then reverted after comparative analysis showed the encryption adds complexity without meaningful security benefit given existing plaintext metadata throughout the codebase. See [Resolved/AP-SEC2](Resolved/AP-SEC2_PasswordChangeCountEncryption.md).
 
 ### Cluster 3b: Detail View / Publisher Resilience (~~VI-1~~, ~~CS-2~~, R3, U3) ~~[VI-1 Mitigated]~~ **[VI-1 Resolved, CS-2 Resolved]**
 
@@ -75,6 +77,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | ~~**S3**~~ | ~~T5 (mock burden)~~ | ~~T5 (mock quality), S4 (can combine)~~ **[Resolved]** — 3 batch tests added |
 | ~~**S4**~~ | ~~T5 (mock burden)~~ | ~~T5 (mock quality), S3 (can combine), R3 (retry behavior)~~ **[Resolved]** — 4 API failure tests added |
 | ~~**SEC-1**~~ | ~~T6 (test updates)~~ | ~~EXT-1 (holistic review)~~ **[Superseded]** — Extension deleted |
+| ~~**SEC-2**~~ | — | — **[Resolved — Will Not Implement]** — Encryption of `offlinePasswordChangeCount` prototyped (AES-256-GCM) and reverted. Plaintext storage accepted as consistent with existing security model. See [Resolved/AP-SEC2](Resolved/AP-SEC2_PasswordChangeCountEncryption.md). |
 | ~~**S6**~~ | — | ~~T7~~ (T7 resolved separately) **[Resolved]** — 4 password change counting tests added |
 | **S7** | — | VR-2 (delete context) — **[Partially Resolved]** Resolver-level 404 tests added via RES-2 fix; VaultRepository-level `handleOfflineDelete` not-found test gap remains open |
 | **S8** | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — |

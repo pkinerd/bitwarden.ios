@@ -141,7 +141,7 @@ This decision should be revisited if:
 
 - `PendingCipherChangeData.swift:55` — Current plaintext `offlinePasswordChangeCount: Int16` storage
 - `OfflineSyncResolver.swift:60` — `softConflictPasswordChangeThreshold` constant (4)
-- `VaultRepository.swift:991-1042` — `handleOfflineUpdate` password change detection
+- `VaultRepository.swift:1034-1090` — `handleOfflineUpdate` password change detection
 - `Review2/01_PendingCipherChangeData_Review.md:56-68` — Original security assessment
 - `AP-S6_PasswordChangeCountingTest.md` — Related: tests for the counting logic itself (resolved)
 - `AppSettingsStore.swift` — Examples of unencrypted metadata in UserDefaults

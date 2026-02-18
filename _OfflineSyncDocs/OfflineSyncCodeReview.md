@@ -401,7 +401,7 @@ This prevents unauthorized client-side modifications to shared organization data
 
 **~~Issue SEC-1~~ [Superseded]** — URLError extension deleted; all API errors trigger offline save. See [AP-SEC1](ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md).
 
-**Observation SEC-2 — Pending data survives vault lock.** `PendingCipherChangeData` is stored in Core Data alongside other vault data. The `cipherData` field contains SDK-encrypted JSON, so it's protected by the vault encryption key. The metadata fields are unencrypted, consistent with existing `CipherData`.
+**~~Observation SEC-2~~ [Resolved — Will Not Implement] — Pending metadata stored unencrypted.** `PendingCipherChangeData` is stored in Core Data alongside other vault data. The `cipherData` field contains SDK-encrypted JSON, so it's protected by the vault encryption key. The metadata fields (including `offlinePasswordChangeCount`) are unencrypted, consistent with existing `CipherData`. Encrypting the password change count was prototyped (AES-256-GCM) and reverted — the surrounding plaintext metadata (`changeTypeRaw`, timestamps, row count) and comparable unencrypted metadata elsewhere in the app (review prompt counts, vault timeout, last active time) mean encrypting this single field adds complexity without meaningfully reducing the attack surface. See [AP-SEC2](ActionPlans/Resolved/AP-SEC2_PasswordChangeCountEncryption.md).
 
 **Observation SEC-3 — Pending changes cleaned up on user data deletion.** `DataStore.deleteDataForUser(userId:)` includes `PendingCipherChangeData.deleteByUserIdRequest` in the batch delete, ensuring pending changes are properly removed on logout or account deletion.
 
