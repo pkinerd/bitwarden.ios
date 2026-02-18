@@ -51,8 +51,12 @@ class PendingCipherChangeData: NSManagedObject {
     /// When this pending change was last updated.
     @NSManaged var updatedDate: Date?
 
-    /// The number of password changes made across offline edits for this cipher.
-    @NSManaged var offlinePasswordChangeCount: Int16
+    /// The encrypted number of password changes made across offline edits for this cipher.
+    ///
+    /// This field stores the password change count encrypted with AES-256-GCM using a key
+    /// derived from the user's vault encryption key. Use `PendingChangeCountEncryptionService`
+    /// to encrypt before writing and decrypt after reading.
+    @NSManaged var encryptedPasswordChangeCount: Data?
 
     // MARK: Computed Properties
 
@@ -78,7 +82,7 @@ class PendingCipherChangeData: NSManagedObject {
     ///   - changeType: The type of offline change.
     ///   - cipherData: The JSON-encoded encrypted cipher snapshot.
     ///   - originalRevisionDate: The cipher's revision date before the first offline edit.
-    ///   - offlinePasswordChangeCount: The number of offline password changes.
+    ///   - encryptedPasswordChangeCount: The encrypted password change count data.
     ///
     convenience init(
         context: NSManagedObjectContext,
@@ -88,7 +92,7 @@ class PendingCipherChangeData: NSManagedObject {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int16 = 0
+        encryptedPasswordChangeCount: Data? = nil
     ) {
         self.init(context: context)
         self.id = id
@@ -99,7 +103,7 @@ class PendingCipherChangeData: NSManagedObject {
         self.originalRevisionDate = originalRevisionDate
         self.createdDate = Date()
         self.updatedDate = Date()
-        self.offlinePasswordChangeCount = offlinePasswordChangeCount
+        self.encryptedPasswordChangeCount = encryptedPasswordChangeCount
     }
 }
 

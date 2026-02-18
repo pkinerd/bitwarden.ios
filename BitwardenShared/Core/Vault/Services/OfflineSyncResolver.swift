@@ -70,6 +70,9 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     /// The client service for encryption/decryption.
     private let clientService: ClientService
 
+    /// The encryption service for the offline password change count.
+    private let pendingChangeCountEncryptionService: PendingChangeCountEncryptionService
+
     /// The data store for pending cipher changes.
     private let pendingCipherChangeDataStore: PendingCipherChangeDataStore
 
@@ -84,6 +87,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     ///   - cipherAPIService: The service for making cipher API requests.
     ///   - cipherService: The service for managing ciphers.
     ///   - clientService: The client service for encryption/decryption.
+    ///   - pendingChangeCountEncryptionService: The encryption service for the offline password change count.
     ///   - pendingCipherChangeDataStore: The data store for pending cipher changes.
     ///   - stateService: The service for managing account state.
     ///
@@ -91,12 +95,14 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         cipherAPIService: CipherAPIService,
         cipherService: CipherService,
         clientService: ClientService,
+        pendingChangeCountEncryptionService: PendingChangeCountEncryptionService,
         pendingCipherChangeDataStore: PendingCipherChangeDataStore,
         stateService: StateService
     ) {
         self.cipherAPIService = cipherAPIService
         self.cipherService = cipherService
         self.clientService = clientService
+        self.pendingChangeCountEncryptionService = pendingChangeCountEncryptionService
         self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.stateService = stateService
     }
@@ -204,8 +210,13 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         let originalRevisionDate = pendingChange.originalRevisionDate
 
         let hasConflict = originalRevisionDate != nil && serverRevisionDate != originalRevisionDate
-        let hasSoftConflict = pendingChange.offlinePasswordChangeCount
-            >= Self.softConflictPasswordChangeThreshold
+
+        // Decrypt the password change count to check for soft conflict threshold.
+        var passwordChangeCount: Int16 = 0
+        if let encryptedCount = pendingChange.encryptedPasswordChangeCount {
+            passwordChangeCount = try await pendingChangeCountEncryptionService.decrypt(data: encryptedCount)
+        }
+        let hasSoftConflict = passwordChangeCount >= Self.softConflictPasswordChangeThreshold
 
         if hasConflict {
             try await resolveConflict(

@@ -40,7 +40,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: Data("cipher1".utf8),
             originalRevisionDate: Date(year: 2024, month: 1, day: 1),
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-2",
@@ -48,7 +48,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .create,
             cipherData: Data("cipher2".utf8),
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-3",
@@ -56,7 +56,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: nil,
             originalRevisionDate: Date(year: 2024, month: 2, day: 1),
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
 
         let user1Changes = try await subject.fetchPendingChanges(userId: "1")
@@ -78,7 +78,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: Data("cipher1".utf8),
             originalRevisionDate: Date(year: 2024, month: 1, day: 1),
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count-1".utf8)
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-2",
@@ -86,7 +86,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .create,
             cipherData: Data("cipher2".utf8),
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
 
         let result = try await subject.fetchPendingChange(cipherId: "cipher-1", userId: "1")
@@ -94,7 +94,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
         XCTAssertEqual(result?.cipherId, "cipher-1")
         XCTAssertEqual(result?.userId, "1")
         XCTAssertEqual(result?.changeType, .update)
-        XCTAssertEqual(result?.offlinePasswordChangeCount, 1)
+        XCTAssertEqual(result?.encryptedPasswordChangeCount, Data("encrypted-count-1".utf8))
 
         let noResult = try await subject.fetchPendingChange(cipherId: "cipher-99", userId: "1")
         XCTAssertNil(noResult)
@@ -111,7 +111,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 2
+            encryptedPasswordChangeCount: Data("encrypted-count-2".utf8)
         )
 
         let changes = try await subject.fetchPendingChanges(userId: "1")
@@ -123,7 +123,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
         XCTAssertEqual(change.changeType, .update)
         XCTAssertEqual(change.cipherData, cipherData)
         XCTAssertEqual(change.originalRevisionDate, revisionDate)
-        XCTAssertEqual(change.offlinePasswordChangeCount, 2)
+        XCTAssertEqual(change.encryptedPasswordChangeCount, Data("encrypted-count-2".utf8))
         XCTAssertNotNil(change.id)
         XCTAssertNotNil(change.createdDate)
         XCTAssertNotNil(change.updatedDate)
@@ -139,7 +139,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: Data("original".utf8),
             originalRevisionDate: originalDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
 
         // Update the same cipher with new data and a different originalRevisionDate.
@@ -150,7 +150,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: Data("updated".utf8),
             originalRevisionDate: newDate,
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count-1".utf8)
         )
 
         let changes = try await subject.fetchPendingChanges(userId: "1")
@@ -158,7 +158,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
 
         let change = try XCTUnwrap(changes.first)
         XCTAssertEqual(change.cipherData, Data("updated".utf8))
-        XCTAssertEqual(change.offlinePasswordChangeCount, 1)
+        XCTAssertEqual(change.encryptedPasswordChangeCount, Data("encrypted-count-1".utf8))
         // originalRevisionDate should be preserved from the first insert, not overwritten.
         XCTAssertEqual(change.originalRevisionDate, originalDate)
     }
@@ -171,7 +171,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
 
         let changes = try await subject.fetchPendingChanges(userId: "1")
@@ -192,7 +192,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-2",
@@ -200,7 +200,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .create,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
 
         try await subject.deletePendingChange(cipherId: "cipher-1", userId: "1")
@@ -219,7 +219,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-2",
@@ -227,7 +227,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .create,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-3",
@@ -235,7 +235,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
 
         try await subject.deleteAllPendingChanges(userId: "1")
@@ -258,7 +258,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-2",
@@ -266,7 +266,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .create,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-3",
@@ -274,7 +274,7 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
 
         count = try await subject.pendingChangeCount(userId: "1")

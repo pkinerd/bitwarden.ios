@@ -51,7 +51,7 @@
         <attribute name="originalRevisionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="createdDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="offlinePasswordChangeCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="encryptedPasswordChangeCount" optional="YES" attributeType="Binary"/>
         <uniquenessConstraints>
             <uniquenessConstraint>
                 <constraint value="userId"/>

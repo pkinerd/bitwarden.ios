@@ -634,10 +634,15 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             stateService: stateService,
         )
 
+        let pendingChangeCountEncryptionService = DefaultPendingChangeCountEncryptionService(
+            clientService: clientService
+        )
+
         let preSyncOfflineSyncResolver = DefaultOfflineSyncResolver(
             cipherAPIService: apiService,
             cipherService: cipherService,
             clientService: clientService,
+            pendingChangeCountEncryptionService: pendingChangeCountEncryptionService,
             pendingCipherChangeDataStore: dataStore,
             stateService: stateService,
         )
@@ -845,6 +850,7 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             errorReporter: errorReporter,
             folderService: folderService,
             organizationService: organizationService,
+            pendingChangeCountEncryptionService: pendingChangeCountEncryptionService,
             pendingCipherChangeDataStore: dataStore,
             policyService: policyService,
             settingsService: settingsService,

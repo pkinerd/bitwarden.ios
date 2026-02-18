@@ -16,6 +16,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     var cipherAPIService: MockCipherAPIServiceForOfflineSync!
     var cipherService: MockCipherService!
     var clientService: MockClientService!
+    var pendingChangeCountEncryptionService: MockPendingChangeCountEncryptionService!
     var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
     var stateService: MockStateService!
     var subject: DefaultOfflineSyncResolver!
@@ -28,6 +29,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = MockCipherAPIServiceForOfflineSync()
         cipherService = MockCipherService()
         clientService = MockClientService()
+        pendingChangeCountEncryptionService = MockPendingChangeCountEncryptionService()
         pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
         stateService = MockStateService()
 
@@ -35,6 +37,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             cipherAPIService: cipherAPIService,
             cipherService: cipherService,
             clientService: clientService,
+            pendingChangeCountEncryptionService: pendingChangeCountEncryptionService,
             pendingCipherChangeDataStore: pendingCipherChangeDataStore,
             stateService: stateService
         )
@@ -46,6 +49,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = nil
         cipherService = nil
         clientService = nil
+        pendingChangeCountEncryptionService = nil
         pendingCipherChangeDataStore = nil
         stateService = nil
         subject = nil
@@ -77,7 +81,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: cipherData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -106,7 +110,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -143,7 +147,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -185,7 +189,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -237,7 +241,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -285,7 +289,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 4
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -295,6 +299,9 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             id: "cipher-1",
             revisionDate: revisionDate
         ))
+
+        // Configure mock to return count >= 4 (soft conflict threshold).
+        pendingChangeCountEncryptionService.decryptResult = .success(4)
 
         try await subject.processPendingChanges(userId: "1")
 
@@ -339,7 +346,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -402,7 +409,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -469,7 +476,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 4
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -479,6 +486,9 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             id: "cipher-1",
             revisionDate: revisionDate
         ))
+
+        // Configure mock to return count >= 4 (soft conflict threshold).
+        pendingChangeCountEncryptionService.decryptResult = .success(4)
 
         try await subject.processPendingChanges(userId: "1")
 
@@ -513,7 +523,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -553,7 +563,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -588,7 +598,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -632,7 +642,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: cipherData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -663,7 +673,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -697,7 +707,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -736,7 +746,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            encryptedPasswordChangeCount: Data("encrypted-count".utf8)
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -793,7 +803,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-2",
@@ -801,7 +811,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: updateData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-3",
@@ -809,7 +819,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: softDeleteData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -859,7 +869,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-2",
@@ -867,7 +877,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: updateData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
@@ -906,7 +916,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData1,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-2",
@@ -914,7 +924,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData2,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            encryptedPasswordChangeCount: nil
         )
         let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
         pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
