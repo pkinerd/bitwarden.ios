@@ -73,9 +73,6 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     /// The data store for pending cipher changes.
     private let pendingCipherChangeDataStore: PendingCipherChangeDataStore
 
-    /// The service for managing account state.
-    private let stateService: StateService
-
     // MARK: Initialization
 
     /// Initializes a `DefaultOfflineSyncResolver`.
@@ -85,20 +82,17 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     ///   - cipherService: The service for managing ciphers.
     ///   - clientService: The client service for encryption/decryption.
     ///   - pendingCipherChangeDataStore: The data store for pending cipher changes.
-    ///   - stateService: The service for managing account state.
     ///
     init(
         cipherAPIService: CipherAPIService,
         cipherService: CipherService,
         clientService: ClientService,
-        pendingCipherChangeDataStore: PendingCipherChangeDataStore,
-        stateService: StateService
+        pendingCipherChangeDataStore: PendingCipherChangeDataStore
     ) {
         self.cipherAPIService = cipherAPIService
         self.cipherService = cipherService
         self.clientService = clientService
         self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
-        self.stateService = stateService
     }
 
     // MARK: OfflineSyncResolver
