@@ -116,4 +116,56 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
         XCTAssertEqual(updated.passwordHistory?[0].password, "old-pass-1")
         XCTAssertEqual(updated.passwordHistory?[1].password, "old-pass-2")
     }
+
+    // MARK: Tests - SDK Property Count Guard
+
+    /// Verifies the expected property count of `CipherView` so that if the SDK
+    /// adds new properties, this test fails and alerts developers to update
+    /// all manual copy methods.
+    ///
+    /// Copy methods that must be reviewed when this test fails:
+    /// - `CipherView+OfflineSync.swift`: `makeCopy(id:key:name:attachments:attachmentDecryptionFailures:)`
+    /// - `CipherView+Update.swift`: `update(archivedDate:collectionIds:deletedDate:folderId:login:organizationId:)`
+    /// - `CipherView+Update.swift`: `updatedView(with:timeProvider:)`
+    ///
+    func test_cipherView_propertyCount_matchesExpected() {
+        let cipherView = CipherView.fixture()
+        let mirror = Mirror(reflecting: cipherView)
+        let propertyCount = mirror.children.count
+
+        // If this assertion fails, the BitwardenSdk CipherView type has changed.
+        // Update ALL manual copy methods listed in the comment above, then update
+        // this expected count.
+        XCTAssertEqual(
+            propertyCount,
+            28,
+            "CipherView property count changed from 28 to \(propertyCount). "
+                + "Update all manual CipherView copy methods and then update this expected count. "
+                + "See AP-CS2 in _OfflineSyncDocs/ActionPlans/AP-CS2_FragileSDKCopyMethods.md."
+        )
+    }
+
+    /// Verifies the expected property count of `LoginView` so that if the SDK
+    /// adds new properties, this test fails and alerts developers to update
+    /// all manual copy methods.
+    ///
+    /// Copy methods that must be reviewed when this test fails:
+    /// - `CipherView+Update.swift`: `LoginView.update(totp:)`
+    ///
+    func test_loginView_propertyCount_matchesExpected() {
+        let loginView = LoginView.fixture()
+        let mirror = Mirror(reflecting: loginView)
+        let propertyCount = mirror.children.count
+
+        // If this assertion fails, the BitwardenSdk LoginView type has changed.
+        // Update ALL manual copy methods listed in the comment above, then update
+        // this expected count.
+        XCTAssertEqual(
+            propertyCount,
+            7,
+            "LoginView property count changed from 7 to \(propertyCount). "
+                + "Update all manual LoginView copy methods and then update this expected count. "
+                + "See AP-CS2 in _OfflineSyncDocs/ActionPlans/AP-CS2_FragileSDKCopyMethods.md."
+        )
+    }
 }
