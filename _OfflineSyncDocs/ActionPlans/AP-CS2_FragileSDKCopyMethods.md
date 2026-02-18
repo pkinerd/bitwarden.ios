@@ -15,7 +15,7 @@
 The offline sync implementation introduces manual copy/clone methods for two different BitwardenSdk types: `Cipher` and `CipherView`. These methods manually call the full SDK initializer, copying every property by name. There are three such methods:
 
 1. **`Cipher.withTemporaryId(_:)`** — Creates a copy of a `Cipher` with a new temporary ID. Manually copies ~26 `Cipher` properties. Sets `data` to `nil` (this is the root cause of VI-1's decryption failures).
-2. **`CipherView.update(name:folderId:)`** — Creates a copy of a `CipherView` with updated name and folder. Manually copies ~24 properties. Sets `id` and `key` to `nil`, `attachments` to `nil`.
+2. **`CipherView.update(name:)`** — Creates a copy of a `CipherView` with updated name, retaining the original folder assignment. Manually copies ~24 properties. Sets `id` and `key` to `nil`, `attachments` to `nil`. **[Updated]** `folderId` parameter removed.
 
 If `Cipher` or `CipherView` from the BitwardenSdk package gains new properties:
 - **With default values:** These methods compile but silently drop the new property's value (data loss risk)
@@ -23,7 +23,7 @@ If `Cipher` or `CipherView` from the BitwardenSdk package gains new properties:
 
 This fragility is inherent to working with external SDK types that don't provide copy/clone methods.
 
-~~**Current dev state:** `Cipher.withTemporaryId()` still exists with `data: nil`, which is the root cause of VI-1's decryption failures (VI-1 is mitigated via UI fallback but the root cause remains). Two SDK types with fragile copy methods remain: `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)`.~~ **[UPDATE]** `Cipher.withTemporaryId()` has been removed and replaced by `CipherView.withId(_:)` (commit `3f7240a`). VI-1 is now fully resolved. Fragile copy methods now on `CipherView` only: `CipherView.withId(_:)` and `CipherView.update(name:folderId:)`. Same fragility concern (manual field copying), but the `data: nil` problem no longer applies.
+~~**Current dev state:** `Cipher.withTemporaryId()` still exists with `data: nil`, which is the root cause of VI-1's decryption failures (VI-1 is mitigated via UI fallback but the root cause remains). Two SDK types with fragile copy methods remain: `Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)`.~~ **[UPDATE]** `Cipher.withTemporaryId()` has been removed and replaced by `CipherView.withId(_:)` (commit `3f7240a`). VI-1 is now fully resolved. Fragile copy methods now on `CipherView` only: `CipherView.withId(_:)` and `CipherView.update(name:)`. Same fragility concern (manual field copying), but the `data: nil` problem no longer applies. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original cipher's folder assignment.
 
 ---
 
@@ -114,6 +114,6 @@ Long-term, **Option C** (SDK-native copy methods) is the ideal solution but depe
 
 ## Related Issues
 
-- **RES-7**: Backup ciphers lack attachments — the `update(name:folderId:)` method explicitly sets `attachments` to nil. If attachment support is added, this method must be updated.
+- **RES-7**: Backup ciphers lack attachments — the `update(name:)` method explicitly sets `attachments` to nil. If attachment support is added, this method must be updated.
 - **T5 (RES-6)**: Inline mock fragility — the same class of problem (manual conformance to external types that may change).
 

@@ -44,20 +44,22 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 
 ### 3. Implementation (`DefaultOfflineSyncResolver`)
 
-**Dependencies (6 total):** **[Updated]** `timeProvider` removed in commit `a52d379` (was unused — see resolved Issue RES-5/A3).
+**Dependencies (5 total):** **[Updated]** `timeProvider` removed in commit `a52d379` (was unused — see resolved Issue RES-5/A3). **[Updated]** `folderService` removed — the dedicated "Offline Sync Conflicts" folder has been eliminated; backups now retain the original cipher's folder assignment.
 
 | Dependency | Used For |
 |------------|----------|
 | `cipherAPIService: CipherAPIService` | Fetching server-side cipher state (`getCipher`) |
 | `cipherService: CipherService` | Adding/updating/soft-deleting ciphers (server + local) |
 | `clientService: ClientService` | Encrypt/decrypt operations via SDK |
-| `folderService: FolderService` | Creating/fetching the "Offline Sync Conflicts" folder |
+| ~~`folderService: FolderService`~~ | ~~Creating/fetching the "Offline Sync Conflicts" folder~~ **[Removed]** |
 | `pendingCipherChangeDataStore: PendingCipherChangeDataStore` | Fetching/deleting pending change records |
 | `stateService: StateService` | Managing account state |
 
-**Instance State:**
+~~**Instance State:**~~
 
-- `conflictFolderId: String?` — Cached folder ID for the "Offline Sync Conflicts" folder. Reset to `nil` at the start of each `processPendingChanges` batch. This avoids redundant folder lookups/creation when multiple conflicts are resolved in a single batch.
+~~- `conflictFolderId: String?` — Cached folder ID for the "Offline Sync Conflicts" folder. Reset to `nil` at the start of each `processPendingChanges` batch. This avoids redundant folder lookups/creation when multiple conflicts are resolved in a single batch.~~
+
+**[Updated]** The `conflictFolderId` cached state has been removed along with the conflict folder feature.
 
 **Named Constant:**
 
@@ -70,7 +72,6 @@ processPendingChanges(userId:)
 │
 ├── Fetch all pending changes for the user
 ├── Guard: return early if none
-├── Reset conflictFolderId to nil
 │
 └── For each pendingChange:
     ├── try resolve(pendingChange:userId:)
@@ -169,40 +170,33 @@ processPendingChanges(userId:)
 ### 6. Backup Cipher Creation (`createBackupCipher`)
 
 ```
-1. Get or create the "Offline Sync Conflicts" folder (cached per batch)
-2. Decrypt the source cipher via clientService.vault().ciphers().decrypt()
-3. Format timestamp as "yyyy-MM-dd HHmmss"
-4. Construct backup name: "{originalName} - offline conflict {timestamp}"
-5. Create backup CipherView via CipherView.update(name:folderId:) — sets id=nil, key=nil
-6. Encrypt the backup via clientService.vault().ciphers().encrypt()
-7. Push to server via cipherService.addCipherWithServer()
+1. Decrypt the source cipher via clientService.vault().ciphers().decrypt()
+2. Format timestamp as "yyyy-MM-dd HH:mm:ss"
+3. Construct backup name: "{originalName} - {timestamp}"
+4. Create backup CipherView via CipherView.update(name:) — sets id=nil, key=nil; retains original folderId
+5. Encrypt the backup via clientService.vault().ciphers().encrypt()
+6. Push to server via cipherService.addCipherWithServer()
 ```
+
+**[Updated]** The `getOrCreateConflictFolder` step has been removed. Backup ciphers now retain the original cipher's folder assignment instead of being placed in a dedicated "Offline Sync Conflicts" folder. This simplifies the resolver by removing the `FolderService` dependency, the `conflictFolderId` cache, and the folder lookup/creation logic (including the folder encryption fix from PR #29).
 
 **Key Properties of the Backup:**
 
 - `id` is set to `nil` (new cipher, server assigns ID)
 - `key` is set to `nil` (SDK generates a new encryption key)
 - `attachments` are set to `nil` (attachments are not duplicated)
+- `folderId` retains the original cipher's folder assignment
 - All other fields (login, notes, card, identity, password history, fields) are preserved
-- The backup is placed in the "Offline Sync Conflicts" folder
 
-### 7. Conflict Folder Management (`getOrCreateConflictFolder`)
+### ~~7. Conflict Folder Management (`getOrCreateConflictFolder`)~~ **[Removed]**
 
-```
-1. If conflictFolderId is cached → return it
-2. Fetch all folders via folderService.fetchAllFolders()
-3. For each folder: decrypt and check if name == "Offline Sync Conflicts"
-4. If found: cache ID and return
-5. If not found:
-   a. Create FolderView with name "Offline Sync Conflicts"
-   b. Encrypt via clientService.vault().folders().encrypt(folder:)
-   c. Create via folderService.addFolderWithServer(name: encryptedFolder.name)
-6. Cache new ID and return
-```
-
-**[Updated — PR #29 fix]** The folder creation now properly encrypts the folder name before sending to the server. The original code passed the plaintext name "Offline Sync Conflicts" directly to `addFolderWithServer(name:)`, which expects an encrypted string. This caused the Bitwarden SDK to crash (Rust panic) when later trying to decrypt plaintext as ciphertext during folder fetch.
-
-**Performance Note:** This decrypts every folder to find the conflict folder by name. For users with many folders, this is O(n) decryption operations. The caching per-batch mitigates repeated lookups within a single sync, but each sync batch starts fresh. A more efficient approach would be to store the conflict folder ID in `AppSettingsStore`, but the current approach is simpler and the folder count per user is typically small.
+~~The `getOrCreateConflictFolder` method and the "Offline Sync Conflicts" folder concept have been removed entirely.~~ Backup ciphers now retain the original cipher's folder assignment. This eliminates:
+- The `FolderService` dependency
+- The `conflictFolderId` cached state
+- The O(n) folder decryption lookup
+- The folder encryption fix (PR #29) — no longer applicable
+- The English-only folder name concern (see U4)
+- The `conflictFolderId` thread safety concern (see R2)
 
 ---
 
@@ -234,7 +228,7 @@ processPendingChanges(userId:)
 | Encrypt before persist (backup) | **Pass** | Backup ciphers are encrypted via SDK before `addCipherWithServer` |
 | No plaintext in transit | **Pass** | API calls use encrypted `Cipher` objects |
 | Decrypt only in-memory | **Pass** | Decryption for name modification and password comparison is ephemeral |
-| Conflict folder name encrypted | **Pass** | **[Fixed in PR #29]** Folder name now encrypted via SDK before `addFolderWithServer`. Original code passed plaintext, causing crash. |
+| ~~Conflict folder name encrypted~~ | ~~**Pass**~~ | ~~**[Fixed in PR #29]** Folder name now encrypted via SDK before `addFolderWithServer`. Original code passed plaintext, causing crash.~~ **[Removed]** — Conflict folder eliminated; no longer applicable. |
 
 ### Test Coverage
 
@@ -248,13 +242,13 @@ processPendingChanges(userId:)
 | `test_processPendingChanges_update_conflict_serverNewer` | Conflict where server wins — updates local, backs up local |
 | `test_processPendingChanges_update_softConflict` | Soft conflict (4+ password changes, no server change) |
 | `test_processPendingChanges_softDelete_conflict` | Soft delete with server-side changes — backs up server, then deletes |
-| `test_processPendingChanges_update_conflict_createsConflictFolder` | Verifies folder creation and backup cipher assignment |
+| ~~`test_processPendingChanges_update_conflict_createsConflictFolder`~~ | ~~Verifies folder creation and backup cipher assignment~~ **[Removed]** — Conflict folder eliminated |
 | `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
 | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
 | `test_offlineSyncError_localizedDescription` | Error description verification |
 | `test_offlineSyncError_vaultLocked_localizedDescription` | Error description verification |
 
-**Coverage Assessment:** Good coverage of the main resolution paths. The conflict folder creation and naming convention are verified. **[Updated]** Two new tests added for 404 handling in `resolveUpdate` and `resolveSoftDelete`.
+**Coverage Assessment:** Good coverage of the main resolution paths. **[Updated]** Two new tests added for 404 handling in `resolveUpdate` and `resolveSoftDelete`. **[Updated]** Conflict folder creation test removed — folder no longer created.
 
 ---
 
@@ -268,7 +262,7 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 ### ~~Issue RES-2: `conflictFolderId` Thread Safety (Low)~~ **[Resolved]**
 
-~~`DefaultOfflineSyncResolver` is a `class` (reference type) with a mutable `var conflictFolderId`. There is no actor isolation, lock, or other synchronization.~~ **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor`, providing compiler-enforced isolation for `conflictFolderId`. See [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md).
+~~`DefaultOfflineSyncResolver` is a `class` (reference type) with a mutable `var conflictFolderId`. There is no actor isolation, lock, or other synchronization.~~ **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor`, providing compiler-enforced isolation for `conflictFolderId`. See [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md). **[Updated]** `conflictFolderId` has since been removed entirely along with the conflict folder feature — the actor conversion remains beneficial for general thread safety.
 
 ### Issue RES-3: No Test for Batch Processing with Mixed Results (Medium)
 
@@ -290,11 +284,13 @@ The test file defines an inline `MockCipherAPIServiceForOfflineSync` that implem
 
 ### Observation RES-7: Backup Ciphers Don't Include Attachments
 
-`CipherView.update(name:folderId:)` sets `attachments` to `nil` on the backup copy. This is documented with a comment: "Attachments are not duplicated to backup copies." This is a reasonable limitation — attachments are binary blobs stored separately and duplicating them would be complex and storage-intensive. However, users should be aware that backup copies in the "Offline Sync Conflicts" folder will not have the original's attachments.
+`CipherView.update(name:)` sets `attachments` to `nil` on the backup copy. This is documented with a comment: "Attachments are not duplicated to backup copies." This is a reasonable limitation — attachments are binary blobs stored separately and duplicating them would be complex and storage-intensive. However, users should be aware that backup copies will not have the original's attachments.
 
-### Observation RES-8: Conflict Folder Name is Hardcoded in English
+### ~~Observation RES-8: Conflict Folder Name is Hardcoded in English~~ **[Superseded]**
 
-The conflict folder name "Offline Sync Conflicts" is a hardcoded English string, not localized via the app's localization system. This means non-English users will see an English folder name in their vault. However, since the folder name is encrypted and synced to the server (not displayed via the app's localization layer), localization would be complex and inconsistent across devices with different locale settings.
+~~The conflict folder name "Offline Sync Conflicts" is a hardcoded English string, not localized via the app's localization system. This means non-English users will see an English folder name in their vault. However, since the folder name is encrypted and synced to the server (not displayed via the app's localization layer), localization would be complex and inconsistent across devices with different locale settings.~~
+
+**[Updated]** The dedicated "Offline Sync Conflicts" folder has been removed entirely. Backup ciphers now retain their original folder assignment. This observation is no longer applicable. See [AP-U4](ActionPlans/AP-U4_EnglishOnlyConflictFolderName.md).
 
 ### Observation RES-9: `resolveSoftDelete` Requires `cipherData` but Creates Should Use Only `cipherId`
 

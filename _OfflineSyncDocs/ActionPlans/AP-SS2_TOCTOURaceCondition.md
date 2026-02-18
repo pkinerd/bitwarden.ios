@@ -97,7 +97,7 @@ Accept the theoretical race condition given its extremely low probability and th
 
 ## Related Issues
 
-- **R2 (RES-2)**: conflictFolderId thread safety — both are concurrency concerns, but the resolver's is more practical (shared mutable state) while this is more theoretical (timing window).
+- ~~**R2 (RES-2)**: conflictFolderId thread safety — both are concurrency concerns, but the resolver's is more practical (shared mutable state) while this is more theoretical (timing window).~~ **[Updated]** R2 is resolved (actor conversion). The `conflictFolderId` state has since been removed entirely (conflict folder eliminated).
 - **R4 (SS-3)**: Silent sync abort — logging would help diagnose if this race ever occurs in practice.
 
 ## Updated Review Findings
