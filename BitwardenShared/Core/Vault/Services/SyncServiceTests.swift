@@ -1179,6 +1179,7 @@ class SyncServiceTests: BitwardenTestCase {
     /// feature flag is disabled, to prevent data loss. The flag only gates new offline
     /// saves in VaultRepository — resolution must always run so that `replaceCiphers`
     /// doesn't overwrite edits made while the feature was still enabled.
+    @MainActor
     func test_fetchSync_preSyncResolution_stillResolvesWhenFeatureFlagDisabled() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
