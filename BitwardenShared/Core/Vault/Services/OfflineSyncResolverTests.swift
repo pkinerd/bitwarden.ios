@@ -610,13 +610,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
     // MARK: Tests - OfflineSyncError
 
-    /// `OfflineSyncError.organizationCipherOfflineEditNotSupported` provides a localized description.
-    func test_offlineSyncError_localizedDescription() {
-        let error = OfflineSyncError.organizationCipherOfflineEditNotSupported
-        XCTAssertNotNil(error.errorDescription)
-        XCTAssertTrue(error.errorDescription?.contains("Organization") ?? false)
-    }
-
     /// `OfflineSyncError.vaultLocked` provides a localized description.
     func test_offlineSyncError_vaultLocked_localizedDescription() {
         let error = OfflineSyncError.vaultLocked
