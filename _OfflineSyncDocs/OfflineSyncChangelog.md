@@ -781,22 +781,38 @@ These are pure model unit tests with no mock dependencies.
 ## 12. Test Coverage: VaultRepositoryTests Offline Fallback
 
 **File:** `BitwardenShared/Core/Vault/Repositories/VaultRepositoryTests.swift`
-**Change type:** Modified (+132 lines, 8 new test functions)
+**Change type:** Modified (24+ new offline fallback test functions)
 
-Tests the offline fallback behavior in `VaultRepository` for all four CRUD operations. Each operation has two tests: one for personal ciphers (success path) and one for organization ciphers (rejection path).
+Tests the offline fallback behavior in `VaultRepository` for all four CRUD operations. Each operation has tests for personal ciphers (success path), organization ciphers (rejection path), and additional edge cases including error type handling, password change detection, and cleanup of offline-created ciphers.
 
-| Test | Operation | Cipher Type | Expected Behavior |
-|------|-----------|-------------|-------------------|
-| `test_addCipher_offlineFallback` | Create | Personal | Local save + `.create` pending change |
-| `test_addCipher_offlineFallback_orgCipher_throws` | Create | Organization | Throws `organizationCipherOfflineEditNotSupported` |
-| `test_deleteCipher_offlineFallback` | Delete | Personal | Local delete + `.softDelete` pending change |
-| `test_deleteCipher_offlineFallback_orgCipher_throws` | Delete | Organization | Throws `organizationCipherOfflineEditNotSupported` |
-| `test_updateCipher_offlineFallback` | Update | Personal | Local update + `.update` pending change |
-| `test_updateCipher_offlineFallback_orgCipher_throws` | Update | Organization | Throws `organizationCipherOfflineEditNotSupported` |
-| `test_softDeleteCipher_offlineFallback` | Soft Delete | Personal | Local update + `.softDelete` pending change |
-| `test_softDeleteCipher_offlineFallback_orgCipher_throws` | Soft Delete | Organization | Throws `organizationCipherOfflineEditNotSupported` |
+| Test | Operation | Expected Behavior |
+|------|-----------|-------------------|
+| `test_addCipher_offlineFallback` | Create | Local save + `.create` pending change |
+| `test_addCipher_offlineFallback_newCipherGetsTempId` | Create | Temp ID assigned before encryption |
+| `test_addCipher_offlineFallback_orgCipher_throws` | Create | Throws `organizationCipherOfflineEditNotSupported` |
+| `test_addCipher_offlineFallback_unknownError` | Create | Unknown errors trigger offline save |
+| `test_addCipher_offlineFallback_responseValidationError5xx` | Create | 5xx errors trigger offline save |
+| `test_deleteCipher_offlineFallback` | Delete | Local delete + `.softDelete` pending change |
+| `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Delete | Cleans up locally for never-synced cipher |
+| `test_deleteCipher_offlineFallback_unknownError` | Delete | Unknown errors trigger offline save |
+| `test_deleteCipher_offlineFallback_responseValidationError5xx` | Delete | 5xx errors trigger offline save |
+| `test_deleteCipher_offlineFallback_orgCipher_throws` | Delete | Throws `organizationCipherOfflineEditNotSupported` |
+| `test_updateCipher_offlineFallback` | Update | Local update + `.update` pending change |
+| `test_updateCipher_offlineFallback_preservesCreateType` | Update | Preserves `.create` type for never-synced cipher |
+| `test_updateCipher_offlineFallback_passwordChanged_incrementsCount` | Update | Password change detection increments count |
+| `test_updateCipher_offlineFallback_passwordUnchanged_zeroCount` | Update | Unchanged password keeps count at 0 |
+| `test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount` | Update | Subsequent edit detects password change |
+| `test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount` | Update | Subsequent edit preserves count when unchanged |
+| `test_updateCipher_offlineFallback_orgCipher_throws` | Update | Throws `organizationCipherOfflineEditNotSupported` |
+| `test_updateCipher_offlineFallback_unknownError` | Update | Unknown errors trigger offline save |
+| `test_updateCipher_offlineFallback_responseValidationError5xx` | Update | 5xx errors trigger offline save |
+| `test_softDeleteCipher_offlineFallback` | Soft Delete | Local update + `.softDelete` pending change |
+| `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Soft Delete | Cleans up locally for never-synced cipher |
+| `test_softDeleteCipher_offlineFallback_orgCipher_throws` | Soft Delete | Throws `organizationCipherOfflineEditNotSupported` |
+| `test_softDeleteCipher_offlineFallback_unknownError` | Soft Delete | Unknown errors trigger offline save |
+| `test_softDeleteCipher_offlineFallback_responseValidationError5xx` | Soft Delete | 5xx errors trigger offline save |
 
-All tests trigger the offline path by configuring `MockCipherService` to throw `URLError(.notConnectedToInternet)` for the server API call.
+All tests trigger the offline path by configuring `MockCipherService` to throw `URLError(.notConnectedToInternet)` or other appropriate errors for the server API call.
 
 ---
 

@@ -64,7 +64,7 @@ Workflow changes are out of scope for this architecture review but noted for com
 
 **After:** `CipherView.withId(_:)` assigns the ID to the `CipherView` *before* encryption. The ID is embedded in the encrypted payload and survives the encrypt-decrypt round-trip.
 
-**`VaultRepository.swift:509-515` (master):**
+**`VaultRepository.swift:509-516` (master):**
 ```swift
 let cipherToEncrypt = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
 let cipherEncryptionContext = try await clientService.vault().ciphers()
@@ -152,7 +152,7 @@ if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(...)
 
 ### 2.5 Temp-ID Cleanup in `resolveCreate` (Important)
 
-**`OfflineSyncResolver.swift:170-178` (master):**
+**`OfflineSyncResolver.swift:163-176` (master):**
 ```swift
 let tempId = cipher.id
 try await cipherService.addCipherWithServer(cipher, encryptedFor: userId)
@@ -166,7 +166,7 @@ if let tempId {
 **Review:**
 - **Rationale:** `addCipherWithServer` creates a new `CipherData` record with the server-assigned ID. The old record with the temp UUID remains in Core Data as an orphan until the next full sync's `replaceCiphers`. This cleanup removes it immediately.
 - **Edge case:** If `deleteCipherWithLocalStorage` fails, the error propagates and the pending change record is NOT deleted (because the code below hasn't executed yet). On retry, the resolver would attempt the full `resolveCreate` again, creating a duplicate on the server. This is the same RES-1 issue from the original review — the resolver is not idempotent for creates.
-- **Nil guard:** `if let tempId` correctly handles the (unlikely) case where the cipher had no ID. Test `test_processPendingChanges_create_nilId_skipsLocalDelete` covers this.
+- **Nil guard:** `if let tempId` correctly handles the (unlikely) case where the cipher had no ID. **[Updated]** No dedicated test covers the nil-ID path; the guard is defensive.
 
 ### ~~2.6 Folder Name Encryption (Critical Security Fix)~~ **[Superseded]**
 

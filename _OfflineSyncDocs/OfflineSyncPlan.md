@@ -31,10 +31,11 @@ Add support for saving vault items locally while offline, with automatic syncing
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Save Flow                                │
 │                                                                 │
-│  AddEditItemProcessor.saveItem()                                │
+│  UI Processor (e.g. AddEditItemProcessor.saveItem())             │
 │       │                                                         │
 │       ▼                                                         │
-│  VaultRepository.updateCipher()                                 │
+│  VaultRepository (updateCipher / addCipher /                    │
+│                    deleteCipher / softDeleteCipher)              │
 │       │                                                         │
 │       ├── API call succeeds ──► Normal flow (unchanged)         │
 │       │                                                         │
@@ -497,7 +498,7 @@ This cleanly excludes org ciphers without affecting any other flow.
 
 ## 9. New and Modified Files Summary
 
-### New Files
+### New Files [Updated to reflect current code]
 
 | File | Location | Purpose |
 |------|----------|---------|
@@ -508,6 +509,9 @@ This cleanly excludes org ciphers without affecting any other flow.
 | `OfflineSyncResolver.swift` | `BitwardenShared/Core/Vault/Services/` | Conflict resolution and sync logic |
 | `OfflineSyncResolverTests.swift` | `BitwardenShared/Core/Vault/Services/` | Unit tests |
 | `MockOfflineSyncResolver.swift` | Test helpers | Mock for testing |
+| `CipherView+OfflineSync.swift` | `BitwardenShared/Core/Vault/Extensions/` | `CipherView.withId()` extension for assigning temp IDs to offline-created ciphers |
+| `CipherViewOfflineSyncTests.swift` | `BitwardenShared/Core/Vault/Extensions/` | Unit tests for `CipherView+OfflineSync` |
+| `MockCipherAPIServiceForOfflineSync.swift` | Test helpers | Mock `CipherAPIService` for offline sync resolver tests |
 
 ### Modified Files
 
@@ -518,6 +522,7 @@ This cleanly excludes org ciphers without affecting any other flow.
 | `ServiceContainer.swift` | `BitwardenShared/Core/Platform/Services/` | Register new services, add properties and init params |
 | `VaultRepository.swift` | `BitwardenShared/Core/Vault/Repositories/` | Offline-aware `updateCipher()`, `addCipher()`, `deleteCipher()`, `softDeleteCipher()` with API failure catch-and-queue |
 | `SyncService.swift` | `BitwardenShared/Core/Vault/Services/` | Add early-abort pattern: resolve pending changes before `fetchSync()`, abort if unresolved to protect offline edits |
+| `GetCipherRequest.swift` | `BitwardenShared/Core/Vault/Services/API/Cipher/Requests/` | Added `validate(_:)` method to translate HTTP 404 into `OfflineSyncError.cipherNotFound` |
 | ~~`CipherService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — Existing protocol methods were sufficient. No changes needed. |
 | ~~`FolderService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — ~~Existing API sufficient for conflict folder creation.~~ **[Updated]** `FolderService` is no longer used by the resolver; the conflict backup folder has been removed. |
 | ~~`AddEditItemProcessor.swift`~~ | ~~`BitwardenShared/UI/Vault/VaultItem/AddEditItem/`~~ | **[Not modified]** — `OfflineSyncError.organizationCipherOfflineEditNotSupported` propagates through existing generic error handling. |
@@ -616,7 +621,7 @@ This is comparable to metadata already exposed by `CipherData` (which stores `id
 ### Phase 2: Offline Save Flow
 4. Modify `VaultRepository.updateCipher()` - catch API failures, queue pending changes
 5. Modify `VaultRepository.addCipher()` - offline creation with temp IDs
-6. Modify `VaultRepository.deleteCipher()` - offline soft delete queueing
+6. Modify `VaultRepository.deleteCipher()` and `softDeleteCipher()` - offline delete queueing
 7. Organisation cipher exclusion in save flow
 8. Modify `AddEditItemProcessor` - handle offline state in UI
 

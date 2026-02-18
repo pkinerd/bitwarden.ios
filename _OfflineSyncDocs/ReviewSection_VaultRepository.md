@@ -121,7 +121,7 @@ Parameters: encryptedCipher: Cipher, userId: String
 1. Guard let cipherId = encryptedCipher.id (temp ID already assigned by addCipher via CipherView.withId())
 2. Persist locally via cipherService.updateCipherWithLocalStorage(cipher)
 3. Convert to CipherDetailsResponseModel → JSON-encode
-4. Upsert pending change: changeType = .create, passwordChangeCount = 0
+4. Upsert pending change: changeType = .create, originalRevisionDate = nil, passwordChangeCount = 0
 ```
 
 **Temporary ID Generation:** The temporary UUID is assigned in `addCipher()` **before encryption** via `CipherView.withId(UUID().uuidString)`. This ensures the ID is baked into the encrypted content and survives the decrypt round-trip. `handleOfflineAdd` receives the already-encrypted cipher with the ID set.
