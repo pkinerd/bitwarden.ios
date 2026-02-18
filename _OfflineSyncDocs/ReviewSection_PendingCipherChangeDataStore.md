@@ -7,7 +7,7 @@
 | `BitwardenShared/Core/Vault/Models/Data/PendingCipherChangeData.swift` | Core Data Entity + Predicates | 192 |
 | `BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStore.swift` | Data Store Protocol + Implementation | 155 |
 | `BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests.swift` | Tests | 286 |
-| `BitwardenShared/Core/Vault/Services/Stores/TestHelpers/MockPendingCipherChangeDataStore.swift` | Mock | 77 |
+| `BitwardenShared/Core/Vault/Services/Stores/TestHelpers/MockPendingCipherChangeDataStore.swift` | Mock | 78 |
 | `BitwardenShared/Core/Platform/Services/Stores/Bitwarden.xcdatamodeld/Bitwarden.xcdatamodel/contents` | Core Data Schema (modified) | +17 lines |
 
 ---
@@ -28,7 +28,7 @@ PendingCipherChangeData : NSManagedObject
 ├── Computed property: changeType (PendingCipherChangeType enum wrapper)
 ├── convenience init(context:id:cipherId:userId:changeType:cipherData:
 │                    originalRevisionDate:offlinePasswordChangeCount:)
-└── static predicate/request helpers (6 methods)
+└── static predicate/request helpers (7 methods)
 ```
 
 **Change Type Enum (`PendingCipherChangeType`):**
@@ -108,7 +108,7 @@ A comprehensive mock capturing all method calls and supporting configurable resu
 - `fetchPendingChangesResult` / `fetchPendingChangesCalledWith` — Track fetch-all calls
 - `fetchPendingChangeResult` / `fetchPendingChangeCalledWith` — Track fetch-by-cipher calls
 - `upsertPendingChangeCalledWith` — Captures full parameter tuple for assertion
-- `pendingChangeCountResult: Int` — Returns a single configured count value. **[Updated]** The `pendingChangeCountResults: [Int]?` sequential-return mechanism was removed in commit `a52d379` since the SyncService pre-sync flow now only calls `pendingChangeCount` once (post-resolution). The pre-count check was removed; the resolver is always called and handles the empty case internally.
+- `pendingChangeCountResult: Int` / `pendingChangeCountResults: [Int]` — Supports both a single default count and a sequential-return mechanism. When `pendingChangeCountResults` is non-empty, the mock returns (and removes) the first element; otherwise it falls back to `pendingChangeCountResult`.
 - `upsertPendingChangeResult: Result<Void, Error>` — Supports configurable error injection
 
 ### 5. User Data Cleanup (`DataStore.swift:105`)

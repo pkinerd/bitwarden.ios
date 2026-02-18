@@ -4,9 +4,9 @@
 
 | File | Type | Lines |
 |------|------|-------|
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 355 |
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 589 |
-| `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | Mock | 11 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 354 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 940 |
+| `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | Mock | 13 |
 
 ---
 
@@ -49,7 +49,7 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 | Dependency | Used For |
 |------------|----------|
 | `cipherAPIService: CipherAPIService` | Fetching server-side cipher state (`getCipher`) |
-| `cipherService: CipherService` | Adding/updating/soft-deleting ciphers (server + local) |
+| `cipherService: CipherService` | Adding/updating/soft-deleting/deleting ciphers (server + local) |
 | `clientService: ClientService` | Encrypt/decrypt operations via SDK |
 | ~~`folderService: FolderService`~~ | ~~Creating/fetching the "Offline Sync Conflicts" folder~~ **[Removed]** |
 | `pendingCipherChangeDataStore: PendingCipherChangeDataStore` | Fetching/deleting pending change records |
@@ -63,7 +63,7 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 
 **Named Constant:**
 
-- `softConflictPasswordChangeThreshold: Int16 = 4` — The minimum offline password change count that triggers a backup even without a server conflict. Extracted to a named constant (addressed from earlier review feedback).
+- `static let softConflictPasswordChangeThreshold: Int16 = 4` — The minimum offline password change count that triggers a backup even without a server conflict. Extracted to a static named constant (addressed from earlier review feedback).
 
 ### 4. Resolution Flow
 
@@ -86,13 +86,15 @@ processPendingChanges(userId:)
 
 ```
 1. Decode cipherData → CipherDetailsResponseModel → Cipher
-2. Call cipherService.addCipherWithServer(cipher, encryptedFor: userId)
-3. Delete pending change record
+2. Save tempId = cipher.id
+3. Call cipherService.addCipherWithServer(cipher, encryptedFor: userId)
+4. Delete the orphaned temp-ID cipher record via cipherService.deleteCipherWithLocalStorage(id: tempId)
+5. Delete pending change record
 ```
 
 **Important:** The create resolution does NOT replace the temporary client-generated ID with the server-assigned ID. The `addCipherWithServer` method on `CipherService` handles this internally: it pushes the cipher to the server, receives the server response (which contains the real ID), and updates local storage.
 
-**Known gap — orphaned temp-ID record:** After `addCipherWithServer` creates a new `CipherData` record with the server-assigned ID, the old record with the temp client-side ID becomes orphaned. This orphan persists until the next full sync's `replaceCiphers()` call cleans it up. While not harmful, it represents unnecessary data in Core Data between resolution and the next full sync.
+**[Updated]** The orphaned temp-ID record is now cleaned up explicitly. After `addCipherWithServer` creates a new `CipherData` record with the server-assigned ID, `resolveCreate` deletes the old record with the temp client-side ID via `deleteCipherWithLocalStorage(id: tempId)`. This prevents the orphan from persisting until the next full sync.
 
 **Potential Issue RES-1:** If `addCipherWithServer` fails partway (e.g., the server accepts the cipher but the local storage update fails), the pending change is NOT deleted (the `deletePendingChange` line is reached only after `addCipherWithServer` completes). On retry, this could result in a duplicate cipher on the server. The server has no deduplication mechanism for client-generated UUIDs.
 
@@ -159,7 +161,7 @@ processPendingChanges(userId:)
      → Create backup of server version BEFORE deleting
 
 3. Decode local pending cipher data
-4. Call cipherService.softDeleteCipherWithServer(id:, localCipher)
+4. Call cipherService.softDeleteCipherWithServer(id: cipherId, localCipher)
 5. Delete pending change record
 ```
 
@@ -170,12 +172,12 @@ processPendingChanges(userId:)
 ### 6. Backup Cipher Creation (`createBackupCipher`)
 
 ```
-1. Decrypt the source cipher via clientService.vault().ciphers().decrypt()
+1. Decrypt the source cipher via clientService.vault().ciphers().decrypt(cipher:)
 2. Format timestamp as "yyyy-MM-dd HH:mm:ss"
 3. Construct backup name: "{originalName} - {timestamp}"
 4. Create backup CipherView via CipherView.update(name:) — sets id=nil, key=nil; retains original folderId
-5. Encrypt the backup via clientService.vault().ciphers().encrypt()
-6. Push to server via cipherService.addCipherWithServer()
+5. Encrypt the backup via clientService.vault().ciphers().encrypt(cipherView:) → returns EncryptionContext
+6. Push to server via cipherService.addCipherWithServer(encryptionContext.cipher, encryptedFor: encryptionContext.encryptedFor)
 ```
 
 **[Updated]** The `getOrCreateConflictFolder` step has been removed. Backup ciphers now retain the original cipher's folder assignment instead of being placed in a dedicated "Offline Sync Conflicts" folder. This simplifies the resolver by removing the `FolderService` dependency, the `conflictFolderId` cache, and the folder lookup/creation logic (including the folder encryption fix from PR #29).
@@ -185,8 +187,9 @@ processPendingChanges(userId:)
 - `id` is set to `nil` (new cipher, server assigns ID)
 - `key` is set to `nil` (SDK generates a new encryption key)
 - `attachments` are set to `nil` (attachments are not duplicated)
+- `attachmentDecryptionFailures` are set to `nil`
 - `folderId` retains the original cipher's folder assignment
-- All other fields (login, notes, card, identity, password history, fields) are preserved
+- All other fields (login, notes, card, identity, secureNote, sshKey, password history, fields) are preserved
 
 ### ~~7. Conflict Folder Management (`getOrCreateConflictFolder`)~~ **[Removed]**
 
@@ -247,8 +250,18 @@ processPendingChanges(userId:)
 | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
 | `test_offlineSyncError_localizedDescription` | Error description verification |
 | `test_offlineSyncError_vaultLocked_localizedDescription` | Error description verification |
+| `test_processPendingChanges_update_conflict_localNewer_preservesPasswordHistory` | **[New]** Hard conflict (local wins) preserves separate password histories |
+| `test_processPendingChanges_update_conflict_serverNewer_preservesPasswordHistory` | **[New]** Hard conflict (server wins) preserves separate password histories |
+| `test_processPendingChanges_update_softConflict_preservesPasswordHistory` | **[New]** Soft conflict preserves accumulated local password history |
+| `test_processPendingChanges_create_apiFailure_pendingRecordRetained` | **[New]** Create API failure retains pending record |
+| `test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained` | **[New]** Update server fetch failure retains pending record |
+| `test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained` | **[New]** Soft delete API failure retains pending record |
+| `test_processPendingChanges_update_backupFailure_pendingRecordRetained` | **[New]** Backup creation failure retains pending record, blocks main update |
+| `test_processPendingChanges_batch_allSucceed` | **[New]** Batch with create, update, soft delete — all succeed, all records cleaned up |
+| `test_processPendingChanges_batch_mixedFailure_successfulItemResolved` | **[New]** Batch with mixed success/failure — only successful records cleaned up |
+| `test_processPendingChanges_batch_allFail` | **[New]** Batch where all items fail — no records cleaned up |
 
-**Coverage Assessment:** Good coverage of the main resolution paths. **[Updated]** Two new tests added for 404 handling in `resolveUpdate` and `resolveSoftDelete`. **[Updated]** Conflict folder creation test removed — folder no longer created.
+**Coverage Assessment:** Good coverage of the main resolution paths. **[Updated]** Two tests added for 404 handling in `resolveUpdate` and `resolveSoftDelete`. Conflict folder creation test removed — folder no longer created. **[Updated]** Three password history preservation tests, four API failure tests, and three batch processing tests have been added, significantly improving coverage. Former Issues RES-3 (batch processing) and RES-4 (API failure) are now addressed by these tests.
 
 ---
 
@@ -264,23 +277,23 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 ~~`DefaultOfflineSyncResolver` is a `class` (reference type) with a mutable `var conflictFolderId`. There is no actor isolation, lock, or other synchronization.~~ **[Resolved]** `DefaultOfflineSyncResolver` converted from `class` to `actor`, providing compiler-enforced isolation for `conflictFolderId`. See [AP-R2](ActionPlans/AP-R2_ConflictFolderIdThreadSafety.md). **[Updated]** `conflictFolderId` has since been removed entirely along with the conflict folder feature — the actor conversion remains beneficial for general thread safety.
 
-### Issue RES-3: No Test for Batch Processing with Mixed Results (Medium)
+### ~~Issue RES-3: No Test for Batch Processing with Mixed Results (Medium)~~ **[Resolved]**
 
-All tests process a single pending change. No test verifies behavior when the batch contains multiple changes where some succeed and some fail. For example: change A succeeds → change B fails → change A's pending record should be deleted, change B's should remain.
+~~All tests process a single pending change. No test verifies behavior when the batch contains multiple changes where some succeed and some fail.~~ **[Resolved]** Three batch processing tests have been added: `test_processPendingChanges_batch_allSucceed`, `test_processPendingChanges_batch_mixedFailure_successfulItemResolved`, and `test_processPendingChanges_batch_allFail`. These cover the all-succeed, mixed success/failure, and all-fail scenarios respectively.
 
-### Issue RES-4: No Test for API Failure During Resolution (Medium)
+### ~~Issue RES-4: No Test for API Failure During Resolution (Medium)~~ **[Resolved]**
 
-No test verifies what happens when `addCipherWithServer` or `updateCipherWithServer` throws during resolution. The implementation catches errors and continues, but this path is untested.
+~~No test verifies what happens when `addCipherWithServer` or `updateCipherWithServer` throws during resolution.~~ **[Resolved]** Four API failure tests have been added: `test_processPendingChanges_create_apiFailure_pendingRecordRetained`, `test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained`, `test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained`, and `test_processPendingChanges_update_backupFailure_pendingRecordRetained`. These verify that pending records are retained on failure and that downstream operations are blocked when upstream steps fail.
 
 ### ~~Issue RES-5: `timeProvider` Dependency Unused~~ [Resolved]
 
-~~The `timeProvider` is injected but never referenced in the implementation.~~ **[Resolved]** — The unused `timeProvider` dependency was removed in commit `a52d379`. Dependency count reduced from 7 to 6.
+~~The `timeProvider` is injected but never referenced in the implementation.~~ **[Resolved]** — The unused `timeProvider` dependency was removed in commit `a52d379`. **[Updated]** Combined with the removal of `folderService`, the dependency count has been reduced from 7 to 5.
 
-### Issue RES-6: Inline `MockCipherAPIServiceForOfflineSync` is Fragile (Low)
+### Issue RES-6: `MockCipherAPIServiceForOfflineSync` is Fragile (Low) **[Updated]**
 
-The test file defines an inline `MockCipherAPIServiceForOfflineSync` that implements `CipherAPIService` with `fatalError()` stubs for 15+ unused methods. Any change to the `CipherAPIService` protocol will require updating this mock at compile time. This pattern is acknowledged in the test file with a `// MARK: Unused stubs - required by protocol` comment.
+**[Updated]** The mock has been extracted from the test file into its own file at `BitwardenShared/Core/Vault/Services/TestHelpers/MockCipherAPIServiceForOfflineSync.swift`. It implements `CipherAPIService` with `fatalError()` stubs for 15 unused methods. Any change to the `CipherAPIService` protocol will require updating this mock at compile time. The file includes a DocC comment explaining why the manual mock exists (no `// sourcery: AutoMockable` annotation on `CipherAPIService`) and a `// MARK: Unused stubs - required by protocol` section.
 
-**Recommendation:** If the project has a mechanism for auto-generating mocks (Sourcery `@AutoMockable`), consider using it instead. If not, the inline mock is acceptable given the constraint.
+**Recommendation:** Consider adding `// sourcery: AutoMockable` to `CipherAPIService` to eliminate this manual maintenance, as suggested in the mock file's documentation.
 
 ### Observation RES-7: Backup Ciphers Don't Include Attachments
 
@@ -294,4 +307,4 @@ The test file defines an inline `MockCipherAPIServiceForOfflineSync` that implem
 
 ### Observation RES-9: `resolveSoftDelete` Requires `cipherData` but Creates Should Use Only `cipherId`
 
-For soft delete resolution, the implementation decodes `cipherData` to get a local `Cipher` for the `softDeleteCipherWithServer(id:, localCipher)` call. If `cipherData` is nil, it throws `missingCipherData`. This means the `handleOfflineSoftDelete` caller must always provide cipher data. This is guaranteed by the current `VaultRepository` implementation but is an implicit contract.
+For soft delete resolution, the implementation decodes `cipherData` to get a local `Cipher` for the `softDeleteCipherWithServer(id: cipherId, localCipher)` call. If `cipherData` is nil, it throws `missingCipherData`. This means the `handleOfflineSoftDelete` caller must always provide cipher data. This is guaranteed by the current `VaultRepository` implementation but is an implicit contract.
