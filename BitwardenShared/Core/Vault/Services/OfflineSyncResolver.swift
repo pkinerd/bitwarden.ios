@@ -336,10 +336,10 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         let decryptedCipher = try await clientService.vault().ciphers().decrypt(cipher: cipher)
 
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HHmmss"
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let timestampString = dateFormatter.string(from: timestamp)
 
-        let backupName = "\(decryptedCipher.name) - offline conflict \(timestampString)"
+        let backupName = "\(decryptedCipher.name) - \(timestampString)"
 
         // Create the backup cipher view with the modified name
         let backupCipherView = decryptedCipher.update(name: backupName)
