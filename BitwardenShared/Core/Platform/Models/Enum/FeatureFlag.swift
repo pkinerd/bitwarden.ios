@@ -31,8 +31,9 @@ extension FeatureFlag: @retroactive CaseIterable {
 
     /// Flag to enable/disable offline sync for vault ciphers. When enabled, cipher operations
     /// (create, update, delete, soft-delete) are queued locally when the server is unreachable
-    /// and resolved on the next successful sync. Acts as a production kill switch — disabling
-    /// this flag prevents new offline saves and skips pending change resolution during sync.
+    /// and resolved on the next successful sync. Disabling this flag prevents new offline saves
+    /// from being queued in VaultRepository. Existing pending changes are still resolved during
+    /// sync regardless of this flag, to prevent data loss.
     static let offlineSync = FeatureFlag(rawValue: "offline-sync", initialValue: .bool(true))
 
     /// Flag to enable/disable sends email verification feature.
