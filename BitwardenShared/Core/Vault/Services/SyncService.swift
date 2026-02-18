@@ -331,13 +331,15 @@ extension DefaultSyncService {
         // local offline edits. Resolution is skipped when the vault is locked since
         // the SDK crypto context is needed for conflict resolution.
         //
-        // Important: This block runs regardless of the offline sync feature flag.
-        // The feature flag only gates *new* offline saves in VaultRepository. Existing
-        // pending changes must always be resolved to prevent data loss — if resolution
-        // were skipped, replaceCiphers would overwrite local edits the user made while
-        // the feature was still enabled.
+        // The enableOfflineSyncResolution flag controls whether this entire block
+        // runs. When disabled, resolution is skipped and replaceCiphers proceeds
+        // normally — pending change records stay in the database for future
+        // resolution when the flag is re-enabled. The offlineSync flag (which gates
+        // new offline saves in VaultRepository) is also implicitly disabled when
+        // resolution is off, so no new pending changes accumulate.
+        let isResolutionEnabled = await configService.getFeatureFlag(.enableOfflineSyncResolution)
         let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
-        if !isVaultLocked {
+        if isResolutionEnabled, !isVaultLocked {
             let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
             if pendingCount > 0 {
                 try await offlineSyncResolver.processPendingChanges(userId: userId)

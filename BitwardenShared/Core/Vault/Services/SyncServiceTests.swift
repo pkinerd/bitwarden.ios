@@ -1175,14 +1175,14 @@ class SyncServiceTests: BitwardenTestCase {
         XCTAssertNil(cipherService.replaceCiphersCiphers)
     }
 
-    /// `fetchSync()` still resolves existing pending changes even when the offline sync
-    /// feature flag is disabled, to prevent data loss. The flag only gates new offline
-    /// saves in VaultRepository — resolution must always run so that `replaceCiphers`
-    /// doesn't overwrite edits made while the feature was still enabled.
+    /// `fetchSync()` still resolves existing pending changes even when the `offlineSync`
+    /// feature flag is disabled, because `offlineSync` only gates *new* saves in
+    /// VaultRepository. Resolution is controlled by `enableOfflineSyncResolution`.
     @MainActor
-    func test_fetchSync_preSyncResolution_stillResolvesWhenFeatureFlagDisabled() async throws {
+    func test_fetchSync_preSyncResolution_stillResolvesWhenOfflineSyncFlagDisabled() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
         configService.featureFlagsBool[.offlineSync] = false
         // Pending changes exist from before the flag was disabled.
         pendingCipherChangeDataStore.pendingChangeCountResults = [1, 0]
@@ -1192,6 +1192,26 @@ class SyncServiceTests: BitwardenTestCase {
         // Resolver SHOULD still be called to drain the queue.
         XCTAssertEqual(offlineSyncResolver.processPendingChangesCalledWith, ["1"])
         // Sync should proceed since all pending changes were resolved.
+        XCTAssertEqual(client.requests.count, 1)
+    }
+
+    /// `fetchSync()` skips the entire resolution block when
+    /// `enableOfflineSyncResolution` is disabled. Pending change records remain
+    /// in the database but are not processed, and `replaceCiphers` proceeds
+    /// normally — potentially overwriting local edits.
+    @MainActor
+    func test_fetchSync_preSyncResolution_skipsWhenResolutionFlagDisabled() async throws {
+        client.result = .httpSuccess(testData: .syncWithCiphers)
+        stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.enableOfflineSyncResolution] = false
+        // Pending changes exist, but resolution is disabled.
+        pendingCipherChangeDataStore.pendingChangeCountResult = 3
+
+        try await subject.fetchSync(forceSync: false)
+
+        // Resolver should NOT be called.
+        XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
+        // Sync should proceed (resolution block skipped entirely).
         XCTAssertEqual(client.requests.count, 1)
     }
 

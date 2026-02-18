@@ -29,11 +29,28 @@ extension FeatureFlag: @retroactive CaseIterable {
     /// Flag to enable/disable not logging out when a user's KDF settings are changed.
     static let noLogoutOnKdfChange = FeatureFlag(rawValue: "pm-23995-no-logout-on-kdf-change")
 
+    /// Flag to enable/disable resolution of pending offline changes during sync.
+    /// When enabled, the pre-sync resolution step in SyncService processes queued
+    /// changes and aborts sync if unresolved changes remain. When disabled, the
+    /// entire resolution block is skipped and `replaceCiphers` proceeds normally,
+    /// potentially overwriting local edits. Pending change records remain in the
+    /// database so they can be resolved when the flag is re-enabled, though they
+    /// will likely lose conflict resolution against newer server data.
+    ///
+    /// When this flag is disabled, `offlineSync` is implicitly disabled as well —
+    /// there is no point queuing new offline saves if resolution cannot run.
+    static let enableOfflineSyncResolution = FeatureFlag(
+        rawValue: "enable-offline-sync-resolution",
+        initialValue: .bool(true)
+    )
+
     /// Flag to enable/disable offline sync for vault ciphers. When enabled, cipher operations
     /// (create, update, delete, soft-delete) are queued locally when the server is unreachable
     /// and resolved on the next successful sync. Disabling this flag prevents new offline saves
-    /// from being queued in VaultRepository. Existing pending changes are still resolved during
-    /// sync regardless of this flag, to prevent data loss.
+    /// from being queued in VaultRepository.
+    ///
+    /// This flag is only effective when `enableOfflineSyncResolution` is also enabled.
+    /// If resolution is disabled, no new offline saves are queued regardless of this flag.
     static let offlineSync = FeatureFlag(rawValue: "offline-sync", initialValue: .bool(true))
 
     /// Flag to enable/disable sends email verification feature.
@@ -46,6 +63,7 @@ extension FeatureFlag: @retroactive CaseIterable {
             .cxpImportMobile,
             .cipherKeyEncryption,
             .enableCipherKeyEncryption,
+            .enableOfflineSyncResolution,
             .forceUpdateKdfSettings,
             .migrateMyVaultToMyItems,
             .noLogoutOnKdfChange,

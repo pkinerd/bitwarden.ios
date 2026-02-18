@@ -534,6 +534,7 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher,
+                  await configService.getFeatureFlag(.enableOfflineSyncResolution),
                   await configService.getFeatureFlag(.offlineSync)
             else {
                 throw error
@@ -674,7 +675,9 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as CipherAPIServiceError {
             throw error
         } catch {
-            guard await configService.getFeatureFlag(.offlineSync) else {
+            guard await configService.getFeatureFlag(.enableOfflineSyncResolution),
+                  await configService.getFeatureFlag(.offlineSync)
+            else {
                 throw error
             }
             try await handleOfflineDelete(cipherId: id, originalError: error)
@@ -946,6 +949,7 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher,
+                  await configService.getFeatureFlag(.enableOfflineSyncResolution),
                   await configService.getFeatureFlag(.offlineSync)
             else {
                 throw error
@@ -988,6 +992,7 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher,
+                  await configService.getFeatureFlag(.enableOfflineSyncResolution),
                   await configService.getFeatureFlag(.offlineSync)
             else {
                 throw error
