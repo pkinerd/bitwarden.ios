@@ -4,7 +4,7 @@
 
 This changeset implements a client-side offline sync feature for the Bitwarden iOS vault. When network connectivity is unavailable during cipher operations (add, update, delete, soft-delete), the app persists changes locally and queues them for resolution when connectivity is restored. A conflict resolution engine detects server-side changes made while offline and creates backup copies rather than silently discarding data.
 
-**Scope:** 24 files changed (+3,558 lines, -11 lines) across multiple commits on `claude/plan-offline-sync-JDSOl`, with subsequent simplification commits on `claude/review-offline-sync-changes-Tiv2i`. **[Updated]** Further simplification removed `URLError+NetworkConnection.swift` (26 lines) and its tests (39 lines), simplified VaultRepository catch blocks to plain `catch`, simplified SyncService pre-sync flow, and removed `test_updateCipher_nonNetworkError_rethrows`.
+**Scope:** 24 files changed (+3,558 lines, -11 lines) across multiple commits on `claude/plan-offline-sync-JDSOl`, with subsequent simplification commits on `claude/review-offline-sync-changes-Tiv2i`. **[Updated]** Further simplification removed `URLError+NetworkConnection.swift` (26 lines) and its tests (39 lines), refined VaultRepository catch blocks to a denylist pattern (rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError` < 500; all other errors trigger offline save), optimized SyncService pre-sync flow with a pre-count check, and removed `test_updateCipher_nonNetworkError_rethrows`.
 
 **Guidelines Referenced:**
 - Project architecture: `Docs/Architecture.md`, `Docs/Testing.md`
@@ -59,8 +59,9 @@ The offline sync feature introduces two new data flows:
 2. SyncService.fetchSync() called
 3. Pre-sync check:
    a. Is vault locked? → Yes: skip resolution
-   b. Attempt resolution: offlineSyncResolver.processPendingChanges(userId) — **[Updated]** resolver is always called; it handles the empty case internally. The pre-count check was removed.
-   c. Check remaining count → If > 0: ABORT sync (protect local data)
+   b. Pre-count check: pendingChangeCount → If 0: skip resolution (optimization)
+   c. Attempt resolution: offlineSyncResolver.processPendingChanges(userId) — **[Updated]** resolver is only called when pending changes exist (pre-count check re-added).
+   d. Post-resolution count check → If > 0: ABORT sync (protect local data)
 4. For each pending change, resolver:
    a. .create: push new cipher to server, delete pending record
    b. .update: fetch server version, detect conflicts by comparing revisionDates
@@ -178,7 +179,7 @@ The `OfflineSyncResolver` has the highest dependency count (5 injected services 
 
 **~~Issue CS-1~~ [Resolved] — Stray blank line removed.** See [AP-CS1](ActionPlans/Resolved/AP-CS1_StrayBlankLine.md).
 
-**[Updated note]** The `URLError+NetworkConnection.swift` file has been deleted. See [AP-URLError_NetworkConnectionReview.md](ActionPlans/Superseded/AP-URLError_NetworkConnectionReview.md). Error handling simplified to plain `catch` blocks.
+**[Updated note]** The `URLError+NetworkConnection.swift` file has been deleted. See [AP-URLError_NetworkConnectionReview.md](ActionPlans/Superseded/AP-URLError_NetworkConnectionReview.md). Error handling now uses a denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError` < 500; all other errors trigger offline save (PRs #26–#28).
 
 ---
 
@@ -503,7 +504,7 @@ The entity is added to the existing `Bitwarden.xcdatamodel` without creating a n
 | `ConnectivityMonitor.swift` | Removed (previous iteration) — existing sync triggers suffice |
 | `ConnectivityMonitorTests.swift` | Tests for removed service |
 | `MockConnectivityMonitor.swift` | Mock for removed service |
-| `URLError+NetworkConnection.swift` | **[Removed in simplification]** — `isNetworkConnectionError` property no longer needed; plain `catch` replaces URLError filtering |
+| `URLError+NetworkConnection.swift` | **[Removed in simplification]** — `isNetworkConnectionError` property no longer needed; denylist catch pattern replaces URLError filtering (PRs #26–#28) |
 | `URLError+NetworkConnectionTests.swift` | **[Removed in simplification]** — Tests for deleted extension |
 
 ### Documentation Files (3)

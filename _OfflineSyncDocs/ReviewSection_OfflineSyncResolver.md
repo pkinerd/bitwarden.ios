@@ -4,7 +4,7 @@
 
 | File | Type | Lines |
 |------|------|-------|
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 385 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 355 |
 | `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 589 |
 | `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | Mock | 11 |
 
@@ -14,7 +14,7 @@
 
 ### 1. Error Enum (`OfflineSyncError`)
 
-Defines four error cases for offline sync operations:
+Defines five error cases for offline sync operations:
 
 | Error | Description | User-Facing Message |
 |-------|-------------|---------------------|

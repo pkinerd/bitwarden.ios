@@ -100,21 +100,20 @@ create softDeletedCipher (with deletedDate) → encrypt → softDeleteCipherWith
 
 **[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
 
-### 5. New Helper: `handleOfflineAdd`
+### 5. New Helper: `handleOfflineAdd` **[Updated]**
 
 ```
 Parameters: encryptedCipher: Cipher, userId: String
 
-1. If encryptedCipher.id is nil → assign temp ID via Cipher.withTemporaryId(UUID().uuidString)
+1. Guard let cipherId = encryptedCipher.id (temp ID already assigned by addCipher via CipherView.withId())
 2. Persist locally via cipherService.updateCipherWithLocalStorage(cipher)
 3. Convert to CipherDetailsResponseModel → JSON-encode
-4. Guard let cipherId = cipher.id
-5. Upsert pending change: changeType = .create, passwordChangeCount = 0
+4. Upsert pending change: changeType = .create, passwordChangeCount = 0
 ```
 
-**Temporary ID Generation:** Uses `UUID().uuidString` which on iOS/macOS uses `/dev/urandom` (cryptographically secure). The ID is a standard UUID format (e.g., "A1B2C3D4-E5F6-...").
+**Temporary ID Generation:** The temporary UUID is assigned in `addCipher()` **before encryption** via `CipherView.withId(UUID().uuidString)`. This ensures the ID is baked into the encrypted content and survives the decrypt round-trip. `handleOfflineAdd` receives the already-encrypted cipher with the ID set.
 
-~~**Known issue (VI-1 root cause):** `Cipher.withTemporaryId()` sets `data: nil` on the copy. This means the locally-stored cipher has a valid ID but no encrypted content, causing decryption failures when the detail view tries to load it.~~ **[RESOLVED]** `Cipher.withTemporaryId()` has been replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). The `data: nil` problem no longer exists — the cipher is encrypted with the temp ID already set, so all fields (including `data`) are properly populated. The UI fallback (`fetchCipherDetailsDirectly()`) remains as defense-in-depth. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
+~~**Known issue (VI-1 root cause):** `Cipher.withTemporaryId()` sets `data: nil` on the copy.~~ **[RESOLVED]** `Cipher.withTemporaryId()` has been replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). The `data: nil` problem no longer exists — the cipher is encrypted with the temp ID already set, so all fields (including `data`) are properly populated. The UI fallback (`fetchCipherDetailsDirectly()`) remains as defense-in-depth. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
 **Why `updateCipherWithLocalStorage` instead of `addCipherWithLocalStorage`?** The method name suggests an update, but it's used for a new cipher. This is because `CipherService.updateCipherWithLocalStorage` performs an upsert (insert-or-update) on the local Core Data store. For a cipher with a new (temporary) ID, this effectively inserts.
 
@@ -139,7 +138,7 @@ Parameters: cipherView: CipherView, encryptedCipher: Cipher, userId: String
 8. Upsert pending change: changeType = .update, with updated data and counts
 ```
 
-**Password Change Detection Logic (lines 1012-1030):**
+**Password Change Detection Logic (lines 1055-1073):**
 
 This is the most complex part of the offline handling. It needs to determine if the current edit changed the password from the previous version. There are two cases:
 
@@ -164,7 +163,7 @@ Parameters: cipherId: String
 7. Upsert pending change: changeType = .softDelete, originalRevisionDate = cipher.revisionDate
 ```
 
-**Known gap:** If a cipher was created offline (pending type `.create`) and the user deletes it before sync, a `.softDelete` pending change is queued for a temp-ID that doesn't exist on the server. The resolver will fail when trying to `getCipher(withId: tempId)`. There is no `.create`-check cleanup on dev.
+~~**Known gap:** If a cipher was created offline (pending type `.create`) and the user deletes it before sync, a `.softDelete` pending change is queued for a temp-ID that doesn't exist on the server.~~ **[RESOLVED]** A `.create`-check cleanup has been added: if the existing pending change has `changeType == .create`, the method deletes the local cipher and pending record and returns — no server operation is queued for a cipher that never existed on the server.
 
 **Important Design Decision:** `deleteCipher` (permanent delete) is converted to a soft delete in offline mode. This is because a permanent delete cannot be undone, and if there's a conflict (server version was edited), the resolver needs the ability to create a backup. By soft-deleting locally, the cipher moves to trash rather than being permanently removed, giving the resolver more options during conflict resolution.
 
@@ -183,7 +182,7 @@ Parameters: cipherId: String, encryptedCipher: Cipher
 4. Upsert pending change: changeType = .softDelete
 ```
 
-**Same gap as `handleOfflineDelete`:** No `.create`-check cleanup. If an offline-created cipher is soft-deleted before sync, a futile `.softDelete` pending change is queued for a temp-ID that doesn't exist on the server.
+~~**Same gap as `handleOfflineDelete`:** No `.create`-check cleanup.~~ **[RESOLVED]** Same `.create`-check cleanup as `handleOfflineDelete` has been added. If the existing pending change has `changeType == .create`, the method deletes the local cipher and pending record and returns — no server operation is queued.
 
 **Note:** The `encryptedCipher` already has `deletedDate` set (this was done in `softDeleteCipher` before the API call). So persisting it locally correctly shows the cipher in the trash UI.
 
@@ -193,9 +192,9 @@ The following `VaultRepository` methods are NOT offline-aware:
 
 | Method | Lines | Impact |
 |--------|-------|--------|
-| `archiveCipher(_:)` | 527-529 | Generic network error if offline |
-| `unarchiveCipher(_:)` | 908-915 | Generic network error if offline |
-| `updateCipherCollections(_:)` | 939-942 | Generic network error if offline |
+| `archiveCipher(_:)` | 546-553 | Generic network error if offline |
+| `unarchiveCipher(_:)` | 950-957 | Generic network error if offline |
+| `updateCipherCollections(_:)` | 994-997 | Generic network error if offline |
 | `shareCipher(...)` | Various | Not applicable (requires network for org encryption) |
 | `restoreCipher(_:)` | Various | Generic network error if offline |
 

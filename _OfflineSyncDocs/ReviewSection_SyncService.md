@@ -24,16 +24,19 @@ Both are injected via the initializer and documented with DocC parameter docs.
 
 The core change is a block inserted at the top of `fetchSync(forceSync:isPeriodic:)`, just after obtaining the `userId`, before the `needsSync()` check:
 
-**[Updated]** The pre-count check (`pendingChangeCount > 0`) was removed. The resolver is now always called when the vault is unlocked; it handles the empty case internally. Only the post-resolution count check remains as a guard before `replaceCiphers`.
+**[Updated]** A pre-count check was re-added as an optimization so the common case (no pending changes) skips the resolver entirely. The resolver is only called when pending changes actually exist. Both pre-count and post-resolution count checks use `pendingCipherChangeDataStore.pendingChangeCount(userId:)`.
 
 ```swift
 // Process any pending offline changes before syncing.
 let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
 if !isVaultLocked {
-    try await offlineSyncResolver.processPendingChanges(userId: userId)
-    let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-    if remainingCount > 0 {
-        return   // ← Abort sync to prevent data loss
+    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+    if pendingCount > 0 {
+        try await offlineSyncResolver.processPendingChanges(userId: userId)
+        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+        if remainingCount > 0 {
+            return   // ← Abort sync to prevent data loss
+        }
     }
 }
 ```
@@ -48,11 +51,13 @@ fetchSync() called
 ├── Check vault lock state
 │   └── If locked → skip resolution (can't decrypt/resolve)
 │
-├── Attempt resolution: offlineSyncResolver.processPendingChanges(userId:)
-│   (resolver handles empty case internally — no pre-count check needed)
+├── Pre-count check: pendingChangeCount(userId:)
+│   └── If 0 → skip resolution entirely (optimization)
 │
-├── Check remaining pending count
-│   ├── If 0 → continue to normal sync (all resolved, or nothing was pending)
+├── Attempt resolution: offlineSyncResolver.processPendingChanges(userId:)
+│
+├── Post-resolution count check: pendingChangeCount(userId:)
+│   ├── If 0 → continue to normal sync (all resolved)
 │   └── If > 0 → ABORT SYNC (return early)
 │
 └── Continue to normal sync: needsSync check → API call → replace data
@@ -78,10 +83,10 @@ A blank line is added at line 381 (before `try await checkVaultTimeoutPolicy()`)
 |------|----------|-------------|
 | `test_fetchSync_preSyncResolution_triggersPendingChanges` | Pending changes exist → resolve → 0 remaining | Resolver called, sync proceeds (1 API request) |
 | `test_fetchSync_preSyncResolution_skipsWhenVaultLocked` | Vault locked + pending changes | Resolver NOT called |
-| `test_fetchSync_preSyncResolution_skipsWhenNoPendingChanges` | 0 pending changes | Resolver called (handles empty internally), sync proceeds normally |
+| `test_fetchSync_preSyncResolution_skipsWhenNoPendingChanges` | 0 pending changes | Pre-count check returns 0, resolver NOT called (optimization), sync proceeds normally |
 | `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain` | Pending changes → resolve → some remaining | Resolver called, sync ABORTED (0 API requests) |
 
-**[Updated]** The `pendingChangeCountResults` sequential-return pattern was removed from `MockPendingCipherChangeDataStore` since the sync flow now only calls `pendingChangeCount` once (post-resolution). The pre-count check was removed; the resolver is always called and handles the empty case internally.
+**[Updated]** A pre-count check was re-added as an optimization. The sync flow now calls `pendingChangeCount` twice: once before resolution (to skip the resolver when no pending changes exist) and once after resolution (to determine whether to abort). The `pendingChangeCountResults` sequential-return pattern in `MockPendingCipherChangeDataStore` supports this two-call flow.
 
 ---
 

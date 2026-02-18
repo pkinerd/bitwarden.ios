@@ -160,7 +160,7 @@ This ensures **one pending change record per cipher per user**. Subsequent edits
 
 ### 4a. PendingCipherChangeData NSManagedObject
 
-**File:** `BitwardenShared/Core/Vault/Models/Data/PendingCipherChangeData.swift` (new, 192 lines)
+**File:** `BitwardenShared/Core/Vault/Models/Data/PendingCipherChangeData.swift` (new, 193 lines)
 
 #### PendingCipherChangeType Enum (line 8)
 
@@ -178,7 +178,7 @@ Three change types representing the operations a user can perform on vault items
 
 The `PendingCipherChangeData` class uses `@NSManaged` properties matching the Core Data schema. Key details:
 
-- **Computed `changeType` property** (line 71): Converts between raw `Int16` and the `PendingCipherChangeType` enum.
+- **Computed `changeType` property** (line 60): Converts between raw `Int16` and the `PendingCipherChangeType` enum.
 - **Convenience initializer** (line 83): Sets `id = UUID().uuidString`, `createdDate` and `updatedDate` to current time.
 - **Static predicate helpers** (lines 108–142): `userIdPredicate`, `userIdAndCipherIdPredicate`, `idPredicate` — used by fetch/delete requests.
 - **Static fetch request helpers** (lines 144–180): `fetchByUserIdRequest` (sorted by `createdDate` ascending), `fetchByCipherIdRequest`, `fetchByIdRequest`.
@@ -186,7 +186,7 @@ The `PendingCipherChangeData` class uses `@NSManaged` properties matching the Co
 
 ### 4b. PendingCipherChangeDataStore
 
-**File:** `BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStore.swift` (new, 155 lines)
+**File:** `BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStore.swift` (new, 156 lines)
 
 #### Protocol (line 9)
 
@@ -238,31 +238,26 @@ The upsert **intentionally preserves `originalRevisionDate`** on update — this
 
 ## 5. CipherView+OfflineSync Extension Helpers
 
-**File:** `BitwardenShared/Core/Vault/Extensions/CipherView+OfflineSync.swift` (new, 95 lines)
+**File:** `BitwardenShared/Core/Vault/Extensions/CipherView+OfflineSync.swift` (new, 89 lines)
 
-Two extension methods support offline sync operations by creating modified copies of cipher objects.
+Two extension methods on `CipherView` support offline sync operations by creating modified copies.
 
-### 5a. `Cipher.withTemporaryId(_:)`
+### 5a. ~~`Cipher.withTemporaryId(_:)`~~ → `CipherView.withId(_:)` **[Replaced]**
+
+~~`Cipher.withTemporaryId()` operated after encryption and set `data: nil`, causing the VI-1 bug.~~ **[RESOLVED]** Replaced by `CipherView.withId()` (commit `3f7240a`) which operates **before** encryption. The ID is baked into the encrypted content, so it survives the decrypt round-trip without special handling. Called by `addCipher()` (not `handleOfflineAdd()`) to assign a temporary client-generated UUID before the encrypt step.
 
 ```swift
-extension Cipher {
-    func withTemporaryId(_ id: String) -> Cipher {
-        Cipher(
+extension CipherView {
+    func withId(_ id: String) -> CipherView {
+        CipherView(
             id: id,           // ← Replaced with specified ID
-            organizationId: organizationId,
-            folderId: folderId,
-            // ... ~25 more properties copied verbatim ...
-            data: nil,        // ← Known issue: sets data to nil
+            // ... all other properties copied verbatim ...
         )
     }
 }
 ```
 
-**Purpose:** Assigns a temporary client-generated UUID to a newly created cipher *after encryption*. Called by `handleOfflineAdd()` when the encrypted cipher has no ID (which is always the case for new ciphers, since the server assigns IDs).
-
-~~**Known issue (VI-1 root cause):** The method sets `data: nil`. The `data` field contains the raw encrypted content needed for decryption. This causes the detail view's `streamCipherDetails` publisher to fail when trying to decrypt the cipher. Mitigated via UI-level fallback (`fetchCipherDetailsDirectly()` in PR #31) but root cause remains.~~ **[RESOLVED]** This method has been replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). The `data: nil` problem no longer exists. See [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
-
-### 5b. `CipherView.update(name:)` (line 63) **[Updated]**
+### 5b. `CipherView.update(name:)` (line 57) **[Updated]**
 
 Creates a backup copy of a decrypted `CipherView` with a modified name, retaining the original folder assignment:
 
@@ -310,15 +305,20 @@ Four existing public methods were modified to catch API failures and delegate to
 
 Each public method follows the same pattern: encrypt the cipher, attempt the API call in a `do/catch`, and on failure delegate to the offline handler. Organization ciphers are checked before the offline handler is called.
 
-#### `addCipher(_:)` (line 503)
+#### `addCipher(_:)` (line 505) **[Updated]**
 
 ```swift
 func addCipher(_ cipher: CipherView) async throws {
     let isOrgCipher = cipher.organizationId != nil
-    let cipherEncryptionContext = try await clientService.vault().ciphers().encrypt(cipherView: cipher)
+    // Assign temp ID BEFORE encryption (CipherView.withId)
+    let cipherWithId = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
+    let encryptedCipher = try await clientService.vault().ciphers().encrypt(cipherView: cipherWithId)
     do {
-        try await cipherService.addCipherWithServer(...)
+        try await cipherService.addCipherWithServer(encryptedCipher, ...)
+        // On success: clean up any orphaned pending change from prior offline add
+        try? await pendingCipherChangeDataStore.deletePendingChange(cipherId: ..., userId: ...)
     } catch {
+        // Denylist: rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
         guard !isOrgCipher else {
             throw OfflineSyncError.organizationCipherOfflineEditNotSupported
         }
@@ -327,15 +327,17 @@ func addCipher(_ cipher: CipherView) async throws {
 }
 ```
 
-#### `updateCipher(_:)` (line 913)
+**Key change:** Temp ID assignment moved from `handleOfflineAdd` to `addCipher` and now operates on `CipherView` before encryption (via `CipherView.withId()`), resolving the VI-1 root cause.
+
+#### `updateCipher(_:)` (line 960)
 
 Same pattern — encrypts, tries API, catches failure, checks org cipher, calls `handleOfflineUpdate`.
 
-#### `softDeleteCipher(_:)` (line 888)
+#### `softDeleteCipher(_:)` (line 928)
 
 Same pattern — updates `deletedDate`, encrypts, tries API, catches failure, checks org cipher, calls `handleOfflineSoftDelete`.
 
-#### `deleteCipher(_:)` (line 637)
+#### `deleteCipher(_:)` (line 652)
 
 Slightly different — permanent deletes don't have a pre-encrypted cipher, so the handler fetches the cipher first:
 
@@ -353,19 +355,19 @@ func deleteCipher(_ id: String) async throws {
 
 ### 6b. New Offline Handlers
 
-#### `handleOfflineAdd(encryptedCipher:userId:)` (line 950)
+#### `handleOfflineAdd(encryptedCipher:userId:)` (line 1007)
 
-1. Assigns a temporary `UUID().uuidString` if the cipher has no ID
+1. Guards that `encryptedCipher.id` is non-nil (temp ID already assigned by `addCipher` before encryption via `CipherView.withId()`)
 2. Persists the cipher to local Core Data via `cipherService.updateCipherWithLocalStorage()`
 3. Encodes the cipher as `CipherDetailsResponseModel` → JSON `Data`
 4. Queues a `.create` pending change record
 
-#### `handleOfflineUpdate(cipherView:encryptedCipher:userId:)` (line 989)
+#### `handleOfflineUpdate(cipherView:encryptedCipher:userId:)` (line 1034)
 
 1. Persists the updated cipher locally
 2. Encodes it as JSON
 3. Fetches any existing pending change for this cipher
-4. **Password change detection** (lines 1012–1035):
+4. **Password change detection** (lines 1055–1073):
    - If there's an existing pending change: decrypts the previous pending cipher data and compares `login?.password` with the new cipher's password
    - If first offline edit: fetches the local cipher, decrypts it, and compares passwords
    - Increments `offlinePasswordChangeCount` if different
@@ -374,21 +376,23 @@ func deleteCipher(_ id: String) async throws {
 
 **Security note:** Password comparison is done entirely in-memory using the SDK's decrypt operations. No plaintext passwords are persisted.
 
-#### `handleOfflineDelete(cipherId:)` (line 1046)
+#### `handleOfflineDelete(cipherId:)` (line 1096) **[Updated]**
 
 1. Gets active user ID from `stateService`
-2. Fetches the cipher from local storage (to preserve its data for conflict resolution)
-3. Guards against organization ciphers (throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`)
-4. Soft-deletes locally via `cipherService.deleteCipherWithLocalStorage()`
-5. Queues a `.softDelete` pending change
+2. **[Updated]** If a pending `.create` change exists for this cipher, cleans up locally (deletes local cipher + pending record) and returns — no server operation needed for a cipher that never existed on the server
+3. Fetches the cipher from local storage (to preserve its data for conflict resolution)
+4. Guards against organization ciphers (throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`)
+5. Soft-deletes locally via `cipherService.deleteCipherWithLocalStorage()`
+6. Queues a `.softDelete` pending change
 
 **Note:** The org cipher guard is inside this handler (not in the public method) because `deleteCipher` only takes an ID parameter — the cipher must be fetched to check `organizationId`.
 
-#### `handleOfflineSoftDelete(cipherId:encryptedCipher:)` (line 1079)
+#### `handleOfflineSoftDelete(cipherId:encryptedCipher:)` (line 1142) **[Updated]**
 
 1. Gets active user ID
-2. Persists the already-soft-deleted cipher locally (it has `deletedDate` set)
-3. Queues a `.softDelete` pending change
+2. **[Updated]** If a pending `.create` change exists for this cipher, cleans up locally (deletes local cipher + pending record) and returns — no server operation needed for a cipher that never existed on the server
+3. Persists the already-soft-deleted cipher locally (it has `deletedDate` set)
+4. Queues a `.softDelete` pending change
 
 ### Organization Cipher Protection
 
@@ -399,10 +403,11 @@ All four handlers guard against organization ciphers. The rationale:
 
 ### Error Handling Design
 
-The original implementation used `URLError` classification to determine which errors should trigger offline fallback. This was **simplified in commit `e13aefe`** to use plain `catch` blocks — any API failure triggers offline save. The rationale:
-- The networking stack separates transport errors from HTTP status errors
-- Fine-grained URLError filtering was unnecessary and introduced maintenance burden
-- All errors that reach the catch block indicate the server call failed, making offline save appropriate
+The original implementation used `URLError` classification to determine which errors should trigger offline fallback. This was **simplified in commit `e13aefe`** to remove the `URLError+NetworkConnection` extension, and then **refined via PRs #26–#28** to use a **denylist pattern**: specific known error types (`ServerError`, `ResponseValidationError` with status < 500, `CipherAPIServiceError`) are rethrown, while all other errors trigger offline save. The rationale:
+- `ServerError` and 4xx `ResponseValidationError` indicate the server received and rejected the request (not a connectivity issue)
+- `CipherAPIServiceError` indicates client-side validation failures (programming errors)
+- All other errors (including 5xx, `URLError`, unknown errors) appropriately trigger offline save
+- On successful online operations, orphaned pending change records from prior offline attempts are cleaned up
 
 **Related issues:** [AP-U1](./_OfflineSyncDocs/ActionPlans/AP-U1_OrgCipherErrorTiming.md), [AP-U2](./_OfflineSyncDocs/ActionPlans/AP-U2_InconsistentOfflineSupport.md), [AP-VR2](./_OfflineSyncDocs/ActionPlans/AP-VR2_DeleteConvertedToSoftDelete.md)
 **Review section:** [ReviewSection_VaultRepository.md](./_OfflineSyncDocs/ReviewSection_VaultRepository.md)
@@ -411,7 +416,7 @@ The original implementation used `URLError` classification to determine which er
 
 ## 7. OfflineSyncResolver Conflict Resolution Engine
 
-**File:** `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` (new, 385 lines)
+**File:** `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` (new, 355 lines)
 
 The core conflict resolution engine that processes pending offline changes when connectivity returns.
 
@@ -523,15 +528,18 @@ Timestamp-based winner determination:
 let localTimestamp = pendingChange.updatedDate ?? pendingChange.createdDate ?? Date.distantPast
 let serverTimestamp = serverCipher.revisionDate
 
-if localTimestamp >= serverTimestamp {
-    // Local wins: push local to server, backup server version
-    try await cipherService.updateCipherWithServer(localCipher, ...)
+if localTimestamp > serverTimestamp {
+    // Local wins: backup server FIRST, then push local
     try await createBackupCipher(from: serverCipher, timestamp: serverTimestamp, userId: userId)
+    try await cipherService.updateCipherWithServer(localCipher, ...)
 } else {
-    // Server wins: keep server version, backup local version
+    // Server wins (or equal): backup local FIRST, then update local storage
     try await createBackupCipher(from: localCipher, timestamp: localTimestamp, userId: userId)
+    try await cipherService.updateCipherWithLocalStorage(serverCipher)
 }
 ```
+
+**Note:** Uses strict `>` comparison — if timestamps are equal, the server version wins (conservative choice).
 
 #### `resolveSoftDelete(pendingChange:cipherId:userId:)` (line 252)
 
@@ -590,12 +598,15 @@ let userId = account.profile.userId
 // 2. Check vault lock (new: computed once, reused below)
 let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
 
-// 3. Resolve pending changes (only if vault unlocked)
+// 3. Resolve pending changes (only if vault unlocked AND pending changes exist)
 if !isVaultLocked {
-    try await offlineSyncResolver.processPendingChanges(userId: userId)
-    let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-    if remainingCount > 0 {
-        return  // ABORT: protect local offline edits
+    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+    if pendingCount > 0 {
+        try await offlineSyncResolver.processPendingChanges(userId: userId)
+        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+        if remainingCount > 0 {
+            return  // ABORT: protect local offline edits
+        }
     }
 }
 
@@ -806,7 +817,7 @@ Tests the pre-sync resolution integration in `fetchSync()`.
 |------|----------|---------------|
 | `test_fetchSync_preSyncResolution_triggersPendingChanges` | Normal flow | `processPendingChanges` called, sync proceeds |
 | `test_fetchSync_preSyncResolution_skipsWhenVaultLocked` | Vault locked | `processPendingChanges` NOT called, sync proceeds |
-| `test_fetchSync_preSyncResolution_noPendingChanges` | Empty queue | Resolver called (handles empty internally), sync proceeds |
+| `test_fetchSync_preSyncResolution_noPendingChanges` | Empty queue | Pre-count check returns 0, resolver NOT called (optimization), sync proceeds |
 | `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain` | Unresolved changes | Sync ABORTED — no HTTP request made |
 
 The abort test is the most critical — it verifies that `replaceCiphers()` is never called when pending changes remain, preventing data loss.
@@ -843,9 +854,9 @@ Three follow-up commits addressed issues identified during code review:
 
 **Removed:** `URLError+NetworkConnection.swift` and its tests — an extension that classified 10 `URLError` codes as "network connection errors."
 
-**Changed:** `VaultRepository` offline handlers now use plain `catch` blocks instead of `catch let error as URLError where error.isNetworkConnectionError`.
+**Changed:** `VaultRepository` offline handlers now use denylist catch blocks (rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError` < 500; all other errors trigger offline save) instead of `catch let error as URLError where error.isNetworkConnectionError`. See also PRs #26–#28 for the subsequent refinement.
 
-**Rationale:** The distinction was unnecessary. Any error reaching the catch block means the server call failed, making offline save the correct response regardless of error type. This also resolved three action plan issues:
+**Rationale:** The URLError classification was unnecessary and too narrow. The initial simplification to plain `catch` was subsequently refined to the denylist pattern to ensure client-side validation errors and 4xx server rejections propagate correctly while all other errors (5xx, transport, unknown) trigger offline save. This also resolved three action plan issues:
 - [AP-SEC1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md) — TLS failures triggering offline save (superseded)
 - [AP-EXT1](./_OfflineSyncDocs/ActionPlans/Resolved/AP-EXT1_TimedOutClassification.md) — Timeout errors too broad (superseded)
 - [AP-T6](./_OfflineSyncDocs/ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md) — Incomplete URLError test coverage (resolved by deletion)
@@ -1018,12 +1029,12 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `Core/Vault/Extensions/CipherView+OfflineSync.swift` | 95 | Cipher copy helpers |
+| `Core/Vault/Extensions/CipherView+OfflineSync.swift` | 89 | Cipher copy helpers |
 | `Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` | 128 | Extension tests |
-| `Core/Vault/Models/Data/PendingCipherChangeData.swift` | 192 | Core Data entity |
-| `Core/Vault/Services/OfflineSyncResolver.swift` | 385 | Conflict resolution engine |
+| `Core/Vault/Models/Data/PendingCipherChangeData.swift` | 193 | Core Data entity |
+| `Core/Vault/Services/OfflineSyncResolver.swift` | 355 | Conflict resolution engine |
 | `Core/Vault/Services/OfflineSyncResolverTests.swift` | 589 | Resolver tests |
-| `Core/Vault/Services/Stores/PendingCipherChangeDataStore.swift` | 155 | Data store protocol + impl |
+| `Core/Vault/Services/Stores/PendingCipherChangeDataStore.swift` | 156 | Data store protocol + impl |
 | `Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests.swift` | 286 | Data store tests |
 | `Core/Vault/Services/Stores/TestHelpers/MockPendingCipherChangeDataStore.swift` | 72 | Data store mock |
 | `Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | 11 | Resolver mock |
