@@ -372,6 +372,191 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
     }
 
+    // MARK: Tests - Password History Preservation
+
+    /// `processPendingChanges(userId:)` with a hard conflict where local wins preserves
+    /// the server version's password history on the backup cipher and the local version's
+    /// password history on the pushed cipher without merging the two.
+    func test_processPendingChanges_update_conflict_localNewer_preservesPasswordHistory() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
+
+        // Local cipher with its own password history from offline edits.
+        let localPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 5, day: 1),
+                password: "local-old-pass"
+            ),
+        ]
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            passwordHistory: localPasswordHistory,
+            revisionDate: originalRevisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher with a different password history.
+        let serverPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 10),
+                password: "server-old-pass"
+            ),
+        ]
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            passwordHistory: serverPasswordHistory,
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Backup should contain the server version's password history (not merged).
+        let backupCipher = try XCTUnwrap(cipherService.addCipherWithServerCiphers.first)
+        XCTAssertEqual(backupCipher.passwordHistory?.count, 1)
+        XCTAssertEqual(backupCipher.passwordHistory?.first?.password, "server-old-pass")
+
+        // Pushed cipher should contain the local version's password history (not merged).
+        let pushedCipher = try XCTUnwrap(cipherService.updateCipherWithServerCiphers.first)
+        XCTAssertEqual(pushedCipher.passwordHistory?.count, 1)
+        XCTAssertEqual(pushedCipher.passwordHistory?.first?.password, "local-old-pass")
+    }
+
+    /// `processPendingChanges(userId:)` with a hard conflict where server wins preserves
+    /// the local version's password history on the backup cipher and the server version's
+    /// password history in local storage without merging the two.
+    func test_processPendingChanges_update_conflict_serverNewer_preservesPasswordHistory() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+
+        // Local cipher with its own password history from offline edits.
+        let localPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 5, day: 1),
+                password: "local-old-pass-1"
+            ),
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 5, day: 15),
+                password: "local-old-pass-2"
+            ),
+        ]
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            passwordHistory: localPasswordHistory,
+            revisionDate: originalRevisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher with a different password history.
+        let serverPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 10),
+                password: "server-old-pass"
+            ),
+        ]
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            passwordHistory: serverPasswordHistory,
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Backup should contain the local version's password history (not merged).
+        let backupCipher = try XCTUnwrap(cipherService.addCipherWithServerCiphers.first)
+        XCTAssertEqual(backupCipher.passwordHistory?.count, 2)
+        XCTAssertEqual(backupCipher.passwordHistory?[0].password, "local-old-pass-1")
+        XCTAssertEqual(backupCipher.passwordHistory?[1].password, "local-old-pass-2")
+
+        // Local storage should contain the server version's password history (not merged).
+        let storedCipher = try XCTUnwrap(cipherService.updateCipherWithLocalStorageCiphers.first)
+        XCTAssertEqual(storedCipher.passwordHistory?.count, 1)
+        XCTAssertEqual(storedCipher.passwordHistory?.first?.password, "server-old-pass")
+    }
+
+    /// `processPendingChanges(userId:)` with a soft conflict (4+ password changes, no
+    /// server-side changes) preserves the local version's accumulated password history on
+    /// the pushed cipher and the server version's password history on the backup cipher.
+    func test_processPendingChanges_update_softConflict_preservesPasswordHistory() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+
+        // Local cipher with accumulated password history from multiple offline password changes.
+        let localPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 2),
+                password: "old-pass-1"
+            ),
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 3),
+                password: "old-pass-2"
+            ),
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 4),
+                password: "old-pass-3"
+            ),
+        ]
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            passwordHistory: localPasswordHistory,
+            revisionDate: revisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 4
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher has no password history (unchanged since going offline).
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Backup should contain the server version's password history (nil/empty).
+        let backupCipher = try XCTUnwrap(cipherService.addCipherWithServerCiphers.first)
+        XCTAssertNil(backupCipher.passwordHistory)
+
+        // Pushed cipher should contain all accumulated local password history entries.
+        let pushedCipher = try XCTUnwrap(cipherService.updateCipherWithServerCiphers.first)
+        XCTAssertEqual(pushedCipher.passwordHistory?.count, 3)
+        XCTAssertEqual(pushedCipher.passwordHistory?[0].password, "old-pass-1")
+        XCTAssertEqual(pushedCipher.passwordHistory?[1].password, "old-pass-2")
+        XCTAssertEqual(pushedCipher.passwordHistory?[2].password, "old-pass-3")
+    }
+
     /// `processPendingChanges(userId:)` with a `.softDelete` pending change where the
     /// server revision date differs from the original (conflict) creates a backup of the
     /// server version before completing the soft delete.
