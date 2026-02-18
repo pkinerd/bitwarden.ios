@@ -7,7 +7,8 @@
 | ~~`BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnection.swift`~~ | ~~Extension~~ | ~~26~~ | **[Deleted]** |
 | ~~`BitwardenShared/Core/Platform/Extensions/URLError+NetworkConnectionTests.swift`~~ | ~~Tests~~ | ~~39~~ | **[Deleted]** |
 | `BitwardenShared/Core/Vault/Extensions/CipherView+OfflineSync.swift` | Extension | 104 | Active |
-| `BitwardenShared/Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` | Tests | 171 | Active |
+| `BitwardenShared/Core/Vault/Extensions/CipherViewOfflineSyncTests.swift` | Tests | 171 (10 tests) | Active |
+| `BitwardenShared/UI/Vault/VaultItem/ViewItem/ViewLoginItem/Extensions/CipherView+Update.swift` | Extension (modified) | 416 | Active — Phase 2 DocC annotations added |
 
 ---
 
@@ -142,3 +143,31 @@ Both methods delegate to a shared `private func makeCopy(...)` which manually co
 ### ~~Issue EXT-4~~ [Resolved]
 
 Same as T6. See [Resolved/AP-T6](ActionPlans/Resolved/AP-T6_IncompleteURLErrorTestCoverage.md). URLError extension and tests deleted in commit `e13aefe`.
+
+---
+
+## 3. CipherView+Update.swift (Phase 2 Annotations)
+
+### Changes
+
+Three `- Important:` DocC annotations were added to existing methods in `CipherView+Update.swift` (which is NOT part of the offline sync feature but is adjacent — it also manually copies `CipherView` and `LoginView` properties):
+
+| Method | Property Count Documented | Line |
+|--------|--------------------------|------|
+| `updatedView(with:timeProvider:)` | 28 CipherView properties | 139-141 |
+| `update(archivedDate:collectionIds:deletedDate:folderId:login:organizationId:)` | 28 CipherView properties | 340-343 |
+| `LoginView.update(totp:)` | 7 LoginView properties | 398-400 |
+
+Each annotation includes the property count and a note that the method must be reviewed when the SDK type changes.
+
+### Purpose
+
+These annotations complement the SDK property count guard tests in `CipherViewOfflineSyncTests.swift`. When a guard test fails (property count changed), the failure message lists all manual copy methods, including these three in `CipherView+Update.swift`, so developers know which methods to review.
+
+### Compliance
+
+| Guideline | Status | Details |
+|-----------|--------|---------|
+| DocC documentation | **Pass** | Uses `- Important:` callout per Apple's documentation markup |
+| No code changes | **Pass** | Documentation only — no functional changes |
+| Cross-reference | **Pass** | References AP-CS2 action plan for traceability |

@@ -54,7 +54,7 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 | `clientService: ClientService` | Encrypt/decrypt operations via SDK |
 | ~~`folderService: FolderService`~~ | ~~Creating/fetching the "Offline Sync Conflicts" folder~~ **[Removed]** |
 | `pendingCipherChangeDataStore: PendingCipherChangeDataStore` | Fetching/deleting pending change records |
-| `stateService: StateService` | Managing account state |
+| `stateService: StateService` | **Unused** — injected but never called; `userId` is passed as a parameter from `SyncService`. Should be removed (~4 lines cleanup). |
 
 ~~**Instance State:**~~
 
