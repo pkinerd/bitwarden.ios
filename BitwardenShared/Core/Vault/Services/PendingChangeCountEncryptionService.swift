@@ -83,7 +83,8 @@ class DefaultPendingChangeCountEncryptionService: PendingChangeCountEncryptionSe
 
     func encrypt(count: Int16) async throws -> Data {
         let derivedKey = try await deriveKey()
-        let plaintext = withUnsafeBytes(of: count) { Data($0) }
+        var littleEndian = count.littleEndian
+        let plaintext = Data(bytes: &littleEndian, count: MemoryLayout<Int16>.size)
         let sealedBox = try AES.GCM.seal(plaintext, using: derivedKey)
         guard let combined = sealedBox.combined else {
             throw PendingChangeCountEncryptionError.invalidData
@@ -98,7 +99,7 @@ class DefaultPendingChangeCountEncryptionService: PendingChangeCountEncryptionSe
         guard plaintext.count == MemoryLayout<Int16>.size else {
             throw PendingChangeCountEncryptionError.invalidData
         }
-        return plaintext.withUnsafeBytes { $0.load(as: Int16.self) }
+        return Int16(littleEndian: plaintext.withUnsafeBytes { $0.load(as: Int16.self) })
     }
 
     // MARK: Private
