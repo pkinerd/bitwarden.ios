@@ -29,6 +29,12 @@ extension FeatureFlag: @retroactive CaseIterable {
     /// Flag to enable/disable not logging out when a user's KDF settings are changed.
     static let noLogoutOnKdfChange = FeatureFlag(rawValue: "pm-23995-no-logout-on-kdf-change")
 
+    /// Flag to enable/disable offline sync for vault ciphers. When enabled, cipher operations
+    /// (create, update, delete, soft-delete) are queued locally when the server is unreachable
+    /// and resolved on the next successful sync. Acts as a production kill switch — disabling
+    /// this flag prevents new offline saves and skips pending change resolution during sync.
+    static let offlineSync = FeatureFlag(rawValue: "offline-sync", initialValue: .bool(true))
+
     /// Flag to enable/disable sends email verification feature.
     static let sendEmailVerification = FeatureFlag(rawValue: "pm-19051-send-email-verification")
 
@@ -42,6 +48,7 @@ extension FeatureFlag: @retroactive CaseIterable {
             .forceUpdateKdfSettings,
             .migrateMyVaultToMyItems,
             .noLogoutOnKdfChange,
+            .offlineSync,
             .sendEmailVerification,
         ]
     }

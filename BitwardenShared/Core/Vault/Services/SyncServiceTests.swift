@@ -68,6 +68,10 @@ class SyncServiceTests: BitwardenTestCase {
 
         userSessionStateService.getVaultTimeoutReturnValue = .fifteenMinutes
 
+        // Enable offline sync by default so existing tests that rely on offline
+        // sync behavior continue to work. Individual tests can override this.
+        configService.featureFlagsBool[.offlineSync] = true
+
         subject = DefaultSyncService(
             accountAPIService: APIService(client: client),
             appContextHelper: appContextHelper,
@@ -1173,6 +1177,26 @@ class SyncServiceTests: BitwardenTestCase {
         XCTAssertTrue(client.requests.isEmpty)
         // Ciphers should not be replaced.
         XCTAssertNil(cipherService.replaceCiphersCiphers)
+    }
+
+    /// `fetchSync()` skips the entire pre-sync resolution block when the offline sync
+    /// feature flag is disabled, allowing normal sync to proceed even if pending changes
+    /// exist in Core Data.
+    func test_fetchSync_preSyncResolution_skipsWhenFeatureFlagDisabled() async throws {
+        client.result = .httpSuccess(testData: .syncWithCiphers)
+        stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.offlineSync] = false
+        // Pending changes exist, but should be ignored when the flag is off.
+        pendingCipherChangeDataStore.pendingChangeCountResult = 3
+
+        try await subject.fetchSync(forceSync: false)
+
+        // Resolver should NOT be called.
+        XCTAssertTrue(offlineSyncResolver.processPendingChangesCalledWith.isEmpty)
+        // Pending change count should NOT be checked.
+        XCTAssertTrue(pendingCipherChangeDataStore.pendingChangeCountCalledWith.isEmpty)
+        // Sync should proceed normally — API request made.
+        XCTAssertEqual(client.requests.count, 1)
     }
 
     /// `needsSync(forceSync:onlyCheckLocalData:userId:)` returns `true` when

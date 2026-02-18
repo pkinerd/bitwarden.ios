@@ -329,9 +329,13 @@ extension DefaultSyncService {
         // Resolve any pending offline changes before syncing. If pending changes
         // remain after resolution, abort to prevent replaceCiphers from overwriting
         // local offline edits. Resolution is skipped when the vault is locked since
-        // the SDK crypto context is needed for conflict resolution.
+        // the SDK crypto context is needed for conflict resolution. The entire block
+        // is skipped when the offline sync feature flag is disabled so that normal
+        // sync proceeds unblocked — pending changes remain in Core Data silently
+        // until the flag is re-enabled or the user logs out.
         let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
-        if !isVaultLocked {
+        let isOfflineSyncEnabled = await configService.getFeatureFlag(.offlineSync)
+        if isOfflineSyncEnabled, !isVaultLocked {
             let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
             if pendingCount > 0 {
                 try await offlineSyncResolver.processPendingChanges(userId: userId)
