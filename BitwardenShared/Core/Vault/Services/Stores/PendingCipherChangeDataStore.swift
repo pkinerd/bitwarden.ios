@@ -31,7 +31,7 @@ protocol PendingCipherChangeDataStore: AnyObject {
     ///   - changeType: The type of offline change.
     ///   - cipherData: The JSON-encoded encrypted cipher snapshot.
     ///   - originalRevisionDate: The cipher's revision date before the first offline edit.
-    ///   - encryptedPasswordChangeCount: The encrypted password change count data.
+    ///   - offlinePasswordChangeCount: The number of offline password changes.
     ///
     func upsertPendingChange(
         cipherId: String,
@@ -39,7 +39,7 @@ protocol PendingCipherChangeDataStore: AnyObject {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        encryptedPasswordChangeCount: Data?
+        offlinePasswordChangeCount: Int16
     ) async throws
 
     /// Deletes a pending change record by its record ID.
@@ -94,7 +94,7 @@ extension DataStore: PendingCipherChangeDataStore {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        encryptedPasswordChangeCount: Data?
+        offlinePasswordChangeCount: Int16
     ) async throws {
         try await backgroundContext.performAndSave {
             let request = PendingCipherChangeData.fetchByCipherIdRequest(userId: userId, cipherId: cipherId)
@@ -105,7 +105,7 @@ extension DataStore: PendingCipherChangeDataStore {
                 existing.cipherData = cipherData
                 existing.changeTypeRaw = changeType.rawValue
                 existing.updatedDate = Date()
-                existing.encryptedPasswordChangeCount = encryptedPasswordChangeCount
+                existing.offlinePasswordChangeCount = offlinePasswordChangeCount
                 // Do NOT overwrite originalRevisionDate - it's the baseline for conflict detection
             } else {
                 // Create new pending change record
@@ -116,7 +116,7 @@ extension DataStore: PendingCipherChangeDataStore {
                     changeType: changeType,
                     cipherData: cipherData,
                     originalRevisionDate: originalRevisionDate,
-                    encryptedPasswordChangeCount: encryptedPasswordChangeCount
+                    offlinePasswordChangeCount: offlinePasswordChangeCount
                 )
             }
         }

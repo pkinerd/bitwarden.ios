@@ -349,9 +349,6 @@ class DefaultVaultRepository {
     /// The service used to manage syncing and updates to the user's organizations.
     private let organizationService: OrganizationService
 
-    /// The encryption service for the offline password change count.
-    private let pendingChangeCountEncryptionService: PendingChangeCountEncryptionService
-
     /// The data store for managing pending cipher changes queued during offline editing.
     private let pendingCipherChangeDataStore: PendingCipherChangeDataStore
 
@@ -390,7 +387,6 @@ class DefaultVaultRepository {
     ///   - errorReporter: The service used by the application to report non-fatal errors.
     ///   - folderService: The service used to manage syncing and updates to the user's folders.
     ///   - organizationService: The service used to manage syncing and updates to the user's organizations.
-    ///   - pendingChangeCountEncryptionService: The encryption service for the offline password change count.
     ///   - pendingCipherChangeDataStore: The data store for pending cipher changes.
     ///   - policyService: The service for managing the polices for the user.
     ///   - settingsService: The service used by the application to manage user settings.
@@ -410,7 +406,6 @@ class DefaultVaultRepository {
         errorReporter: ErrorReporter,
         folderService: FolderService,
         organizationService: OrganizationService,
-        pendingChangeCountEncryptionService: PendingChangeCountEncryptionService,
         pendingCipherChangeDataStore: PendingCipherChangeDataStore,
         policyService: PolicyService,
         settingsService: SettingsService,
@@ -429,7 +424,6 @@ class DefaultVaultRepository {
         self.errorReporter = errorReporter
         self.folderService = folderService
         self.organizationService = organizationService
-        self.pendingChangeCountEncryptionService = pendingChangeCountEncryptionService
         self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.policyService = policyService
         self.settingsService = settingsService
@@ -1026,7 +1020,7 @@ extension DefaultVaultRepository: VaultRepository {
             changeType: .create,
             cipherData: cipherData,
             originalRevisionDate: nil,
-            encryptedPasswordChangeCount: nil
+            offlinePasswordChangeCount: 0
         )
     }
 
@@ -1058,11 +1052,7 @@ extension DefaultVaultRepository: VaultRepository {
             userId: userId
         )
 
-        // Decrypt the existing password change count, defaulting to 0 for new records.
-        var passwordChangeCount: Int16 = 0
-        if let encryptedCount = existing?.encryptedPasswordChangeCount {
-            passwordChangeCount = try await pendingChangeCountEncryptionService.decrypt(data: encryptedCount)
-        }
+        var passwordChangeCount: Int16 = existing?.offlinePasswordChangeCount ?? 0
 
         // Detect password change by comparing with the previous version
         if let existingData = existing?.cipherData {
@@ -1089,15 +1079,13 @@ extension DefaultVaultRepository: VaultRepository {
         // needs to be POSTed, not an existing cipher to PUT.
         let changeType: PendingCipherChangeType = existing?.changeType == .create ? .create : .update
 
-        let encryptedCount = try await pendingChangeCountEncryptionService.encrypt(count: passwordChangeCount)
-
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
             changeType: changeType,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            encryptedPasswordChangeCount: encryptedCount
+            offlinePasswordChangeCount: passwordChangeCount
         )
     }
 
@@ -1144,7 +1132,7 @@ extension DefaultVaultRepository: VaultRepository {
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: cipher.revisionDate,
-            encryptedPasswordChangeCount: nil
+            offlinePasswordChangeCount: 0
         )
     }
 
@@ -1182,7 +1170,7 @@ extension DefaultVaultRepository: VaultRepository {
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: encryptedCipher.revisionDate,
-            encryptedPasswordChangeCount: nil
+            offlinePasswordChangeCount: 0
         )
     }
 

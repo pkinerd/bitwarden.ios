@@ -30,7 +30,6 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     var now: Date!
     var premiumAccount = Account.fixture(profile: .fixture(hasPremiumPersonally: true))
     var organizationService: MockOrganizationService!
-    var pendingChangeCountEncryptionService: MockPendingChangeCountEncryptionService!
     var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
     var policyService: MockPolicyService!
     var stateService: MockStateService!
@@ -60,7 +59,6 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         folderService = MockFolderService()
         now = Date(year: 2024, month: 1, day: 18)
         organizationService = MockOrganizationService()
-        pendingChangeCountEncryptionService = MockPendingChangeCountEncryptionService()
         pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
         policyService = MockPolicyService()
         syncService = MockSyncService()
@@ -85,7 +83,6 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             errorReporter: errorReporter,
             folderService: folderService,
             organizationService: organizationService,
-            pendingChangeCountEncryptionService: pendingChangeCountEncryptionService,
             pendingCipherChangeDataStore: pendingCipherChangeDataStore,
             policyService: policyService,
             settingsService: MockSettingsService(),
@@ -112,7 +109,6 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         fido2UserInterfaceHelper = nil
         folderService = nil
         organizationService = nil
-        pendingChangeCountEncryptionService = nil
         pendingCipherChangeDataStore = nil
         policyService = nil
         now = nil
@@ -1776,11 +1772,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         let cipher = CipherView.fixture(id: "123", login: .fixture(password: "new-pw"))
         try await subject.updateCipher(cipher)
 
-        // Password changed: count should be 1 (encrypted via the encryption service).
+        // Password changed: count should be 1.
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
-        XCTAssertEqual(pendingChangeCountEncryptionService.encryptCalledWith, [1])
-        XCTAssertNotNil(
-            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.encryptedPasswordChangeCount
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            1
         )
     }
 
@@ -1801,11 +1797,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         let cipher = CipherView.fixture(id: "123", login: .fixture(password: "same-pw"))
         try await subject.updateCipher(cipher)
 
-        // Password unchanged: count should be 0 (encrypted via the encryption service).
+        // Password unchanged: count should be 0.
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
-        XCTAssertEqual(pendingChangeCountEncryptionService.encryptCalledWith, [0])
-        XCTAssertNotNil(
-            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.encryptedPasswordChangeCount
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            0
         )
     }
 
@@ -1814,7 +1810,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     func test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
-        // Existing pending change with old password and encrypted count of 2.
+        // Existing pending change with old password and count of 2.
         let existingCipherData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(
                 id: "123",
@@ -1829,20 +1825,20 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             changeType: .update,
             cipherData: existingCipherData,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            encryptedPasswordChangeCount: Data("encrypted-2".utf8)
+            offlinePasswordChangeCount: 2
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
-
-        // Configure mock to decrypt the existing count as 2.
-        pendingChangeCountEncryptionService.decryptResult = .success(2)
 
         // The user is saving with a new password.
         let cipher = CipherView.fixture(id: "123", login: .fixture(password: "new-pw"))
         try await subject.updateCipher(cipher)
 
-        // Password changed: count should be 2 + 1 = 3 (encrypted via the encryption service).
+        // Password changed: count should be 2 + 1 = 3.
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
-        XCTAssertEqual(pendingChangeCountEncryptionService.encryptCalledWith, [3])
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            3
+        )
     }
 
     /// `updateCipher()` offline fallback preserves the existing password change count when
@@ -1850,7 +1846,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     func test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
-        // Existing pending change with same password and encrypted count of 2.
+        // Existing pending change with same password and count of 2.
         let existingCipherData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(
                 id: "123",
@@ -1865,59 +1861,20 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             changeType: .update,
             cipherData: existingCipherData,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            encryptedPasswordChangeCount: Data("encrypted-2".utf8)
+            offlinePasswordChangeCount: 2
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
-
-        // Configure mock to decrypt the existing count as 2.
-        pendingChangeCountEncryptionService.decryptResult = .success(2)
 
         // The user is saving with the same password.
         let cipher = CipherView.fixture(id: "123", login: .fixture(password: "same-pw"))
         try await subject.updateCipher(cipher)
 
-        // Password unchanged: count should remain at 2 (encrypted via the encryption service).
+        // Password unchanged: count should remain at 2.
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
-        XCTAssertEqual(pendingChangeCountEncryptionService.encryptCalledWith, [2])
-    }
-
-    /// `updateCipher()` offline fallback propagates decryption errors when the existing
-    /// pending record's encrypted password change count cannot be decrypted (e.g., the
-    /// vault key changed or the data is corrupt).
-    func test_updateCipher_offlineFallback_decryptionFailure_throws() async throws {
-        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
-
-        // Existing pending change with an encrypted count that will fail to decrypt.
-        let existingCipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(
-                id: "123",
-                login: .fixture(password: "old-pw")
-            )
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
+            2
         )
-        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
-        let existingChange = PendingCipherChangeData(
-            context: dataStore.persistentContainer.viewContext,
-            cipherId: "123",
-            userId: "1",
-            changeType: .update,
-            cipherData: existingCipherData,
-            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            encryptedPasswordChangeCount: Data("corrupt-data".utf8)
-        )
-        pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
-
-        // Configure mock to fail decryption.
-        pendingChangeCountEncryptionService.decryptResult = .failure(
-            PendingChangeCountEncryptionError.invalidData
-        )
-
-        let cipher = CipherView.fixture(id: "123", login: .fixture(password: "new-pw"))
-        await assertAsyncThrows(error: PendingChangeCountEncryptionError.invalidData) {
-            try await subject.updateCipher(cipher)
-        }
-
-        // The pending change should NOT be upserted since decryption failed before reaching that point.
-        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `updateCipher()` re-throws the original network error for organization ciphers
