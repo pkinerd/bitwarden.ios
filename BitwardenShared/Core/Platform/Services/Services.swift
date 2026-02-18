@@ -41,7 +41,6 @@ typealias Services = HasAPIService
     & HasOrganizationAPIService
     & HasPasteboardService
     & HasPendingAppIntentActionMediator
-    & HasPendingCipherChangeDataStore
     & HasPolicyService
     & HasRehydrationHelper
     & HasReviewPromptService
@@ -280,13 +279,6 @@ protocol HasOrganizationAPIService {
 protocol HasPendingAppIntentActionMediator {
     /// The mediator to execute pending `AppIntent` actions.
     var pendingAppIntentActionMediator: PendingAppIntentActionMediator { get }
-}
-
-/// Protocol for an object that provides a `PendingCipherChangeDataStore`.
-///
-protocol HasPendingCipherChangeDataStore {
-    /// The data store for managing pending cipher changes queued during offline editing.
-    var pendingCipherChangeDataStore: PendingCipherChangeDataStore { get }
 }
 
 /// Protocol for an object that provides a `PolicyService`.

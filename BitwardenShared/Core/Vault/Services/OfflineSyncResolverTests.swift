@@ -17,7 +17,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     var cipherService: MockCipherService!
     var clientService: MockClientService!
     var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
-    var stateService: MockStateService!
     var subject: DefaultOfflineSyncResolver!
 
     // MARK: Setup & Teardown
@@ -29,14 +28,12 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherService = MockCipherService()
         clientService = MockClientService()
         pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
-        stateService = MockStateService()
 
         subject = DefaultOfflineSyncResolver(
             cipherAPIService: cipherAPIService,
             cipherService: cipherService,
             clientService: clientService,
-            pendingCipherChangeDataStore: pendingCipherChangeDataStore,
-            stateService: stateService
+            pendingCipherChangeDataStore: pendingCipherChangeDataStore
         )
     }
 
@@ -47,7 +44,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherService = nil
         clientService = nil
         pendingCipherChangeDataStore = nil
-        stateService = nil
         subject = nil
     }
 

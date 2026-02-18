@@ -139,9 +139,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
     /// The mediator to execute pending `AppIntent` actions.
     let pendingAppIntentActionMediator: PendingAppIntentActionMediator
 
-    /// The data store for managing pending cipher changes queued during offline editing.
-    let pendingCipherChangeDataStore: PendingCipherChangeDataStore
-
     /// The service for managing the polices for the user.
     let policyService: PolicyService
 
@@ -259,7 +256,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
     ///   - rehydrationHelper: The helper used for app rehydration.
     ///   - reviewPromptService: The service used by the application to manage app review prompts related data.
     ///   - pendingAppIntentActionMediator: The mediator to execute pending `AppIntent` actions.
-    ///   - pendingCipherChangeDataStore: The data store for managing pending cipher changes queued during offline editing.
     ///   - policyService: The service for managing the polices for the user.
     ///   - searchProcessorMediatorFactory: The factory to make `SearchProcessorMediator`s.
     ///   - sendRepository: The repository used by the application to manage send data for the UI layer.
@@ -321,7 +317,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
         offlineSyncResolver: OfflineSyncResolver,
         pasteboardService: PasteboardService,
         pendingAppIntentActionMediator: PendingAppIntentActionMediator,
-        pendingCipherChangeDataStore: PendingCipherChangeDataStore,
         policyService: PolicyService,
         rehydrationHelper: RehydrationHelper,
         reviewPromptService: ReviewPromptService,
@@ -383,7 +378,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
         self.offlineSyncResolver = offlineSyncResolver
         self.pasteboardService = pasteboardService
         self.pendingAppIntentActionMediator = pendingAppIntentActionMediator
-        self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.policyService = policyService
         self.rehydrationHelper = rehydrationHelper
         self.reviewPromptService = reviewPromptService
@@ -639,7 +633,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             cipherService: cipherService,
             clientService: clientService,
             pendingCipherChangeDataStore: dataStore,
-            stateService: stateService,
         )
 
         let syncService = DefaultSyncService(
@@ -1024,7 +1017,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             offlineSyncResolver: offlineSyncResolver,
             pasteboardService: pasteboardService,
             pendingAppIntentActionMediator: pendingAppIntentActionMediator,
-            pendingCipherChangeDataStore: dataStore,
             policyService: policyService,
             rehydrationHelper: rehydrationHelper,
             reviewPromptService: reviewPromptService,
