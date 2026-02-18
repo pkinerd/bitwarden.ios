@@ -337,8 +337,9 @@ extension DefaultSyncService {
         // resolution when the flag is re-enabled. The offlineSync flag (which gates
         // new offline saves in VaultRepository) is also implicitly disabled when
         // resolution is off, so no new pending changes accumulate.
+        let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
         if await configService.getFeatureFlag(.enableOfflineSyncResolution),
-           !(await vaultTimeoutService.isLocked(userId: userId)) {
+           !isVaultLocked {
             let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
             if pendingCount > 0 {
                 try await offlineSyncResolver.processPendingChanges(userId: userId)
