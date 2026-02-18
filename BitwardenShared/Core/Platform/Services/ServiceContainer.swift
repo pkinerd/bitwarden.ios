@@ -638,7 +638,6 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
             cipherAPIService: apiService,
             cipherService: cipherService,
             clientService: clientService,
-            folderService: folderService,
             pendingCipherChangeDataStore: dataStore,
             stateService: stateService,
         )

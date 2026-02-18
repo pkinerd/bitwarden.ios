@@ -57,52 +57,52 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
         XCTAssertEqual(result.id, "new-id")
     }
 
-    // MARK: Tests - CipherView.update(name:folderId:)
+    // MARK: Tests - CipherView.update(name:)
 
-    /// `update(name:folderId:)` sets the new name and folder ID on the returned cipher view.
-    func test_update_setsNameAndFolderId() {
+    /// `update(name:)` sets the new name and preserves the original folder ID.
+    func test_update_setsNameAndPreservesFolderId() {
         let original = CipherView.fixture(
-            folderId: "old-folder",
+            folderId: "original-folder",
             name: "Old Name"
         )
 
-        let updated = original.update(name: "Conflict Copy", folderId: "conflict-folder")
+        let updated = original.update(name: "Conflict Copy")
 
         XCTAssertEqual(updated.name, "Conflict Copy")
-        XCTAssertEqual(updated.folderId, "conflict-folder")
+        XCTAssertEqual(updated.folderId, "original-folder")
     }
 
-    /// `update(name:folderId:)` sets the `id` to `nil` since it represents a new cipher.
+    /// `update(name:)` sets the `id` to `nil` since it represents a new cipher.
     func test_update_setsIdToNil() {
         let original = CipherView.fixture(id: "existing-id")
 
-        let updated = original.update(name: "Copy", folderId: nil)
+        let updated = original.update(name: "Copy")
 
         XCTAssertNil(updated.id)
     }
 
-    /// `update(name:folderId:)` sets the `key` to `nil` so the SDK assigns a new key.
+    /// `update(name:)` sets the `key` to `nil` so the SDK assigns a new key.
     func test_update_setsKeyToNil() {
         let original = CipherView.fixture(key: "existing-key")
 
-        let updated = original.update(name: "Copy", folderId: nil)
+        let updated = original.update(name: "Copy")
 
         XCTAssertNil(updated.key)
     }
 
-    /// `update(name:folderId:)` sets `attachments` to `nil` since attachments
+    /// `update(name:)` sets `attachments` to `nil` since attachments
     /// are not duplicated to backup copies.
     func test_update_setsAttachmentsToNil() {
         let original = CipherView.fixture(
             attachments: [AttachmentView.fixture(id: "att-1")]
         )
 
-        let updated = original.update(name: "Copy", folderId: nil)
+        let updated = original.update(name: "Copy")
 
         XCTAssertNil(updated.attachments)
     }
 
-    /// `update(name:folderId:)` preserves the password history from the original cipher.
+    /// `update(name:)` preserves the password history from the original cipher.
     func test_update_preservesPasswordHistory() {
         let history = [
             PasswordHistoryView.fixture(password: "old-pass-1"),
@@ -110,7 +110,7 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
         ]
         let original = CipherView.fixture(passwordHistory: history)
 
-        let updated = original.update(name: "Copy", folderId: nil)
+        let updated = original.update(name: "Copy")
 
         XCTAssertEqual(updated.passwordHistory?.count, 2)
         XCTAssertEqual(updated.passwordHistory?[0].password, "old-pass-1")

@@ -12,7 +12,7 @@
 
 ## Description
 
-`CipherView.update(name:folderId:)` sets `attachments` to `nil` on backup copies. The implementation includes a comment: "Attachments are not duplicated to backup copies." This means backup ciphers in the "Offline Sync Conflicts" folder will not have the original's attachments. Users may lose access to attachment data if the conflict resolution results in the original being overwritten and the backup being their only reference.
+`CipherView.update(name:)` sets `attachments` to `nil` on backup copies. The implementation includes a comment: "Attachments are not duplicated to backup copies." This means backup ciphers will not have the original's attachments. Users may lose access to attachment data if the conflict resolution results in the original being overwritten and the backup being their only reference. **[Updated]** `folderId` parameter removed — backup ciphers now retain the original cipher's folder assignment instead of being placed in a dedicated "Offline Sync Conflicts" folder.
 
 ## Context
 
@@ -110,18 +110,18 @@ If this becomes a user concern, **Option B** (note in backup) is a simple improv
 
 ## Related Issues
 
-- **CS-2**: Fragile SDK copy methods — the `update(name:folderId:)` method that sets attachments to nil is fragile against SDK changes.
-- **U4 (RES-8)**: English-only conflict folder name — both relate to the properties and UX of backup/conflict artifacts.
+- **CS-2**: Fragile SDK copy methods — the `update(name:)` method that sets attachments to nil is fragile against SDK changes.
+- ~~**U4 (RES-8)**: English-only conflict folder name — both relate to the properties and UX of backup/conflict artifacts.~~ **[Superseded]** — Conflict folder removed.
 
 ## Updated Review Findings
 
 The review confirms the original assessment with code-level detail. After reviewing the implementation:
 
-1. **Code verification**: `CipherView+OfflineSync.swift:85` explicitly sets `attachments: nil` in the `update(name:folderId:)` method. The comment at line 85 reads `// Attachments are not duplicated to backup copies`. This is a deliberate design choice, not an oversight.
+1. **Code verification**: `CipherView+OfflineSync.swift` explicitly sets `attachments: nil` in the `update(name:)` method. The comment reads `// Attachments are not duplicated to backup copies`. This is a deliberate design choice, not an oversight. **[Updated]** `folderId` parameter removed — backup ciphers now retain the original cipher's folder assignment.
 
-2. **Backup creation flow**: `OfflineSyncResolver.swift:299-328` `createBackupCipher`:
-   - Line 308: `clientService.vault().ciphers().decrypt(cipher: cipher)` — decrypts the original
-   - Line 317: `decryptedCipher.update(name:folderId:)` — creates backup view with `attachments: nil`
+2. **Backup creation flow**: `OfflineSyncResolver.swift` `createBackupCipher`:
+   - Decrypts the original via `clientService.vault().ciphers().decrypt(cipher: cipher)`
+   - Creates backup view with `decryptedCipher.update(name:)` — `attachments: nil`, retains original `folderId`
    - Line 323: `clientService.vault().ciphers().encrypt(cipherView: backupCipherView)` — encrypts backup
    - Line 324: `cipherService.addCipherWithServer(...)` — pushes backup to server
 

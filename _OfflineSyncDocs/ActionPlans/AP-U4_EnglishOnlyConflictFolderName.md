@@ -1,18 +1,28 @@
-# Action Plan: U4 (RES-8) — English-Only Conflict Folder Name
+# Action Plan: U4 (RES-8) — ~~English-Only Conflict Folder Name~~ **SUPERSEDED**
 
-## Issue Summary
+## Status: SUPERSEDED
+
+> **The dedicated "Offline Sync Conflicts" folder has been removed entirely.** Backup ciphers now retain the original cipher's folder assignment. This eliminates the English-only folder name concern, the folder creation logic, the `FolderService` dependency, and the `conflictFolderId` cache. This action plan is no longer applicable.
+>
+> The backup cipher name format has also been simplified from `"{name} - offline conflict {timestamp}"` to `"{name} - {timestamp}"`.
+
+---
+
+## ~~Issue Summary~~
 
 | Field | Value |
 |-------|-------|
 | **ID** | U4 / RES-8 |
-| **Component** | `DefaultOfflineSyncResolver` |
-| **Severity** | Informational |
-| **Type** | Localization / UX |
-| **File** | `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` |
+| **Component** | ~~`DefaultOfflineSyncResolver`~~ |
+| **Severity** | ~~Informational~~ **Superseded** |
+| **Type** | ~~Localization / UX~~ |
+| **File** | ~~`BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift`~~ |
 
-## Description
+## ~~Description~~
 
-The conflict folder name "Offline Sync Conflicts" is hardcoded in English, not localized. Non-English users will see an English folder name in their vault. The backup cipher name format "{name} - offline conflict {timestamp}" is also English-only.
+~~The conflict folder name "Offline Sync Conflicts" is hardcoded in English, not localized. Non-English users will see an English folder name in their vault. The backup cipher name format "{name} - offline conflict {timestamp}" is also English-only.~~
+
+**[Superseded]** The conflict folder has been removed. Backup ciphers retain their original folder assignment.
 
 ## Context
 

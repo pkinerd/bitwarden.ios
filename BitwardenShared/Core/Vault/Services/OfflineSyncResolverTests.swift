@@ -7,69 +7,6 @@ import XCTest
 @testable import BitwardenShared
 @testable import BitwardenSharedMocks
 
-// MARK: - MockCipherAPIServiceForOfflineSync
-
-/// A minimal inline mock for the cipher API service methods used by the offline sync resolver.
-///
-/// This mock exists because `CipherAPIService` does not have the `// sourcery: AutoMockable`
-/// annotation, so no auto-generated mock is available. Only `getCipher(withId:)` is implemented;
-/// all other protocol methods use `fatalError()` stubs. If the `CipherAPIService` protocol
-/// changes (methods added, removed, or renamed), the stubs below must be updated to maintain
-/// compilation. Consider adding `// sourcery: AutoMockable` to `CipherAPIService` to eliminate
-/// this manual maintenance.
-class MockCipherAPIServiceForOfflineSync: CipherAPIService {
-    var getCipherResult: Result<CipherDetailsResponseModel, Error> = .success(.fixture())
-    var getCipherCalledWith = [String]()
-
-    func getCipher(withId id: String) async throws -> CipherDetailsResponseModel {
-        getCipherCalledWith.append(id)
-        return try getCipherResult.get()
-    }
-
-    // MARK: Unused stubs - required by protocol
-
-    func addCipher(_ cipher: Cipher, encryptedFor: String?) async throws -> CipherDetailsResponseModel { fatalError() }
-    func archiveCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
-    func addCipherWithCollections(
-        _ cipher: Cipher,
-        encryptedFor: String?
-    ) async throws -> CipherDetailsResponseModel { fatalError() }
-    func bulkShareCiphers(
-        _ ciphers: [Cipher],
-        collectionIds: [String],
-        encryptedFor: String?
-    ) async throws -> BulkShareCiphersResponseModel { fatalError() }
-    func deleteAttachment(
-        withID attachmentId: String,
-        cipherId: String
-    ) async throws -> DeleteAttachmentResponse { fatalError() }
-    func deleteCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
-    func downloadAttachment(
-        withId id: String,
-        cipherId: String
-    ) async throws -> DownloadAttachmentResponse { fatalError() }
-    func downloadAttachmentData(from url: URL) async throws -> URL? { fatalError() }
-    func restoreCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
-    func saveAttachment(
-        cipherId: String,
-        fileName: String?,
-        fileSize: Int?,
-        key: String?
-    ) async throws -> SaveAttachmentResponse { fatalError() }
-    func shareCipher(
-        _ cipher: Cipher,
-        encryptedFor: String?
-    ) async throws -> CipherDetailsResponseModel { fatalError() }
-    func softDeleteCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
-    func unarchiveCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
-    func updateCipher(
-        _ cipher: Cipher,
-        encryptedFor: String?
-    ) async throws -> CipherDetailsResponseModel { fatalError() }
-    func updateCipherCollections(_ cipher: Cipher) async throws { fatalError() }
-    func updateCipherPreference(_ cipher: Cipher) async throws -> CipherDetailsResponseModel { fatalError() }
-}
-
 // MARK: - OfflineSyncResolverTests
 
 // swiftlint:disable:next type_body_length
@@ -79,7 +16,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     var cipherAPIService: MockCipherAPIServiceForOfflineSync!
     var cipherService: MockCipherService!
     var clientService: MockClientService!
-    var folderService: MockFolderService!
     var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
     var stateService: MockStateService!
     var subject: DefaultOfflineSyncResolver!
@@ -92,7 +28,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = MockCipherAPIServiceForOfflineSync()
         cipherService = MockCipherService()
         clientService = MockClientService()
-        folderService = MockFolderService()
         pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
         stateService = MockStateService()
 
@@ -100,7 +35,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             cipherAPIService: cipherAPIService,
             cipherService: cipherService,
             clientService: clientService,
-            folderService: folderService,
             pendingCipherChangeDataStore: pendingCipherChangeDataStore,
             stateService: stateService
         )
@@ -112,7 +46,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = nil
         cipherService = nil
         clientService = nil
-        folderService = nil
         pendingCipherChangeDataStore = nil
         stateService = nil
         subject = nil
@@ -265,12 +198,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: serverRevisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Local is newer: should push local cipher to server.
@@ -323,12 +250,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: serverRevisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Server is newer: should update local storage with the server cipher.
@@ -375,12 +296,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: revisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Soft conflict: should push local cipher to server.
@@ -392,6 +307,191 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
         // Should delete the pending change record.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    // MARK: Tests - Password History Preservation
+
+    /// `processPendingChanges(userId:)` with a hard conflict where local wins preserves
+    /// the server version's password history on the backup cipher and the local version's
+    /// password history on the pushed cipher without merging the two.
+    func test_processPendingChanges_update_conflict_localNewer_preservesPasswordHistory() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
+
+        // Local cipher with its own password history from offline edits.
+        let localPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 5, day: 1),
+                password: "local-old-pass"
+            ),
+        ]
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            passwordHistory: localPasswordHistory,
+            revisionDate: originalRevisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher with a different password history.
+        let serverPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 10),
+                password: "server-old-pass"
+            ),
+        ]
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            passwordHistory: serverPasswordHistory,
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Backup should contain the server version's password history (not merged).
+        let backupCipher = try XCTUnwrap(cipherService.addCipherWithServerCiphers.first)
+        XCTAssertEqual(backupCipher.passwordHistory?.count, 1)
+        XCTAssertEqual(backupCipher.passwordHistory?.first?.password, "server-old-pass")
+
+        // Pushed cipher should contain the local version's password history (not merged).
+        let pushedCipher = try XCTUnwrap(cipherService.updateCipherWithServerCiphers.first)
+        XCTAssertEqual(pushedCipher.passwordHistory?.count, 1)
+        XCTAssertEqual(pushedCipher.passwordHistory?.first?.password, "local-old-pass")
+    }
+
+    /// `processPendingChanges(userId:)` with a hard conflict where server wins preserves
+    /// the local version's password history on the backup cipher and the server version's
+    /// password history in local storage without merging the two.
+    func test_processPendingChanges_update_conflict_serverNewer_preservesPasswordHistory() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+
+        // Local cipher with its own password history from offline edits.
+        let localPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 5, day: 1),
+                password: "local-old-pass-1"
+            ),
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 5, day: 15),
+                password: "local-old-pass-2"
+            ),
+        ]
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            passwordHistory: localPasswordHistory,
+            revisionDate: originalRevisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher with a different password history.
+        let serverPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 10),
+                password: "server-old-pass"
+            ),
+        ]
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            passwordHistory: serverPasswordHistory,
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Backup should contain the local version's password history (not merged).
+        let backupCipher = try XCTUnwrap(cipherService.addCipherWithServerCiphers.first)
+        XCTAssertEqual(backupCipher.passwordHistory?.count, 2)
+        XCTAssertEqual(backupCipher.passwordHistory?[0].password, "local-old-pass-1")
+        XCTAssertEqual(backupCipher.passwordHistory?[1].password, "local-old-pass-2")
+
+        // Local storage should contain the server version's password history (not merged).
+        let storedCipher = try XCTUnwrap(cipherService.updateCipherWithLocalStorageCiphers.first)
+        XCTAssertEqual(storedCipher.passwordHistory?.count, 1)
+        XCTAssertEqual(storedCipher.passwordHistory?.first?.password, "server-old-pass")
+    }
+
+    /// `processPendingChanges(userId:)` with a soft conflict (4+ password changes, no
+    /// server-side changes) preserves the local version's accumulated password history on
+    /// the pushed cipher and the server version's password history on the backup cipher.
+    func test_processPendingChanges_update_softConflict_preservesPasswordHistory() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+
+        // Local cipher with accumulated password history from multiple offline password changes.
+        let localPasswordHistory = [
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 2),
+                password: "old-pass-1"
+            ),
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 3),
+                password: "old-pass-2"
+            ),
+            CipherPasswordHistoryModel(
+                lastUsedDate: Date(year: 2024, month: 6, day: 4),
+                password: "old-pass-3"
+            ),
+        ]
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            passwordHistory: localPasswordHistory,
+            revisionDate: revisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 4
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher has no password history (unchanged since going offline).
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Backup should contain the server version's password history (nil/empty).
+        let backupCipher = try XCTUnwrap(cipherService.addCipherWithServerCiphers.first)
+        XCTAssertNil(backupCipher.passwordHistory)
+
+        // Pushed cipher should contain all accumulated local password history entries.
+        let pushedCipher = try XCTUnwrap(cipherService.updateCipherWithServerCiphers.first)
+        XCTAssertEqual(pushedCipher.passwordHistory?.count, 3)
+        XCTAssertEqual(pushedCipher.passwordHistory?[0].password, "old-pass-1")
+        XCTAssertEqual(pushedCipher.passwordHistory?[1].password, "old-pass-2")
+        XCTAssertEqual(pushedCipher.passwordHistory?[2].password, "old-pass-3")
     }
 
     /// `processPendingChanges(userId:)` with a `.softDelete` pending change where the
@@ -424,12 +524,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: serverRevisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Should create a backup of the server cipher before deleting.
@@ -441,72 +535,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
         // Should delete the pending change record.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
-    }
-
-    /// `processPendingChanges(userId:)` when resolving a conflict creates the
-    /// "Offline Sync Conflicts" folder via `folderService` and assigns the backup
-    /// cipher to that folder.
-    func test_processPendingChanges_update_conflict_createsConflictFolder() async throws {
-        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
-        let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
-        let cipherResponseModel = CipherDetailsResponseModel.fixture(
-            id: "cipher-1",
-            name: "My Login",
-            revisionDate: originalRevisionDate
-        )
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
-        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
-        try await dataStore.upsertPendingChange(
-            cipherId: "cipher-1",
-            userId: "1",
-            changeType: .update,
-            cipherData: cipherData,
-            originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
-        )
-        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
-        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
-
-        // Server cipher has a different revision date (triggers conflict).
-        // The server revision date (June 15, 2024) is older than the local updatedDate
-        // (approximately "now"), so local wins and the server version is backed up.
-        cipherAPIService.getCipherResult = .success(.fixture(
-            id: "cipher-1",
-            name: "My Login",
-            revisionDate: serverRevisionDate
-        ))
-
-        // No existing folders; a new conflict folder should be created.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
-        try await subject.processPendingChanges(userId: "1")
-
-        // Should encrypt the folder name before creating it on the server.
-        XCTAssertEqual(
-            clientService.mockVault.clientFolders.encryptedFolders.first?.name,
-            "Offline Sync Conflicts"
-        )
-        XCTAssertEqual(folderService.addedFolderName, "Offline Sync Conflicts")
-
-        // The backup cipher view should be assigned to the conflict folder.
-        XCTAssertEqual(
-            clientService.mockVault.clientCiphers.encryptedCiphers.first?.folderId,
-            "conflict-folder-id"
-        )
-
-        // The backup cipher view name should include the offline conflict marker.
-        XCTAssertTrue(
-            clientService.mockVault.clientCiphers.encryptedCiphers.first?.name
-                .contains("offline conflict") ?? false
-        )
-
-        // Should push the local cipher and create a backup.
-        XCTAssertEqual(cipherService.updateCipherWithServerCiphers.count, 1)
-        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
     }
 
     // MARK: Tests - Cipher Not Found (404)
@@ -725,12 +753,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             id: "cipher-1",
             revisionDate: serverRevisionDate
         ))
-
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
 
         // Make the backup cipher creation fail. In the conflict path (local newer),
         // the backup is created first via `createBackupCipher` which calls

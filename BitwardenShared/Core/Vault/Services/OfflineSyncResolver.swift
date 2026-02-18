@@ -75,17 +75,11 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     /// The client service for encryption/decryption.
     private let clientService: ClientService
 
-    /// The service for managing folders.
-    private let folderService: FolderService
-
     /// The data store for pending cipher changes.
     private let pendingCipherChangeDataStore: PendingCipherChangeDataStore
 
     /// The service for managing account state.
     private let stateService: StateService
-
-    /// Cached folder ID for the "Offline Sync Conflicts" folder during a sync batch.
-    private var conflictFolderId: String?
 
     // MARK: Initialization
 
@@ -95,7 +89,6 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     ///   - cipherAPIService: The service for making cipher API requests.
     ///   - cipherService: The service for managing ciphers.
     ///   - clientService: The client service for encryption/decryption.
-    ///   - folderService: The service for managing folders.
     ///   - pendingCipherChangeDataStore: The data store for pending cipher changes.
     ///   - stateService: The service for managing account state.
     ///
@@ -103,14 +96,12 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         cipherAPIService: CipherAPIService,
         cipherService: CipherService,
         clientService: ClientService,
-        folderService: FolderService,
         pendingCipherChangeDataStore: PendingCipherChangeDataStore,
         stateService: StateService
     ) {
         self.cipherAPIService = cipherAPIService
         self.cipherService = cipherService
         self.clientService = clientService
-        self.folderService = folderService
         self.pendingCipherChangeDataStore = pendingCipherChangeDataStore
         self.stateService = stateService
     }
@@ -120,9 +111,6 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     func processPendingChanges(userId: String) async throws {
         let pendingChanges = try await pendingCipherChangeDataStore.fetchPendingChanges(userId: userId)
         guard !pendingChanges.isEmpty else { return }
-
-        // Reset cached conflict folder ID for this batch
-        conflictFolderId = nil
 
         for pendingChange in pendingChanges {
             do {
@@ -329,7 +317,10 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         }
     }
 
-    /// Creates a backup copy of a cipher in the "Offline Sync Conflicts" folder.
+    /// Creates a backup copy of a cipher with a conflict-suffixed name.
+    ///
+    /// The backup retains the original cipher's folder assignment and all fields
+    /// except attachments (which are not duplicated).
     ///
     /// - Parameters:
     ///   - cipher: The cipher to create a backup of.
@@ -341,23 +332,17 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         timestamp: Date,
         userId: String
     ) async throws {
-        // Ensure the conflict folder exists
-        let folderId = try await getOrCreateConflictFolder()
-
         // Decrypt the cipher to modify its name
         let decryptedCipher = try await clientService.vault().ciphers().decrypt(cipher: cipher)
 
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HHmmss"
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let timestampString = dateFormatter.string(from: timestamp)
 
-        let backupName = "\(decryptedCipher.name) - offline conflict \(timestampString)"
+        let backupName = "\(decryptedCipher.name) - \(timestampString)"
 
-        // Create the backup cipher view with modified name and folder
-        let backupCipherView = decryptedCipher.update(
-            name: backupName,
-            folderId: folderId
-        )
+        // Create the backup cipher view with the modified name
+        let backupCipherView = decryptedCipher.update(name: backupName)
 
         // Encrypt and push to server as a new cipher
         let encryptionContext = try await clientService.vault().ciphers().encrypt(cipherView: backupCipherView)
@@ -365,38 +350,5 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
             encryptionContext.cipher,
             encryptedFor: encryptionContext.encryptedFor
         )
-    }
-
-    /// Gets or creates the "Offline Sync Conflicts" folder.
-    ///
-    /// - Returns: The folder ID.
-    ///
-    private func getOrCreateConflictFolder() async throws -> String {
-        // Return cached ID if available
-        if let conflictFolderId {
-            return conflictFolderId
-        }
-
-        let folderName = "Offline Sync Conflicts"
-
-        // Check if folder already exists
-        let existingFolders = try await folderService.fetchAllFolders()
-        for folder in existingFolders {
-            let decryptedFolder = try await clientService.vault().folders().decrypt(folder: folder)
-            if decryptedFolder.name == folderName, let folderId = folder.id {
-                conflictFolderId = folderId
-                return folderId
-            }
-        }
-
-        // Encrypt and create the folder
-        let folderView = FolderView(id: nil, name: folderName, revisionDate: Date.now)
-        let encryptedFolder = try await clientService.vault().folders().encrypt(folder: folderView)
-        let newFolder = try await folderService.addFolderWithServer(name: encryptedFolder.name)
-        guard let id = newFolder.id else {
-            throw DataMappingError.missingId
-        }
-        conflictFolderId = id
-        return id
     }
 }

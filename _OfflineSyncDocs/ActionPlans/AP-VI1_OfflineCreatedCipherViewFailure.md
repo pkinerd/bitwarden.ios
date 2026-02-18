@@ -57,7 +57,7 @@ All 5 recommended root cause fixes have been implemented:
 
 ## Related Issues (Updated)
 
-- **CS-2**: ~~`Cipher.withTemporaryId()` still exists with `data: nil`~~ **Updated** — `Cipher.withTemporaryId()` removed. Fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:folderId:)`. Same fragility concern (manual field copying), different method.
+- **CS-2**: ~~`Cipher.withTemporaryId()` still exists with `data: nil`~~ **Updated** — `Cipher.withTemporaryId()` removed. Fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:)`. Same fragility concern (manual field copying), different method. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original cipher's folder assignment.
 - **RES-1**: ~~`resolveCreate` does NOT include temp-ID cleanup~~ **Partially Resolved** — Temp-ID cleanup added (commits `8ff7a09`, `53e08ef`). Duplicate-on-retry concern (server already has the cipher) still informational.
 - ~~**S7**~~: ~~`handleOfflineDelete` does not have a `.create` check~~ **[Resolved]** — `.create` check added in commit `12cb225`. Resolver-level 404 tests added in commit `e929511`. See [AP-S7](Resolved/AP-S7_CipherNotFoundPathTest.md).
 - ~~**T7**~~: ~~No `preservesCreateType` test exists~~ **[Resolved]** — Covered by `test_updateCipher_offlineFallback_preservesCreateType` (commit `12cb225`). See [AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md).

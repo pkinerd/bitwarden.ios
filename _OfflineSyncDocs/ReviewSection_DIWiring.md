@@ -61,11 +61,11 @@ let preSyncOfflineSyncResolver = DefaultOfflineSyncResolver(
     cipherAPIService: apiService,
     cipherService: cipherService,
     clientService: clientService,
-    folderService: folderService,
+    // folderService: folderService,  // [REMOVED] — conflict folder eliminated
     pendingCipherChangeDataStore: dataStore,
     stateService: stateService,
 )
-// NOTE: [Updated] timeProvider was removed in commit a52d379 (was unused — see A3)
+// NOTE: [Updated] timeProvider removed in commit a52d379; folderService removed (conflict folder eliminated)
 
 // 2. Inject into SyncService
 let syncService = DefaultSyncService(
@@ -186,6 +186,8 @@ Same as CS-1 (stray blank line). See [AP-CS1](ActionPlans/Resolved/AP-CS1_StrayB
 
 ### Observation DI-4: Same Resolver Instance Shared Between SyncService and Container
 
-The `preSyncOfflineSyncResolver` instance is injected into both `DefaultSyncService` and the `ServiceContainer`. Since `DefaultOfflineSyncResolver` has mutable state (`conflictFolderId`), sharing the same instance means the `SyncService`'s resolver and any other consumer of `offlineSyncResolver` from the container share that cache.
+The `preSyncOfflineSyncResolver` instance is injected into both `DefaultSyncService` and the `ServiceContainer`. ~~Since `DefaultOfflineSyncResolver` has mutable state (`conflictFolderId`), sharing the same instance means the `SyncService`'s resolver and any other consumer of `offlineSyncResolver` from the container share that cache.~~
 
-**Assessment:** Currently fine because `SyncService` is the only active consumer. If a second consumer were added, they could share the `conflictFolderId` cache, which could lead to stale references if one consumer invalidates the folder.
+**[Updated]** The `conflictFolderId` mutable state has been removed (conflict folder eliminated). The resolver has been converted to an `actor` for general thread safety. Sharing the same instance is safe — the resolver no longer has per-batch cached state.
+
+**Assessment:** Currently fine because `SyncService` is the only active consumer.

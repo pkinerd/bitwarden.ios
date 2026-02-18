@@ -25,7 +25,7 @@ This review covers the 30+ commits applied after the initial offline sync implem
 | Preserve `.create` type for offline-created ciphers on subsequent edits | `VaultRepository.swift` | `12cb225` | **Critical fix** |
 | Local-only cleanup when deleting/soft-deleting offline-created ciphers | `VaultRepository.swift` | `12cb225` | **Critical fix** |
 | Delete temp-ID cipher record after resolveCreate succeeds | `OfflineSyncResolver.swift` | `8ff7a09`, `53e08ef` | **Important cleanup** |
-| Encrypt folder name before creating conflict folder on server | `OfflineSyncResolver.swift` | `266bffa` | **Critical security fix** |
+| ~~Encrypt folder name before creating conflict folder on server~~ | ~~`OfflineSyncResolver.swift`~~ | ~~`266bffa`~~ | ~~**Critical security fix**~~ **[Superseded]** — Conflict folder removed entirely |
 
 ### 1.2 UI Layer Changes (2 changes)
 
@@ -73,7 +73,7 @@ let cipherEncryptionContext = try await clientService.vault().ciphers()
 
 **Review:**
 - **Architecture:** Correct. Assigning the ID at the `CipherView` level before encryption ensures the SDK's encrypt-decrypt cycle preserves it.
-- **Dead code:** The old `Cipher.withTemporaryId(_:)` method on the `origin/main` branch's `CipherView+OfflineSync.swift` has been completely removed. On `master`, only `CipherView.withId(_:)` and `CipherView.update(name:folderId:)` exist. Clean removal.
+- **Dead code:** The old `Cipher.withTemporaryId(_:)` method on the `origin/main` branch's `CipherView+OfflineSync.swift` has been completely removed. On `master`, only `CipherView.withId(_:)` and `CipherView.update(name:)` exist. Clean removal. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original folder assignment.
 - **Naming:** `withId(_:)` is more generic than `withTemporaryId(_:)`, which is appropriate since the method is not inherently "temporary" - it's just setting an ID.
 - **Issue CS-2 update:** The fragility concern from the original review still applies to `CipherView.withId(_:)` - it manually copies all properties. If `CipherView` gains new properties, this method will silently drop them. Severity remains low.
 
@@ -168,21 +168,18 @@ if let tempId {
 - **Edge case:** If `deleteCipherWithLocalStorage` fails, the error propagates and the pending change record is NOT deleted (because the code below hasn't executed yet). On retry, the resolver would attempt the full `resolveCreate` again, creating a duplicate on the server. This is the same RES-1 issue from the original review — the resolver is not idempotent for creates.
 - **Nil guard:** `if let tempId` correctly handles the (unlikely) case where the cipher had no ID. Test `test_processPendingChanges_create_nilId_skipsLocalDelete` covers this.
 
-### 2.6 Folder Name Encryption (Critical Security Fix)
+### ~~2.6 Folder Name Encryption (Critical Security Fix)~~ **[Superseded]**
 
-**Before:** `getOrCreateConflictFolder` passed the plaintext folder name "Offline Sync Conflicts" directly to `folderService.addFolderWithServer(name:)`. Depending on how `addFolderWithServer` is implemented, this could send an unencrypted folder name to the server.
+~~**Before:** `getOrCreateConflictFolder` passed the plaintext folder name "Offline Sync Conflicts" directly to `folderService.addFolderWithServer(name:)`. Depending on how `addFolderWithServer` is implemented, this could send an unencrypted folder name to the server.~~
 
-**After:**
-```swift
-let folderView = FolderView(id: nil, name: folderName, revisionDate: Date.now)
-let encryptedFolder = try await clientService.vault().folders().encrypt(folder: folderView)
-let newFolder = try await folderService.addFolderWithServer(name: encryptedFolder.name)
-```
+~~**After:**~~
+~~```swift~~
+~~let folderView = FolderView(id: nil, name: folderName, revisionDate: Date.now)~~
+~~let encryptedFolder = try await clientService.vault().folders().encrypt(folder: folderView)~~
+~~let newFolder = try await folderService.addFolderWithServer(name: encryptedFolder.name)~~
+~~```~~
 
-**Review:**
-- **Security:** This is a critical fix. Folder names must be encrypted before being sent to the server to maintain zero-knowledge architecture. The encrypted folder name is what gets stored on the server.
-- **Test coverage:** `test_processPendingChanges_update_conflict_localNewer` verifies that `clientService.mockVault.clientFolders.encryptedFolders.first?.name` equals `"Offline Sync Conflicts"` (the mock returns the input as-is, but it validates the encrypt path is called).
-- **Original review update:** This was not flagged in the original review. The original `getOrCreateConflictFolder` passed a plaintext name. This is the most significant security fix in this phase.
+**[Updated]** This entire section is superseded. The dedicated "Offline Sync Conflicts" folder, `getOrCreateConflictFolder()` method, and `FolderService` dependency have been removed entirely. Backup ciphers now retain the original cipher's folder assignment. The folder encryption fix is no longer applicable.
 
 ### 2.7 Backup-Before-Push Reordering (Safety Improvement)
 
@@ -323,7 +320,7 @@ The phase 2 commits add significant test coverage:
 | Orphaned pending change cleanup on success | 4 tests (inline assertions in existing tests) | **Good** |
 | resolveCreate temp-ID cleanup | 2 tests (normal + nil-ID) | **Good** |
 | ViewItemProcessor fallback fetch | 4 tests (success, nil cipher, throw, stream error only) | **Good** |
-| Folder name encryption | 1 assertion in existing test | **Good** |
+| ~~Folder name encryption~~ | ~~1 assertion in existing test~~ | ~~**Good**~~ **[Superseded]** — Conflict folder removed |
 | Network error propagation through CipherService | 2 tests | **Good** |
 | AddEditItemProcessor network error alert | 2 tests | **Good** — Documents user-visible symptom |
 
@@ -370,20 +367,13 @@ No view-to-model shortcuts are introduced.
 
 ## 7. Security Assessment
 
-### 7.1 Folder Name Encryption Fix
+### ~~7.1 Folder Name Encryption Fix~~ **[Superseded]**
 
-**Severity: High (now fixed)**
+~~**Severity: High (now fixed)**~~
 
-The original `getOrCreateConflictFolder` passed a plaintext folder name to `addFolderWithServer`. Depending on the implementation of `FolderService.addFolderWithServer(name:)`, this could violate zero-knowledge by sending an unencrypted folder name to the server.
+~~The original `getOrCreateConflictFolder` passed a plaintext folder name to `addFolderWithServer`. Depending on the implementation of `FolderService.addFolderWithServer(name:)`, this could violate zero-knowledge by sending an unencrypted folder name to the server.~~
 
-The fix encrypts the folder name via the SDK before calling the server:
-```swift
-let folderView = FolderView(id: nil, name: folderName, revisionDate: Date.now)
-let encryptedFolder = try await clientService.vault().folders().encrypt(folder: folderView)
-let newFolder = try await folderService.addFolderWithServer(name: encryptedFolder.name)
-```
-
-**Assessment:** Zero-knowledge architecture is now preserved. All data sent to the server (cipher data, folder names) is encrypted via the SDK.
+**[Updated]** This section is superseded. The conflict folder feature has been removed entirely. Backup ciphers now retain the original cipher's folder assignment. The `FolderService` dependency and `getOrCreateConflictFolder()` method no longer exist.
 
 ### 7.2 Error Type Filtering Security Implications
 
@@ -485,7 +475,7 @@ None identified. All changes use existing types and APIs. The `@testable import`
 - **Test-driven bug fixes:** Each bug fix commit includes tests that would have caught the bug, establishing regression coverage
 - **Incremental commits:** Changes are well-separated into atomic commits with clear descriptions, making the evolution easy to follow
 - **Consistency:** Error filtering pattern applied uniformly across all four CRUD operations
-- **Security fix for folder name encryption** — caught and fixed before production deployment
+- ~~**Security fix for folder name encryption** — caught and fixed before production deployment~~ **[Superseded]** — Conflict folder removed entirely
 
 ---
 
@@ -497,7 +487,7 @@ The phase 2 changes address all known bugs from testing and significantly harden
 2. **Error type filtering** — prevents incorrect offline fallback for server-processed errors
 3. **Orphaned change cleanup** — prevents stale pending records from triggering unnecessary resolution
 4. **`.create` type preservation** — prevents server 400 errors when editing offline-created ciphers
-5. **Folder name encryption** — preserves zero-knowledge architecture for conflict folder
+5. ~~**Folder name encryption** — preserves zero-knowledge architecture for conflict folder~~ **[Superseded]** — Conflict folder removed entirely
 6. **ViewItemProcessor fallback** — eliminates infinite spinner for offline-created ciphers
 
 The code quality remains high, following project architecture and style guidelines. Test coverage is substantially improved with ~30 new tests. The remaining open items from the original review (S3, S4 — batch processing and API failure tests for the resolver) are pre-existing gaps that were not the focus of this phase.

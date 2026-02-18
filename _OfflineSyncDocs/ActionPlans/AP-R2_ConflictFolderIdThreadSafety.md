@@ -1,6 +1,8 @@
 # Action Plan: R2 (RES-2) — `conflictFolderId` Thread Safety
 
 > **Status: [RESOLVED]** — `DefaultOfflineSyncResolver` converted from `class` to `actor`. Single-keyword change provides compiler-enforced thread safety for `conflictFolderId` cache. Option A implemented.
+>
+> **[Updated]** The `conflictFolderId` mutable state that originally motivated this action plan has since been removed entirely — the dedicated "Offline Sync Conflicts" folder has been eliminated, and backup ciphers now retain the original cipher's folder assignment. The actor conversion remains beneficial for general thread safety of the resolver.
 
 ## Issue Summary
 

@@ -131,7 +131,7 @@ leaving the view stuck on an infinite spinner. See AP-VI1 for fix options.
    a. Fetch server version to check for conflicts
    b. If server version unchanged: sync soft delete to server
    c. If server version changed (conflict):
-      → Create backup of server version in conflict folder
+      → Create backup of server version (retains original folder)
       → Complete the soft delete on server
 ```
 
@@ -320,7 +320,7 @@ For each PendingCipherChangeData:
      → If server revisionDate == originalRevisionDate (no conflict):
        → Sync soft delete to server
      → If server revisionDate != originalRevisionDate (conflict):
-       → Create backup of server version in conflict folder
+       → Create backup of server version (retains original folder)
        → Sync soft delete to server
      → Delete pending change record
      → Done
@@ -347,10 +347,10 @@ For each PendingCipherChangeData:
      If offlinePasswordChangeCount >= 4 (soft conflict):
        → Push local version to server via updateCipherWithServer()
        → Create backup of server version:
-         - Title: "{original name} - offline conflict {yyyy-MM-dd HHmmss}"
+         - Title: "{original name} - {yyyy-MM-dd HH:mm:ss}"
          - Timestamp in title: server's revisionDate
          - All fields and password history preserved from server version
-         - Added to "Offline Sync Conflicts" folder (created if needed)
+         - Backup retains the original cipher's folder assignment
        → Push backup as new cipher via addCipherWithServer()
        → Delete pending change record
 
@@ -364,20 +364,20 @@ For each PendingCipherChangeData:
        → Winner = local version
        → Push local version to server via updateCipherWithServer()
        → Create backup of SERVER version:
-         - Title: "{original name} - offline conflict {yyyy-MM-dd HHmmss}"
+         - Title: "{original name} - {yyyy-MM-dd HH:mm:ss}"
          - Timestamp in title: server's revisionDate
          - All fields and password history preserved from server version
-         - Added to "Offline Sync Conflicts" folder
+         - Backup retains the original cipher's folder assignment
        → Push backup as new cipher via addCipherWithServer()
        → Delete pending change record
 
      If server is newer (server.revisionDate > updatedDate):
        → Winner = server version (already on server, no push needed)
        → Create backup of LOCAL version:
-         - Title: "{original name} - offline conflict {yyyy-MM-dd HHmmss}"
+         - Title: "{original name} - {yyyy-MM-dd HH:mm:ss}"
          - Timestamp in title: pendingChange.updatedDate
          - All fields and password history preserved from local version
-         - Added to "Offline Sync Conflicts" folder
+         - Backup retains the original cipher's folder assignment
        → Push backup as new cipher via addCipherWithServer()
        → Update local storage to match server version
        → Delete pending change record
@@ -390,34 +390,23 @@ For each PendingCipherChangeData:
 
 ---
 
-## 7. Conflict Backup Folder
+## 7. ~~Conflict Backup Folder~~ Backup Naming Convention **[Updated]**
 
-### Purpose
+~~### Purpose~~
 
-All conflict backup copies are placed in a dedicated vault folder for easy discovery and bulk management by the user.
+~~All conflict backup copies are placed in a dedicated vault folder for easy discovery and bulk management by the user.~~
 
-### Implementation
-
-**Modified File: `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift`**
-
-When creating the first conflict backup during a sync resolution:
-
-```
-1. Check if folder named "Offline Sync Conflicts" exists for the user
-2. If not, create it via FolderService.addFolderWithServer(name:)
-3. Assign the backup cipher to this folder's ID
-4. Cache the folder ID for subsequent backups in the same sync batch
-```
+**[Updated]** The dedicated "Offline Sync Conflicts" folder has been removed. Backup ciphers now retain the original cipher's folder assignment. This simplifies the resolver by removing the `FolderService` dependency, the `getOrCreateConflictFolder()` method, and the `conflictFolderId` cache. Backups are identifiable by their name suffix.
 
 ### Backup Naming Convention
 
 ```
-{original item name} - offline conflict {yyyy-MM-dd HHmmss}
+{original item name} - {yyyy-MM-dd HH:mm:ss}
 ```
 
 - Timestamp is the `revisionDate` (server version) or `updatedDate` (local version) of the **losing** item
-- Format: `yyyy-MM-dd HHmmss` (e.g. `2026-02-07 143052`)
-- Example: `GitHub Login - offline conflict 2026-02-07 143052`
+- Format: `yyyy-MM-dd HH:mm:ss` (e.g. `2026-02-18 13:55:26`)
+- Example: `GitHub Login - 2026-02-18 13:55:26`
 
 ---
 
@@ -475,7 +464,7 @@ This cleanly excludes org ciphers without affecting any other flow.
 | `VaultRepository.swift` | `BitwardenShared/Core/Vault/Repositories/` | Offline-aware `updateCipher()`, `addCipher()`, `deleteCipher()` with API failure catch-and-queue |
 | `SyncService.swift` | `BitwardenShared/Core/Vault/Services/` | Add early-abort pattern: resolve pending changes before `fetchSync()`, abort if unresolved to protect offline edits |
 | ~~`CipherService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — Existing protocol methods were sufficient. No changes needed. |
-| ~~`FolderService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — Existing API sufficient for conflict folder creation. |
+| ~~`FolderService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — ~~Existing API sufficient for conflict folder creation.~~ **[Updated]** `FolderService` is no longer used by the resolver; the conflict backup folder has been removed. |
 | ~~`AddEditItemProcessor.swift`~~ | ~~`BitwardenShared/UI/Vault/VaultItem/AddEditItem/`~~ | **[Not modified]** — `OfflineSyncError.organizationCipherOfflineEditNotSupported` propagates through existing generic error handling. |
 
 ### Test Files (New)
@@ -510,7 +499,7 @@ The offline sync feature preserves zero-knowledge:
 - All encryption/decryption is performed client-side by the BitwardenSdk
 - No plaintext is transmitted to the server - the API receives the same encrypted `CipherRequestModel` as normal
 - Backup conflict copies are encrypted identically to any other cipher
-- The conflict folder name ("Offline Sync Conflicts") is encrypted by the SDK like any folder name
+- ~~The conflict folder name ("Offline Sync Conflicts") is encrypted by the SDK like any folder name~~ **[Updated]** The dedicated conflict folder has been removed; backup ciphers retain their original folder assignment
 - No new plaintext is stored at rest
 
 ### Encrypt-Before-Queue Invariant
@@ -548,7 +537,7 @@ A `CipherView` (decrypted) must **never** be serialised to `PendingCipherChangeD
 Backup copies created during conflict resolution:
 - Are encrypted via the SDK before being pushed to the server (they go through `addCipherWithServer()` which requires an encrypted `Cipher`)
 - Contain encrypted data at rest, identical to any other vault item
-- Are placed in an encrypted folder (folder names are encrypted by the SDK)
+- Retain the original cipher's folder assignment (no special conflict folder)
 
 ### Metadata Exposure
 
@@ -578,7 +567,7 @@ This is comparable to metadata already exposed by `CipherData` (which stores `id
 
 ### Phase 3: Sync Resolution
 9. `OfflineSyncResolver` - conflict resolution algorithm
-10. Conflict backup folder creation via `FolderService`
+10. ~~Conflict backup folder creation via `FolderService`~~ **[Removed]** — Backup ciphers now retain their original folder assignment
 11. Backup cipher creation with naming convention
 
 ### Phase 4: Reconnect Flow

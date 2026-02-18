@@ -43,7 +43,7 @@ These issues form a layered defense system:
 > ~~**VI-1 is mitigated, not resolved.**~~ **VI-1 is fully resolved.** The symptom (infinite spinner) was fixed via a UI fallback (PR #31). The root cause (`Cipher.withTemporaryId()` setting `data: nil`) was **fixed** by replacing it with `CipherView.withId()` operating before encryption (commit `3f7240a`). All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md).
 >
 > **Cluster relevance (updated):**
-> - **CS-2** scope reduced but not eliminated: `Cipher.withTemporaryId()` removed, but `CipherView.withId(_:)` and `CipherView.update(name:folderId:)` still exist as fragile copy methods on `CipherView`. The `data: nil` problem no longer applies.
+> - **CS-2** scope reduced but not eliminated: `Cipher.withTemporaryId()` removed, but `CipherView.withId(_:)` and `CipherView.update(name:)` still exist as fragile copy methods on `CipherView`. The `data: nil` problem no longer applies. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original cipher's folder assignment.
 > - **R3** is still important independently for sync reliability. Without retry backoff, permanently failing items block all syncing.
 > - **U3** remains a future enhancement independent of VI-1.
 
@@ -53,7 +53,7 @@ These are future enhancements that can be tracked independently:
 
 - **U3 (pending indicator)** is the highest-impact UX improvement
 - **U2 (offline-specific errors)** is low-effort and could be included in the initial release
-- **U1 (org error timing)** and **U4 (English folder name)** are accept-as-is
+- **U1 (org error timing)** is accept-as-is; ~~**U4 (English folder name)**~~ is **superseded** (conflict folder removed)
 
 **Implication:** U3 (pending indicator) has a dependency on DI-1 — if the data store is not exposed to the UI layer, the indicator cannot observe pending change state. The current DI-1 recommendation (accept current exposure) enables U3.
 
