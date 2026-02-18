@@ -79,7 +79,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     var cipherAPIService: MockCipherAPIServiceForOfflineSync!
     var cipherService: MockCipherService!
     var clientService: MockClientService!
-    var folderService: MockFolderService!
     var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
     var stateService: MockStateService!
     var subject: DefaultOfflineSyncResolver!
@@ -92,7 +91,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = MockCipherAPIServiceForOfflineSync()
         cipherService = MockCipherService()
         clientService = MockClientService()
-        folderService = MockFolderService()
         pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
         stateService = MockStateService()
 
@@ -100,7 +98,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             cipherAPIService: cipherAPIService,
             cipherService: cipherService,
             clientService: clientService,
-            folderService: folderService,
             pendingCipherChangeDataStore: pendingCipherChangeDataStore,
             stateService: stateService
         )
@@ -112,7 +109,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = nil
         cipherService = nil
         clientService = nil
-        folderService = nil
         pendingCipherChangeDataStore = nil
         stateService = nil
         subject = nil
@@ -265,12 +261,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: serverRevisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Local is newer: should push local cipher to server.
@@ -323,12 +313,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: serverRevisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Server is newer: should update local storage with the server cipher.
@@ -375,12 +359,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: revisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Soft conflict: should push local cipher to server.
@@ -424,12 +402,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             revisionDate: serverRevisionDate
         ))
 
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
         try await subject.processPendingChanges(userId: "1")
 
         // Should create a backup of the server cipher before deleting.
@@ -441,72 +413,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
         // Should delete the pending change record.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
-    }
-
-    /// `processPendingChanges(userId:)` when resolving a conflict creates the
-    /// "Offline Sync Conflicts" folder via `folderService` and assigns the backup
-    /// cipher to that folder.
-    func test_processPendingChanges_update_conflict_createsConflictFolder() async throws {
-        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
-        let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
-        let cipherResponseModel = CipherDetailsResponseModel.fixture(
-            id: "cipher-1",
-            name: "My Login",
-            revisionDate: originalRevisionDate
-        )
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
-        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
-        try await dataStore.upsertPendingChange(
-            cipherId: "cipher-1",
-            userId: "1",
-            changeType: .update,
-            cipherData: cipherData,
-            originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
-        )
-        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
-        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
-
-        // Server cipher has a different revision date (triggers conflict).
-        // The server revision date (June 15, 2024) is older than the local updatedDate
-        // (approximately "now"), so local wins and the server version is backed up.
-        cipherAPIService.getCipherResult = .success(.fixture(
-            id: "cipher-1",
-            name: "My Login",
-            revisionDate: serverRevisionDate
-        ))
-
-        // No existing folders; a new conflict folder should be created.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
-
-        try await subject.processPendingChanges(userId: "1")
-
-        // Should encrypt the folder name before creating it on the server.
-        XCTAssertEqual(
-            clientService.mockVault.clientFolders.encryptedFolders.first?.name,
-            "Offline Sync Conflicts"
-        )
-        XCTAssertEqual(folderService.addedFolderName, "Offline Sync Conflicts")
-
-        // The backup cipher view should be assigned to the conflict folder.
-        XCTAssertEqual(
-            clientService.mockVault.clientCiphers.encryptedCiphers.first?.folderId,
-            "conflict-folder-id"
-        )
-
-        // The backup cipher view name should include the offline conflict marker.
-        XCTAssertTrue(
-            clientService.mockVault.clientCiphers.encryptedCiphers.first?.name
-                .contains("offline conflict") ?? false
-        )
-
-        // Should push the local cipher and create a backup.
-        XCTAssertEqual(cipherService.updateCipherWithServerCiphers.count, 1)
-        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
     }
 
     // MARK: Tests - Cipher Not Found (404)
@@ -725,12 +631,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             id: "cipher-1",
             revisionDate: serverRevisionDate
         ))
-
-        // Set up folder creation for the backup cipher.
-        folderService.fetchAllFoldersResult = .success([])
-        folderService.addFolderWithServerResult = .success(
-            Folder.fixture(id: "conflict-folder-id", name: "Offline Sync Conflicts")
-        )
 
         // Make the backup cipher creation fail. In the conflict path (local newer),
         // the backup is created first via `createBackupCipher` which calls

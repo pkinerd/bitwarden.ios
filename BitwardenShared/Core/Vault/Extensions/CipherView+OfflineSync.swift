@@ -46,17 +46,15 @@ extension CipherView {
         )
     }
 
-    /// Returns a copy of the cipher with updated name and folder ID.
+    /// Returns a copy of the cipher with an updated name.
     ///
     /// Used by the offline sync resolver to create backup copies of conflicting ciphers
-    /// with a modified name and assigned to the conflict folder.
+    /// with a modified name. The backup retains the original cipher's folder assignment.
     ///
-    /// - Parameters:
-    ///   - name: The new name for the cipher.
-    ///   - folderId: The folder ID to assign the cipher to.
-    /// - Returns: A copy of the cipher with the updated name and folder ID.
+    /// - Parameter name: The new name for the cipher.
+    /// - Returns: A copy of the cipher with the updated name.
     ///
-    func update(name: String, folderId: String?) -> CipherView {
+    func update(name: String) -> CipherView {
         CipherView(
             id: nil, // New cipher, no ID
             organizationId: organizationId,
