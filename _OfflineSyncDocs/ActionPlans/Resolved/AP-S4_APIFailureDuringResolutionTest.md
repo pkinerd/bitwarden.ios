@@ -21,7 +21,7 @@ During resolution, multiple API calls can fail:
 - `cipherService.addCipherWithServer` — pushing a new cipher
 - `cipherService.updateCipherWithServer` — pushing an update
 - `cipherService.softDeleteCipherWithServer` — performing server soft-delete
-- `folderService.addFolderWithServer` — creating the conflict folder
+- ~~`folderService.addFolderWithServer` — creating the conflict folder~~ **[Removed]** — Conflict folder eliminated
 - `cipherService.addCipherWithServer` (backup) — creating a backup cipher
 
 Each of these can throw, and the resolver should catch, log, and continue.
@@ -39,7 +39,7 @@ Create individual tests for each API call that can fail during resolution:
 3. `test_processPendingChanges_update_updateCipherFails` — `updateCipherWithServer` throws
 4. `test_processPendingChanges_softDelete_getCipherFails` — `getCipher` throws during soft delete
 5. `test_processPendingChanges_softDelete_softDeleteFails` — `softDeleteCipherWithServer` throws
-6. `test_processPendingChanges_backup_folderCreationFails` — `addFolderWithServer` throws
+6. ~~`test_processPendingChanges_backup_folderCreationFails` — `addFolderWithServer` throws~~ **[Removed]** — Conflict folder eliminated
 7. `test_processPendingChanges_backup_addBackupFails` — backup `addCipherWithServer` throws
 
 **Pros:**
@@ -116,7 +116,7 @@ The review confirms the original assessment. After reviewing the actual implemen
    - `resolveSoftDelete` (line 264): `cipherAPIService.getCipher` can throw
    - `resolveSoftDelete` (line 285): `cipherService.softDeleteCipherWithServer` can throw
    - `createBackupCipher` (line 324): `cipherService.addCipherWithServer` for backup can throw
-   - `getOrCreateConflictFolder` (line 353): `folderService.addFolderWithServer` can throw
+   - ~~`getOrCreateConflictFolder` (line 353): `folderService.addFolderWithServer` can throw~~ **[Removed]** — Conflict folder eliminated
 
 3. **Error handling verification**: The per-item catch at `processPendingChanges` (lines 129-135) catches errors from `resolve()` and logs them. The critical invariant is that `deletePendingChange` (lines 173-175, 222-224, 287-289) is called AFTER the resolution succeeds. If `resolve()` throws, the pending record is NOT deleted - this is the correct behavior that should be tested.
 

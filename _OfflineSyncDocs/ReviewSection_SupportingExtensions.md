@@ -25,7 +25,7 @@ Provides extension methods on `Cipher` and `CipherView` used by the offline sync
 
 1. **`Cipher.withTemporaryId(_:)`** — Creates a copy of an encrypted `Cipher` with a specified ID. Used by `handleOfflineAdd()` to assign a temporary client-generated UUID to a newly created cipher *after encryption*. The temporary ID allows Core Data storage and subsequent decryption attempts.
 
-2. **`CipherView.update(name:folderId:)`** — Creates a copy of a decrypted `CipherView` with a modified name and folder ID. Used to create backup copies of conflicting ciphers in the "Offline Sync Conflicts" folder.
+2. **`CipherView.update(name:)`** — Creates a copy of a decrypted `CipherView` with a modified name, retaining the original folder assignment. Used to create backup copies of conflicting ciphers. **[Updated]** The `folderId` parameter was removed; backup ciphers now retain the original cipher's folder rather than being placed in a dedicated "Offline Sync Conflicts" folder.
 
 ### Implementation Details
 
@@ -37,9 +37,9 @@ This method creates a full copy of the `Cipher` by calling the `Cipher(...)` ini
 
 **Property count:** ~27 properties explicitly copied. Same fragility concern as `update` — see Issue EXT-3 / CS-2.
 
-#### `CipherView.update(name:folderId:) -> CipherView`
+#### `CipherView.update(name:) -> CipherView` **[Updated]**
 
-Similar pattern: creates a full copy of the `CipherView` by calling the initializer with all properties, replacing `name` and `folderId`, and setting `id`, `key`, `attachments`, and `attachmentDecryptionFailures` to `nil`.
+Similar pattern: creates a full copy of the `CipherView` by calling the initializer with all properties, replacing `name` and retaining the original `folderId`, and setting `id`, `key`, `attachments`, and `attachmentDecryptionFailures` to `nil`. **[Updated]** The `folderId` parameter was removed — backup ciphers now retain the original cipher's folder assignment.
 
 **Property count:** ~24 properties explicitly handled. Same fragility concern as above.
 
@@ -65,7 +65,7 @@ Similar pattern: creates a full copy of the `CipherView` by calling the initiali
 
 | Test | Verification |
 |------|-------------|
-| `test_update_setsNameAndFolderId` | Name and folder ID set correctly |
+| ~~`test_update_setsNameAndFolderId`~~ → `test_update_setsName` | Name set correctly; folderId retained from original **[Updated]** |
 | `test_update_setsIdToNil` | ID is nil |
 | `test_update_setsKeyToNil` | Key is nil |
 | `test_update_setsAttachmentsToNil` | Attachments are nil |
@@ -115,11 +115,11 @@ Same underlying issue as SEC-1. See [Resolved/AP-SEC1](ActionPlans/Resolved/AP-S
 
 Both methods manually copy all properties of their respective SDK types (`Cipher` and `CipherView`) by calling the full initializer. If the SDK adds new properties with non-nil defaults, these methods will compile but silently drop the new property's value. If the SDK adds new required parameters, compilation will break (which is the safer outcome).
 
-**Scope:** Two SDK types (`Cipher` + `CipherView`) with two copy methods (`Cipher.withTemporaryId()` and `CipherView.update(name:folderId:)`).
+**Scope:** Two SDK types — `CipherView.withId(_:)` and `CipherView.update(name:)`. **[Updated]** `Cipher.withTemporaryId()` has been removed and replaced by `CipherView.withId(_:)`. `CipherView.update(name:folderId:)` has been simplified to `CipherView.update(name:)` (folderId parameter removed).
 
-**Additional concern:** `Cipher.withTemporaryId()` sets `data: nil`, which is the root cause of VI-1. Even if the fragility issue doesn't cause silent data loss from new SDK properties, the explicit `data: nil` already causes decryption failures for offline-created ciphers.
+~~**Additional concern:** `Cipher.withTemporaryId()` sets `data: nil`, which is the root cause of VI-1.~~ **[Resolved]** `Cipher.withTemporaryId()` replaced by `CipherView.withId(_:)` operating before encryption. The `data: nil` problem no longer exists.
 
-**Recommendation:** Replace `Cipher.withTemporaryId()` with a `CipherView.withId()` method that operates *before* encryption, eliminating both the `data: nil` bug and reducing fragility to one SDK type. Additionally, add a comment noting that these methods must be updated when SDK types change, or consider using a more generic copy mechanism if the SDK provides one.
+**Recommendation:** Add a comment noting that these methods must be updated when SDK types change, or consider using a more generic copy mechanism if the SDK provides one.
 
 ### ~~Issue EXT-4~~ [Resolved]
 

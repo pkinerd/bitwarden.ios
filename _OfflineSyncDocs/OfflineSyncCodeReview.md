@@ -109,7 +109,7 @@ OfflineSyncResolver (DefaultOfflineSyncResolver) [NEW]
   └─ cipherAPIService (CipherAPIService) [existing]
   └─ cipherService (CipherService) [existing]
   └─ clientService (ClientService) [existing]
-  └─ folderService (FolderService) [existing]
+  └─ ~~folderService (FolderService) [existing]~~ [REMOVED — conflict folder eliminated]
   └─ pendingCipherChangeDataStore (PendingCipherChangeDataStore) [NEW]
   └─ stateService (StateService) [existing]
 ```
@@ -124,10 +124,10 @@ No circular dependencies detected. All new services flow into the existing servi
 |----------------|------|-----|-----------|
 | `PendingCipherChangeDataStore` | `VaultRepository` | `DataStore` | Same domain (Vault → Platform/Stores) — follows existing patterns (e.g., CipherData) |
 | `PendingCipherChangeDataStore` | `SyncService` | `DataStore` | Same domain — follows existing SyncService-to-DataStore pattern |
-| `OfflineSyncResolver` → `FolderService` | Vault/Services | Vault/Services | Same domain — creating a folder for conflict backups |
+| ~~`OfflineSyncResolver` → `FolderService`~~ | ~~Vault/Services~~ | ~~Vault/Services~~ | ~~Same domain — creating a folder for conflict backups~~ **[Removed]** — Conflict folder eliminated |
 | `OfflineSyncResolver` → `CipherAPIService` | Vault/Services | Vault/Services | Same domain — fetching server cipher state |
 
-The `OfflineSyncResolver` has the highest dependency count (6 injected services), which are all within the Vault/Platform domain and are cohesive with the resolver's responsibility. No cross-domain coupling is introduced (e.g., Auth ↔ Vault, Tools ↔ Vault).
+The `OfflineSyncResolver` has the highest dependency count (5 injected services — reduced from 6 after `folderService` removal), which are all within the Vault/Platform domain and are cohesive with the resolver's responsibility. No cross-domain coupling is introduced (e.g., Auth ↔ Vault, Tools ↔ Vault).
 
 **Removed cross-domain dependency (positive):** The simplification removed a `ConnectivityMonitor` dependency that would have imported `Network.framework` and an `AccountAPIService` dependency for health checking, both of which were cross-cutting.
 
@@ -135,7 +135,7 @@ The `OfflineSyncResolver` has the highest dependency count (6 injected services)
 
 **Observation A1 — Early-abort sync pattern:** SyncService uses an early-abort pattern: if pending offline changes exist, it attempts to resolve them first. If any remain unresolved (e.g. server unreachable), the sync is aborted entirely to prevent `replaceCiphers` from overwriting local offline edits. This is simpler and safer than the alternative of proceeding with sync and re-applying changes afterward.
 
-**Observation A2 — `OfflineSyncResolver` has 6 dependencies:** This reflects the resolver's cross-cutting responsibility (reading ciphers, creating folders, uploading to API, managing pending state). The responsibility is cohesive, so the dependency count is acceptable.
+**Observation A2 — `OfflineSyncResolver` has 5 dependencies:** **[Updated]** Reduced from 6 after removing `folderService`. This reflects the resolver's cross-cutting responsibility (reading ciphers, uploading to API, managing pending state). The responsibility is cohesive, so the dependency count is acceptable.
 
 **~~Issue A3~~ [Resolved] — `timeProvider` removed.** See [AP-A3](ActionPlans/Resolved/AP-A3_UnusedTimeProvider.md).
 
@@ -192,7 +192,7 @@ The `OfflineSyncResolver` has the highest dependency count (6 injected services)
 | `CipherDetailsResponseModel` Codable | **Safe** | JSON encode/decode used for cipher data persistence. Model is well-established in codebase. |
 | `Cipher(responseModel:)` init | **Safe** | Uses existing SDK init that maps from response model. |
 | Error catch pattern | **Safe** | **[Updated]** Plain `catch` blocks used in all four offline fallback methods. The `URLError+NetworkConnection` extension was removed; any server API failure now triggers offline save. The encrypt step occurs outside the do-catch, so SDK errors propagate normally. |
-| `CipherView.update(name:folderId:)` | **Fragile** | Manually copies all 24 properties. See Issue CS-2. |
+| `CipherView.update(name:)` | **Fragile** | Manually copies all 24 properties. See Issue CS-2. **[Updated]** `folderId` parameter removed; backup retains original folder. |
 | `Cipher.withTemporaryId(_:)` | **Fragile** | Manually copies all 26 properties. See Issue CS-2. |
 
 **Issue CS-2 — `withTemporaryId` and `update` are fragile against SDK type changes.** Both methods manually copy all properties by calling the full initializer. If `Cipher`/`CipherView` from the BitwardenSdk package gain new properties with default values, these methods will compile but silently drop the new property's value. If new required parameters are added, compilation will break (which is the safer outcome). **Severity: Low.** **Recommendation:** Add a comment noting these methods must be reviewed when the SDK is updated.
@@ -384,14 +384,14 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 | Save cipher while offline | Saves silently, queues for sync | **Good** — Transparent to user |
 | Save org cipher while offline | Throws `organizationCipherOfflineEditNotSupported` | **Needs attention** — Error appears after network timeout delay |
 | Next sync after connectivity restored | Resolves pending changes, then syncs | **Good** — No manual action needed |
-| Conflict detected (server changed) | Backup created in "Offline Sync Conflicts" folder | **Good** — No data loss |
+| Conflict detected (server changed) | Backup created (retains original folder) | **Good** — No data loss |
 | Multiple password changes offline | Extra backup when ≥4 changes | **Good** — Soft conflict protects against accumulated drift |
 | Archive/unarchive cipher while offline | Fails with generic network error | **Gap** — Inconsistent with add/update/delete offline support |
 | Update cipher collections while offline | Fails with generic network error | **Gap** — Inconsistent |
 | Restore cipher from trash while offline | Fails with generic network error | **Gap** — Inconsistent |
 | Viewing offline-created item | ~~Infinite spinner, item never loads~~ **[Resolved]** Item loads normally | **[Resolved]** Root cause (`Cipher.withTemporaryId()` producing `data: nil`) **fixed** by `CipherView.withId()` (commit `3f7240a`). Symptom (spinner) mitigated by fallback fetch (PR #31). See Phase 2 §2.1, [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md). |
 | Viewing pending changes status | No UI indicator | **Gap** — User has no awareness of unsynced changes |
-| Conflict folder discovery | "Offline Sync Conflicts" folder appears in vault | **Acceptable** — Clear name, but English-only |
+| ~~Conflict folder discovery~~ | ~~"Offline Sync Conflicts" folder appears in vault~~ | **[Removed]** — Conflict folder eliminated; backups retain original folder |
 
 ### 8.2 Usability Observations
 
@@ -401,7 +401,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 
 **Observation U3 — No user-visible pending changes indicator.** Users have no way to see pending offline changes. If resolution continues to fail, the user is unaware their changes haven't been uploaded.
 
-**Observation U4 — Conflict folder name in English only.** "Offline Sync Conflicts" is hardcoded in English, not localized. Non-English users see an English folder name. Localization is complex since the encrypted folder name syncs across devices with potentially different locales.
+~~**Observation U4 — Conflict folder name in English only.**~~ ~~"Offline Sync Conflicts" is hardcoded in English, not localized. Non-English users see an English folder name. Localization is complex since the encrypted folder name syncs across devices with potentially different locales.~~ **[Superseded]** — The dedicated conflict folder has been removed. Backup ciphers now retain their original folder assignment.
 
 **Issue VI-1 ~~[Mitigated]~~ [Resolved] — Offline-created cipher view failure.** When a user creates a new cipher while offline, the item appeared in the vault list but failed to load in the detail view (infinite spinner). **Mitigated in PR #31** (fallback fetch in `ViewItemProcessor`). **Root cause fixed in Phase 2:** `Cipher.withTemporaryId()` (which produced `data: nil`) replaced by `CipherView.withId()` operating before encryption (commit `3f7240a`). Offline-created ciphers now encrypt correctly, so the publisher stream no longer fails. The UI fallback remains as defense-in-depth. See Phase 2 §2.1, [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md).
 
@@ -416,7 +416,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 | ~~Remove `timeProvider` from `DefaultOfflineSyncResolver`~~ | ~~5 lines~~ | **[Done]** — Removed in commit `a52d379` |
 | Merge `handleOfflineDelete` and `handleOfflineSoftDelete` | ~30 lines | Slight increase in complexity of one method; both queue `.softDelete` changes |
 | Use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON | ~20 lines per handler | Would require a different serialization approach for `cipherData`; the current JSON approach matches existing `CipherData` patterns |
-| Remove `CipherView.update(name:folderId:)` and inline the `CipherView(...)` init call in the resolver | ~20 lines | Reduces abstraction but couples resolver to SDK init signature |
+| Remove `CipherView.update(name:)` and inline the `CipherView(...)` init call in the resolver | ~20 lines | Reduces abstraction but couples resolver to SDK init signature |
 | Use existing project-level mock for `CipherAPIService` (if one exists) instead of inline `MockCipherAPIServiceForOfflineSync` | ~40 lines | Depends on whether a project mock exists with `fatalError` stubs for unused methods |
 
 **Assessment:** The code is already reasonably compact. The `timeProvider` removal has been applied. The remaining opportunities offer modest savings with tradeoffs.
@@ -429,7 +429,7 @@ The implementation has already been simplified significantly from the original p
 2. **Health check removed** — Saved ~50 lines and eliminated `AccountAPIService` dependency
 3. **Post-sync re-application replaced with early-abort** — Simplified sync logic significantly
 4. **`AddEditItemProcessor` not modified** — Errors propagate through existing UI error handling
-5. **No changes to `CipherService` or `FolderService`** — Existing protocol methods sufficient
+5. **No changes to `CipherService` or `FolderService`** — Existing protocol methods sufficient. **[Updated]** `FolderService` dependency subsequently removed from the resolver entirely.
 
 ---
 
@@ -579,7 +579,7 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 | U1 | UX | Org cipher error appears after network timeout delay | Section 8.2 |
 | U2 | UX | Archive/unarchive/collections/restore not offline-aware (inconsistent) | Section 8.2 |
 | U3 | UX | No user-visible indicator for pending offline changes | Section 8.2 |
-| U4 | UX | Conflict folder name is English-only | Section 8.2 |
+| ~~U4~~ | ~~UX~~ | ~~Conflict folder name is English-only~~ — **[Superseded]** Conflict folder removed | ~~Section 8.2~~ |
 | VR-2 | `VaultRepository` | `deleteCipher` (permanent) converted to soft delete offline | [VR-2](ReviewSection_VaultRepository.md) |
 | RES-1 | `OfflineSyncResolver` | Potential duplicate cipher on create retry after partial failure | [RES-1](ReviewSection_OfflineSyncResolver.md) |
 | RES-7 | `OfflineSyncResolver` | Backup ciphers don't include attachments | [RES-7](ReviewSection_OfflineSyncResolver.md) |
@@ -599,7 +599,7 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 - **All test files follow `BitwardenTestCase` patterns** with proper setUp/tearDown lifecycle
 - **Pending changes cleaned up on user data deletion** via `DataStore.deleteDataForUser`
 - **`originalRevisionDate` preserved across upserts** — ensures conflict detection baseline is never accidentally overwritten
-- **`conflictFolderId` caching** avoids redundant folder lookups/creation within a sync batch
+- ~~**`conflictFolderId` caching** avoids redundant folder lookups/creation within a sync batch~~ **[Removed]** — Conflict folder eliminated
 - **No new external dependencies** — zero new libraries, packages, or framework imports
 - **No problematic cross-domain dependencies** — all new relationships are within Vault/Platform domains
 - **Simplification from original design** — ConnectivityMonitor, health check, and post-sync re-application all removed for cleaner architecture
@@ -665,25 +665,13 @@ PR #27 closed several test coverage gaps identified in the original review:
 
 These tests partially address Deep Dive 7 (narrow error coverage) from the original review.
 
-### 16.3 Conflict Folder Encryption Fix (PR #29)
+### 16.3 ~~Conflict Folder Encryption Fix (PR #29)~~ **[Superseded]**
 
-**Commit `266bffa`**
+~~**Commit `266bffa`**~~
 
-**Bug:** `getOrCreateConflictFolder()` in `OfflineSyncResolver` was passing the plaintext string `"Offline Sync Conflicts"` directly to `folderService.addFolderWithServer(name:)`. The `addFolderWithServer` method expects an *encrypted* folder name. The server stored the plaintext, and when the SDK later tried to decrypt the folder name during a folder fetch, it panicked (Rust panic) because plaintext is not valid ciphertext.
+~~**Bug:** `getOrCreateConflictFolder()` in `OfflineSyncResolver` was passing the plaintext string `"Offline Sync Conflicts"` directly to `folderService.addFolderWithServer(name:)`. The `addFolderWithServer` method expects an *encrypted* folder name. The server stored the plaintext, and when the SDK later tried to decrypt the folder name during a folder fetch, it panicked (Rust panic) because plaintext is not valid ciphertext.~~
 
-**Fix:** Encrypt the folder name via `clientService.vault().folders().encrypt()` before sending:
-
-```swift
-// Before (CRASH — plaintext folder name)
-let newFolder = try await folderService.addFolderWithServer(name: folderName)
-
-// After (FIXED — encrypted)
-let folderView = FolderView(id: nil, name: folderName, revisionDate: Date.now)
-let encryptedFolder = try await clientService.vault().folders().encrypt(folder: folderView)
-let newFolder = try await folderService.addFolderWithServer(name: encryptedFolder.name)
-```
-
-This follows the same encryption pattern used in `SettingsRepository.addFolder()`.
+**[Updated]** This fix is no longer applicable — the conflict folder feature, `getOrCreateConflictFolder()` method, and `FolderService` dependency have been removed entirely. Backup ciphers now retain the original cipher's folder assignment.
 
 ### 16.4 VI-1 Mitigation — Direct Fetch Fallback (PR #31)
 
@@ -780,7 +768,7 @@ The following issues from the original review and VI-1 investigation ~~are **not
 | Issue | Status | Details |
 |-------|--------|---------|
 | **[VI-1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md)** | ~~Mitigated~~ **Resolved** | Spinner fixed via UI fallback (PR #31). Root cause (`data: nil` from `Cipher.withTemporaryId()`) **fixed** in Phase 2: `CipherView.withId()` replaces `Cipher.withTemporaryId()` (commit `3f7240a`). |
-| **[CS-2](ActionPlans/AP-CS2_FragileSDKCopyMethods.md)** | Open (Low) | **Updated** — `Cipher.withTemporaryId()` removed, but fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:folderId:)`. Same underlying concern. |
+| **[CS-2](ActionPlans/AP-CS2_FragileSDKCopyMethods.md)** | Open (Low) | **Updated** — `Cipher.withTemporaryId()` removed, but fragile copy pattern now applies to `CipherView.withId(_:)` and `CipherView.update(name:)`. Same underlying concern. **[Updated]** `folderId` parameter removed from `update`. |
 | ~~**[RES-1](ActionPlans/AP-RES1_DuplicateCipherOnCreateRetry.md)**~~ | ~~Open (Informational)~~ **Partially Resolved** | Temp-ID cipher record cleanup added to `resolveCreate()` (commits `8ff7a09`, `53e08ef`). Duplicate-on-retry concern (server already has the cipher) still informational. |
 | ~~**[S7](ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md)**~~ | ~~Open (Medium)~~ **[Partially Resolved]** | Resolver-level 404 tests added (RES-2 fix, commit `e929511`). VaultRepository-level `handleOfflineDelete` not-found test gap remains. |
 | ~~**[T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md)**~~ | ~~Open (Low)~~ **[Resolved]** | Covered by `test_updateCipher_offlineFallback_preservesCreateType` (commit `12cb225`). |
