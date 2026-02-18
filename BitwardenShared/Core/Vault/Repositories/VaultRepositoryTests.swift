@@ -1881,6 +1881,45 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingChangeCountEncryptionService.encryptCalledWith, [2])
     }
 
+    /// `updateCipher()` offline fallback propagates decryption errors when the existing
+    /// pending record's encrypted password change count cannot be decrypted (e.g., the
+    /// vault key changed or the data is corrupt).
+    func test_updateCipher_offlineFallback_decryptionFailure_throws() async throws {
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        // Existing pending change with an encrypted count that will fail to decrypt.
+        let existingCipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "123",
+                login: .fixture(password: "old-pw")
+            )
+        )
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        let existingChange = PendingCipherChangeData(
+            context: dataStore.persistentContainer.viewContext,
+            cipherId: "123",
+            userId: "1",
+            changeType: .update,
+            cipherData: existingCipherData,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
+            encryptedPasswordChangeCount: Data("corrupt-data".utf8)
+        )
+        pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        // Configure mock to fail decryption.
+        pendingChangeCountEncryptionService.decryptResult = .failure(
+            PendingChangeCountEncryptionError.invalidData
+        )
+
+        let cipher = CipherView.fixture(id: "123", login: .fixture(password: "new-pw"))
+        await assertAsyncThrows(error: PendingChangeCountEncryptionError.invalidData) {
+            try await subject.updateCipher(cipher)
+        }
+
+        // The pending change should NOT be upserted since decryption failed before reaching that point.
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
     /// `updateCipher()` re-throws the original network error for organization ciphers
     /// when the server API call fails.
     func test_updateCipher_offlineFallback_orgCipher_throws() async throws {

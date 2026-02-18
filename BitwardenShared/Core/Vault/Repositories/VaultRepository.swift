@@ -1020,15 +1020,13 @@ extension DefaultVaultRepository: VaultRepository {
         let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
         let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
-        let encryptedCount = try await pendingChangeCountEncryptionService.encrypt(count: 0)
-
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
             changeType: .create,
             cipherData: cipherData,
             originalRevisionDate: nil,
-            encryptedPasswordChangeCount: encryptedCount
+            encryptedPasswordChangeCount: nil
         )
     }
 
@@ -1140,15 +1138,13 @@ extension DefaultVaultRepository: VaultRepository {
         let cipherResponseModel = try CipherDetailsResponseModel(cipher: cipher)
         let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
-        let encryptedCount = try await pendingChangeCountEncryptionService.encrypt(count: 0)
-
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: cipher.revisionDate,
-            encryptedPasswordChangeCount: encryptedCount
+            encryptedPasswordChangeCount: nil
         )
     }
 
@@ -1180,15 +1176,13 @@ extension DefaultVaultRepository: VaultRepository {
         let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
         let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
-        let encryptedCount = try await pendingChangeCountEncryptionService.encrypt(count: 0)
-
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
             changeType: .softDelete,
             cipherData: cipherData,
             originalRevisionDate: encryptedCipher.revisionDate,
-            encryptedPasswordChangeCount: encryptedCount
+            encryptedPasswordChangeCount: nil
         )
     }
 
