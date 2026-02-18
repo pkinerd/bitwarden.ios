@@ -68,7 +68,7 @@ extension CipherView {
         key: String?,
         name: String,
         attachments: [AttachmentView]?,
-        attachmentDecryptionFailures: [String]?
+        attachmentDecryptionFailures: [AttachmentView]?
     ) -> CipherView {
         CipherView(
             id: id,
