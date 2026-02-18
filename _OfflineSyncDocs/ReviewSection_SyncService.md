@@ -5,7 +5,7 @@
 | File | Type | Lines Changed |
 |------|------|---------------|
 | `BitwardenShared/Core/Vault/Services/SyncService.swift` | Service (modified) | +32 lines |
-| `BitwardenShared/Core/Vault/Services/SyncServiceTests.swift` | Tests (modified) | +67 lines |
+| `BitwardenShared/Core/Vault/Services/SyncServiceTests.swift` | Tests (modified) | +81 lines |
 
 ---
 
@@ -27,7 +27,10 @@ The core change is a block inserted at the top of `fetchSync(forceSync:isPeriodi
 **[Updated]** A pre-count check was re-added as an optimization so the common case (no pending changes) skips the resolver entirely. The resolver is only called when pending changes actually exist. Both pre-count and post-resolution count checks use `pendingCipherChangeDataStore.pendingChangeCount(userId:)`.
 
 ```swift
-// Process any pending offline changes before syncing.
+// Resolve any pending offline changes before syncing. If pending changes
+// remain after resolution, abort to prevent replaceCiphers from overwriting
+// local offline edits. Resolution is skipped when the vault is locked since
+// the SDK crypto context is needed for conflict resolution.
 let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
 if !isVaultLocked {
     let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
@@ -67,11 +70,11 @@ fetchSync() called
 
 ### 3. Minor Optimization: Reuse `isVaultLocked`
 
-The diff shows that the `isVaultLocked` variable (computed for the pre-sync check) is reused later in `fetchSync` where the original code called `await vaultTimeoutService.isLocked(userId: userId)` a second time. The original inline call at line 355 is replaced with the captured `isVaultLocked` value, eliminating a redundant async call.
+The diff shows that the `isVaultLocked` variable (computed for the pre-sync check) is reused later in `fetchSync` where the original code called `await vaultTimeoutService.isLocked(userId: userId)` a second time. The original inline call at line 359 is replaced with the captured `isVaultLocked` value, eliminating a redundant async call.
 
 ### 4. Whitespace-Only Change
 
-A blank line is added at line 381 (before `try await checkVaultTimeoutPolicy()`). This is cosmetic only.
+A blank line is added at line 382 (before `try await checkVaultTimeoutPolicy()`). This is cosmetic only.
 
 ---
 
@@ -82,9 +85,10 @@ A blank line is added at line 381 (before `try await checkVaultTimeoutPolicy()`)
 | Test | Scenario | Verification |
 |------|----------|-------------|
 | `test_fetchSync_preSyncResolution_triggersPendingChanges` | Pending changes exist → resolve → 0 remaining | Resolver called, sync proceeds (1 API request) |
-| `test_fetchSync_preSyncResolution_skipsWhenVaultLocked` | Vault locked + pending changes | Resolver NOT called |
-| `test_fetchSync_preSyncResolution_skipsWhenNoPendingChanges` | 0 pending changes | Pre-count check returns 0, resolver NOT called (optimization), sync proceeds normally |
+| `test_fetchSync_preSyncResolution_skipsWhenVaultLocked` | Vault locked (pending changes not checked) | Resolver NOT called, sync proceeds normally |
+| `test_fetchSync_preSyncResolution_noPendingChanges` | 0 pending changes | Pre-count check returns 0, resolver NOT called (optimization), sync proceeds normally |
 | `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain` | Pending changes → resolve → some remaining | Resolver called, sync ABORTED (0 API requests) |
+| `test_fetchSync_preSyncResolution_resolverThrows_syncFails` | Pending changes exist → resolver throws hard error (e.g., Core Data failure) | Resolver called, error propagates, sync ABORTED (0 API requests), ciphers not replaced |
 
 **[Updated]** A pre-count check was re-added as an optimization. The sync flow now calls `pendingChangeCount` twice: once before resolution (to skip the resolver when no pending changes exist) and once after resolution (to determine whether to abort). The `pendingChangeCountResults` sequential-return pattern in `MockPendingCipherChangeDataStore` supports this two-call flow.
 

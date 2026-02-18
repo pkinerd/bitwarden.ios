@@ -54,12 +54,16 @@ encrypt(cipherView) → updateCipherWithServer(encrypted) → done
 ```
 1. Check if cipher has organizationId (isOrgCipher)
 2. encrypt(cipherView) → try updateCipherWithServer(encrypted)
-3. catch (any error):
-   a. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
-   b. Otherwise → handleOfflineUpdate(cipherView, encryptedCipher, userId)
+3. [New] On success: clean up any orphaned pending change from a prior offline save
+4. catch (denylist pattern):
+   a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
+   b. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
+   c. Otherwise → handleOfflineUpdate(cipherView, encryptedCipher, userId)
 ```
 
 **[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
+
+**[Updated]** On successful server update, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)`. This mirrors the same cleanup pattern in `addCipher`.
 
 **Notable:** `handleOfflineUpdate` receives both the decrypted `cipherView` (for password change detection) and the encrypted cipher (for local storage). The decrypted view is never persisted — it's used only for an in-memory comparison.
 
@@ -73,11 +77,15 @@ deleteCipherWithServer(id:) → done
 **After: [Updated]**
 ```
 1. try deleteCipherWithServer(id:)
-2. catch (any error):
-   → handleOfflineDelete(cipherId: id)
+2. [New] On success: clean up any orphaned pending change from a prior offline operation
+3. catch (denylist pattern):
+   a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
+   b. Otherwise → handleOfflineDelete(cipherId: id)
 ```
 
 **[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
+
+**[Updated]** On successful server delete, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)`. This mirrors the cleanup pattern in `addCipher` and `updateCipher`.
 
 **Notable:** Unlike the other methods, `deleteCipher` does not have the encrypted cipher available in the catch block (the original method only takes an `id` parameter). The `handleOfflineDelete` helper must fetch the cipher from local storage to get the encrypted data for the pending change record.
 
@@ -91,14 +99,18 @@ create softDeletedCipher (with deletedDate) → encrypt → softDeleteCipherWith
 **After: [Updated]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
-2. create softDeletedCipher (with deletedDate) → encrypt
+2. create softDeletedCipher (with deletedDate) → encrypt via encryptAndUpdateCipher
 3. try softDeleteCipherWithServer(id, encrypted)
-4. catch (any error):
-   a. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
-   b. Otherwise → handleOfflineSoftDelete(cipherId, encryptedCipher)
+4. [New] On success: clean up any orphaned pending change from a prior offline operation
+5. catch (denylist pattern):
+   a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
+   b. If isOrgCipher → throw organizationCipherOfflineEditNotSupported
+   c. Otherwise → handleOfflineSoftDelete(cipherId, encryptedCipher)
 ```
 
 **[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
+
+**[Updated]** On successful server soft-delete, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)`. This mirrors the cleanup pattern in the other modified methods.
 
 ### 5. New Helper: `handleOfflineAdd` **[Updated]**
 
@@ -135,8 +147,11 @@ Parameters: cipherView: CipherView, encryptedCipher: Cipher, userId: String
       → Fetch cipher from local storage → decrypt → compare passwords
       → If different: increment count
 7. originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
-8. Upsert pending change: changeType = .update, with updated data and counts
+8. [New] Determine changeType: if existing pending record has changeType == .create, preserve .create; otherwise use .update
+9. Upsert pending change: changeType = determined type, with updated data and counts
 ```
+
+**[Updated] `.create` Type Preservation:** If the cipher was originally created offline and hasn't been synced to the server yet (existing pending change has `changeType == .create`), the update preserves the `.create` type instead of overwriting it to `.update`. From the server's perspective, this cipher is still new and needs to be POSTed, not PUTted. This prevents the resolver from trying to GET the cipher by its temporary ID.
 
 **Password Change Detection Logic (lines 1055-1073):**
 
@@ -234,24 +249,55 @@ This creates an inconsistency: add, update, delete, and soft-delete work offline
 
 ### Test Coverage
 
+**[Updated]** Test coverage has expanded significantly since the initial review. The table below reflects all current offline-related tests.
+
 | Test | Scenario |
 |------|----------|
 | `test_addCipher_offlineFallback` | Network error → local save + pending change created |
+| `test_addCipher_offlineFallback_newCipherGetsTempId` | New cipher (nil ID) gets temp UUID before encryption |
 | `test_addCipher_offlineFallback_orgCipher_throws` | Org cipher + network error → throws, no local save |
+| `test_addCipher_offlineFallback_unknownError` | Unknown error → falls back to offline save |
+| `test_addCipher_offlineFallback_responseValidationError5xx` | 5xx response → falls back to offline save |
+| `test_addCipher_serverError_rethrows` | ServerError → rethrown, no offline fallback |
+| `test_addCipher_responseValidationError4xx_rethrows` | 4xx response → rethrown, no offline fallback |
 | `test_deleteCipher_offlineFallback` | Network error → local soft-delete + pending change |
+| `test_deleteCipher_offlineFallback_unknownError` | Unknown error → falls back to offline save |
+| `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Existing `.create` pending → deletes local cipher + pending record |
+| `test_deleteCipher_offlineFallback_responseValidationError5xx` | 5xx response → falls back to offline save |
 | `test_deleteCipher_offlineFallback_orgCipher_throws` | Org cipher + network error → throws, no local delete |
+| `test_deleteCipher_serverError_rethrows` | ServerError → rethrown, no offline fallback |
+| `test_deleteCipher_responseValidationError4xx_rethrows` | 4xx response → rethrown, no offline fallback |
 | `test_updateCipher_offlineFallback` | Network error → local save + pending change created |
+| `test_updateCipher_offlineFallback_preservesCreateType` | Existing `.create` pending → preserves `.create` type on update |
+| `test_updateCipher_offlineFallback_passwordChanged_incrementsCount` | First offline edit, password changed → count = 1 |
+| `test_updateCipher_offlineFallback_passwordUnchanged_zeroCount` | First offline edit, password unchanged → count = 0 |
+| `test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount` | Subsequent offline edit, password changed → count incremented |
+| `test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount` | Subsequent offline edit, password unchanged → count preserved |
 | `test_updateCipher_offlineFallback_orgCipher_throws` | Org cipher + network error → throws, no local save |
-| ~~`test_updateCipher_nonNetworkError_rethrows`~~ | **[Removed]** No longer applicable — all errors trigger offline save. |
+| `test_updateCipher_offlineFallback_unknownError` | Unknown error → falls back to offline save |
+| `test_updateCipher_offlineFallback_responseValidationError5xx` | 5xx response → falls back to offline save |
+| `test_updateCipher_serverError_rethrows` | ServerError → rethrown, no offline fallback |
+| `test_updateCipher_responseValidationError4xx_rethrows` | 4xx response → rethrown, no offline fallback |
 | `test_softDeleteCipher_offlineFallback` | Network error → local save + pending change |
+| `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Existing `.create` pending → deletes local cipher + pending record |
 | `test_softDeleteCipher_offlineFallback_orgCipher_throws` | Org cipher + network error → throws |
+| `test_softDeleteCipher_offlineFallback_unknownError` | Unknown error → falls back to offline save |
+| `test_softDeleteCipher_offlineFallback_responseValidationError5xx` | 5xx response → falls back to offline save |
+| `test_softDeleteCipher_serverError_rethrows` | ServerError → rethrown, no offline fallback |
+| `test_softDeleteCipher_responseValidationError4xx_rethrows` | 4xx response → rethrown, no offline fallback |
 
-**Coverage Assessment:** Good coverage of the happy paths and org cipher rejection. Missing coverage for:
+**Coverage Assessment:** **[Updated]** Coverage has improved substantially. The following areas previously flagged as missing now have dedicated tests:
 
-- `handleOfflineUpdate` password change detection (no dedicated test)
-- `handleOfflineDelete` cipher-not-found path (no test)
-- `handleOfflineAdd` temporary ID assignment (tested indirectly via mock)
-- `handleOfflineUpdate` with existing pending record (subsequent offline edit scenario)
+- `handleOfflineUpdate` password change detection: Covered by four dedicated tests (first edit changed/unchanged, subsequent edit changed/unchanged)
+- `handleOfflineUpdate` with existing pending record: Covered by subsequent edit tests and `preservesCreateType` test
+- `handleOfflineAdd` temporary ID assignment: Covered by `test_addCipher_offlineFallback_newCipherGetsTempId`
+- Denylist error handling: Covered by `serverError_rethrows`, `responseValidationError4xx_rethrows`, `unknownError`, and `responseValidationError5xx` tests for each operation
+- `.create` type cleanup: Covered by `cleansUpOfflineCreatedCipher` tests for delete and soft-delete
+- `.create` type preservation: Covered by `preservesCreateType` test for update
+
+**Remaining gap:**
+
+- `handleOfflineDelete` cipher-not-found path (silent return when `fetchCipher` returns `nil`) — no dedicated test
 
 ---
 

@@ -143,10 +143,10 @@ This ensures that when a user logs out or their account is deleted, all pending 
 
 | Guideline | Status | Details |
 |-----------|--------|---------|
-| DocC on Has* protocols | **Pass** | Both have summary documentation |
+| DocC on Has* protocols | **Pass** | Both have summary documentation and property-level documentation |
 | DocC on container properties | **Pass** | Stored properties documented |
 | DocC on init parameters | **Pass** | Both new parameters in init DocC |
-| Alphabetical ordering | **Pass** | Properties, parameters, and assignments in alphabetical order |
+| Alphabetical ordering | **Partial** | Stored properties, init parameters, and assignments are in alphabetical order; however, the DocC parameter documentation block in the `ServiceContainer` init has `pendingAppIntentActionMediator` and `pendingCipherChangeDataStore` listed after `reviewPromptService` instead of before `policyService`, mismatching the actual init parameter order |
 
 ### Security Compliance
 
@@ -168,7 +168,8 @@ The `HasPendingCipherChangeDataStore` protocol is added to the top-level `Servic
 **Current usage:** `PendingCipherChangeDataStore` is used by:
 - `DefaultVaultRepository` (core layer)
 - `DefaultSyncService` (core layer)
-- Neither uses it from the `Services` typealias — both receive it via direct init injection
+- `DefaultOfflineSyncResolver` (core layer)
+- None of these use it from the `Services` typealias — all receive it via direct init injection
 
 Adding it to the `Services` typealias makes it accessible to any UI-layer component (coordinators, processors), which is broader exposure than necessary. However, it also needs to be on the `ServiceContainer` for it to be injectable, and `ServiceContainer` conforms to `Services`.
 

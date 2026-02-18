@@ -165,7 +165,7 @@ This ensures **one pending change record per cipher per user**. Subsequent edits
 #### PendingCipherChangeType Enum (line 8)
 
 ```swift
-enum PendingCipherChangeType: Int16, Sendable {
+enum PendingCipherChangeType: Int16 {
     case update = 0
     case create = 1
     case softDelete = 2
@@ -212,19 +212,19 @@ The protocol is implemented as an extension on the existing `DataStore` class, r
 
 ```swift
 func upsertPendingChange(...) async throws {
-    try await backgroundContext.perform {
-        let existing = try context.fetch(fetchByCipherId)
-        if let existingChange = existing.first {
+    try await backgroundContext.performAndSave {
+        let existing = try self.backgroundContext.fetch(fetchByCipherId).first
+        if let existing {
             // UPDATE: preserves originalRevisionDate, updates data & count
-            existingChange.cipherData = cipherData
-            existingChange.changeType = changeType
-            existingChange.updatedDate = Date()
-            existingChange.offlinePasswordChangeCount = offlinePasswordChangeCount
+            existing.cipherData = cipherData
+            existing.changeTypeRaw = changeType.rawValue
+            existing.updatedDate = Date()
+            existing.offlinePasswordChangeCount = offlinePasswordChangeCount
+            // Do NOT overwrite originalRevisionDate
         } else {
             // INSERT: creates new record with all fields
-            _ = PendingCipherChangeData(context:, id:, cipherId:, userId:, ...)
+            _ = PendingCipherChangeData(context:, cipherId:, userId:, ...)
         }
-        try context.save()
     }
 }
 ```
@@ -238,7 +238,7 @@ The upsert **intentionally preserves `originalRevisionDate`** on update — this
 
 ## 5. CipherView+OfflineSync Extension Helpers
 
-**File:** `BitwardenShared/Core/Vault/Extensions/CipherView+OfflineSync.swift` (new, 89 lines)
+**File:** `BitwardenShared/Core/Vault/Extensions/CipherView+OfflineSync.swift` (new, 90 lines)
 
 Two extension methods on `CipherView` support offline sync operations by creating modified copies.
 
@@ -311,33 +311,44 @@ Each public method follows the same pattern: encrypt the cipher, attempt the API
 func addCipher(_ cipher: CipherView) async throws {
     let isOrgCipher = cipher.organizationId != nil
     // Assign temp ID BEFORE encryption (CipherView.withId)
-    let cipherWithId = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
-    let encryptedCipher = try await clientService.vault().ciphers().encrypt(cipherView: cipherWithId)
+    let cipherToEncrypt = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
+    let cipherEncryptionContext = try await clientService.vault().ciphers()
+        .encrypt(cipherView: cipherToEncrypt)
     do {
-        try await cipherService.addCipherWithServer(encryptedCipher, ...)
+        try await cipherService.addCipherWithServer(
+            cipherEncryptionContext.cipher,
+            encryptedFor: cipherEncryptionContext.encryptedFor,
+        )
         // On success: clean up any orphaned pending change from prior offline add
-        try? await pendingCipherChangeDataStore.deletePendingChange(cipherId: ..., userId: ...)
-    } catch {
-        // Denylist: rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
+        try await pendingCipherChangeDataStore.deletePendingChange(
+            cipherId: ..., userId: cipherEncryptionContext.encryptedFor
+        )
+    } catch let error as ServerError { throw error }
+    catch let error as ResponseValidationError where error.response.statusCode < 500 { throw error }
+    catch let error as CipherAPIServiceError { throw error }
+    catch {
         guard !isOrgCipher else {
             throw OfflineSyncError.organizationCipherOfflineEditNotSupported
         }
-        try await handleOfflineAdd(encryptedCipher:, userId:)
+        try await handleOfflineAdd(
+            encryptedCipher: cipherEncryptionContext.cipher,
+            userId: cipherEncryptionContext.encryptedFor
+        )
     }
 }
 ```
 
 **Key change:** Temp ID assignment moved from `handleOfflineAdd` to `addCipher` and now operates on `CipherView` before encryption (via `CipherView.withId()`), resolving the VI-1 root cause.
 
-#### `updateCipher(_:)` (line 960)
+#### `updateCipher(_:)` (line 959)
 
 Same pattern — encrypts, tries API, catches failure, checks org cipher, calls `handleOfflineUpdate`.
 
-#### `softDeleteCipher(_:)` (line 928)
+#### `softDeleteCipher(_:)` (line 921)
 
 Same pattern — updates `deletedDate`, encrypts, tries API, catches failure, checks org cipher, calls `handleOfflineSoftDelete`.
 
-#### `deleteCipher(_:)` (line 652)
+#### `deleteCipher(_:)` (line 659)
 
 Slightly different — permanent deletes don't have a pre-encrypted cipher, so the handler fetches the cipher first:
 
@@ -372,7 +383,8 @@ func deleteCipher(_ id: String) async throws {
    - If first offline edit: fetches the local cipher, decrypts it, and compares passwords
    - Increments `offlinePasswordChangeCount` if different
 5. Preserves `originalRevisionDate` from existing record (or captures current `revisionDate` for first edit)
-6. Upserts the pending change record
+6. Preserves `.create` change type if this cipher was originally created offline and hasn't been synced yet (ensures it's POSTed, not PUT)
+7. Upserts the pending change record
 
 **Security note:** Password comparison is done entirely in-memory using the SDK's decrypt operations. No plaintext passwords are persisted.
 
@@ -423,7 +435,7 @@ The core conflict resolution engine that processes pending offline changes when 
 ### 7a. OfflineSyncError Enum (line 9)
 
 ```swift
-enum OfflineSyncError: LocalizedError {
+enum OfflineSyncError: LocalizedError, Equatable {
     case missingCipherData
     case missingCipherId
     case vaultLocked
@@ -432,9 +444,9 @@ enum OfflineSyncError: LocalizedError {
 }
 ```
 
-Five error types with `LocalizedError` conformance for user-facing messages. The `.cipherNotFound` case was added in commit `e929511` (RES-2 fix) to handle server 404 responses during conflict resolution.
+Five error types with `LocalizedError` and `Equatable` conformance for user-facing messages and test assertions. The `.cipherNotFound` case was added in commit `e929511` (RES-2 fix) to handle server 404 responses during conflict resolution.
 
-### 7b. OfflineSyncResolver Protocol (line 40)
+### 7b. OfflineSyncResolver Protocol (line 45)
 
 ```swift
 protocol OfflineSyncResolver {
@@ -444,7 +456,7 @@ protocol OfflineSyncResolver {
 
 Single-method protocol following the existing service pattern.
 
-### 7c. DefaultOfflineSyncResolver (line 55)
+### 7c. DefaultOfflineSyncResolver (line 60)
 
 #### Dependencies (5) **[Updated]**
 
@@ -457,7 +469,7 @@ Single-method protocol following the existing service pattern.
 
 #### Constants
 
-- `softConflictPasswordChangeThreshold: Int16 = 4` (line 60) — number of password changes that triggers a precautionary backup even without a server conflict
+- `softConflictPasswordChangeThreshold: Int16 = 4` (line 65) — number of password changes that triggers a precautionary backup even without a server conflict
 
 ~~#### Cached State~~
 
@@ -467,16 +479,20 @@ Single-method protocol following the existing service pattern.
 
 ### Resolution Flow
 
-#### `processPendingChanges(userId:)` (line 115)
+#### `processPendingChanges(userId:)` (line 111)
 
 ```swift
 func processPendingChanges(userId: String) async throws {
     let pendingChanges = try await pendingCipherChangeDataStore.fetchPendingChanges(userId: userId)
+    guard !pendingChanges.isEmpty else { return }
+
     for pendingChange in pendingChanges {
         do {
             try await resolve(pendingChange: pendingChange, userId: userId)
         } catch {
-            // Catch-and-continue: individual failures don't block other changes
+            Logger.application.error(
+                "Failed to resolve pending change for cipher \(pendingChange.cipherId ?? "nil"): \(error)"
+            )
         }
     }
 }
@@ -484,18 +500,19 @@ func processPendingChanges(userId: String) async throws {
 
 **Design:** Uses catch-and-continue so that one failing change doesn't prevent resolving others. Unresolved changes remain in the store and are retried on the next sync.
 
-#### `resolve(pendingChange:userId:)` (line 141)
+#### `resolve(pendingChange:userId:)` (line 134)
 
 Routes to the appropriate resolver based on `changeType`:
 - `.create` → `resolveCreate()`
 - `.update` → `resolveUpdate()`
 - `.softDelete` → `resolveSoftDelete()`
 
-#### `resolveCreate(pendingChange:userId:)` (line 157)
+#### `resolveCreate(pendingChange:userId:)` (line 156)
 
 1. Decodes `cipherData` to `CipherDetailsResponseModel`
 2. Calls `cipherService.addCipherWithServer()` to push to server
-3. Deletes the pending change record
+3. Deletes the old cipher record that used the temporary client-side ID (the server assigns a new ID via `addCipherWithServer`, so the temp-ID record is now orphaned)
+4. Deletes the pending change record
 
 For creates, there is no conflict scenario — the cipher didn't exist on the server before.
 

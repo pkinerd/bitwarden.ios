@@ -74,40 +74,44 @@ Add support for saving vault items locally while offline, with automatic syncing
 
 ### Modified File: `BitwardenShared/Core/Vault/Repositories/VaultRepository.swift`
 
-**Changes to `updateCipher()`: [Updated]**
+**Changes to `updateCipher()`: [Updated to reflect current code]**
 
 ```
-1. Check if cipher is organisation-owned
-   → If yes AND API fails: show error "Organisation items cannot be edited offline"
-   → If yes AND online: proceed with normal flow (unchanged)
+1. Check if cipher is organisation-owned (isOrgCipher flag set before try block)
 
-2. Attempt normal flow: encrypt → API call → local persist
-   SECURITY NOTE: Encryption via clientService.vault().ciphers().encrypt()
-   occurs BEFORE the API call attempt (outside the do-catch block). The
-   encrypted Cipher object is available regardless of whether the API call
-   succeeds or fails. SDK encryption errors propagate normally.
+2. Encrypt via clientService.vault().ciphers().encrypt()
+   SECURITY NOTE: Encryption occurs BEFORE the API call attempt (outside the
+   do-catch block). The encrypted Cipher object is available regardless of
+   whether the API call succeeds or fails. SDK encryption errors propagate normally.
 
-3. If API call fails (denylist pattern — rethrow ServerError, CipherAPIServiceError,
+3. Attempt API call (updateCipherWithServer)
+
+4. On success: clean up any orphaned pending change from a prior offline save
+   (deletePendingChange by cipherId + userId)
+
+5. If API call fails (denylist pattern — rethrow ServerError, CipherAPIServiceError,
    ResponseValidationError < 500; all other errors trigger offline save):
-   a. On success: clean up any orphaned pending change from a prior offline save
-   b. On failure: Persist the ENCRYPTED Cipher locally via updateCipherWithLocalStorage()
+   a. Guard against organization ciphers (throw if org-owned)
+   b. Persist the ENCRYPTED Cipher locally via updateCipherWithLocalStorage()
    c. Queue a PendingCipherChange record with the ENCRYPTED cipher data (see Section 3)
    d. Preserve .create type if this cipher was originally created offline
    e. Return success to the UI (user sees their edit applied locally)
 ```
 
-**Changes to `addCipher()`: [Updated]**
+**Changes to `addCipher()`: [Updated to reflect current code]**
 
 ```
-1. Assign a temporary client-side UUID via CipherView.withId(UUID().uuidString) BEFORE
+1. Check if cipher is organisation-owned (isOrgCipher flag set before try block)
+2. Assign a temporary client-side UUID via CipherView.withId(UUID().uuidString) BEFORE
    encryption if the cipher has no ID. This ensures the ID is baked into the encrypted
    content and survives the decrypt round-trip.
-2. Encrypt the CipherView via SDK
-3. Attempt API call (addCipherWithServer)
-4. On success: clean up any orphaned pending change from a prior offline add
-5. If API call fails (denylist pattern — rethrow ServerError, CipherAPIServiceError,
+3. Encrypt the CipherView via SDK
+4. Attempt API call (addCipherWithServer)
+5. On success: clean up any orphaned pending change from a prior offline add
+   (deletePendingChange by cipherId + userId)
+6. If API call fails (denylist pattern — rethrow ServerError, CipherAPIServiceError,
    ResponseValidationError < 500; all other errors trigger offline save):
-   a. Guard against organization ciphers
+   a. Guard against organization ciphers (throw if org-owned)
    b. Persist encrypted cipher locally via updateCipherWithLocalStorage()
    c. Queue a PendingCipherChange with changeType = .create
    d. Return success to the UI
@@ -117,30 +121,62 @@ CipherView.withId() (operating before encryption) replaced Cipher.withTemporaryI
 set data: nil). Offline-created ciphers now encrypt correctly. A UI fallback
 (fetchCipherDetailsDirectly) remains as defense-in-depth. See AP-VI1.
 
-6. On sync (see Section 6):
+7. On sync (see Section 6):
    a. Create on server via addCipherWithServer()
    b. Server returns real ID; addCipherWithServer creates new CipherData record with server ID
    c. Delete the old temp-ID cipher record from local Core Data
    d. Delete pending change record
 ```
 
-**Changes to `deleteCipher()`: [Updated]**
+**Changes to `deleteCipher()` (hard delete): [Updated to reflect current code]**
 
 ```
-1. If API call fails (denylist pattern — rethrow ServerError, CipherAPIServiceError,
+1. Attempt API call (deleteCipherWithServer)
+2. On success: clean up any orphaned pending change from a prior offline operation
+3. If API call fails (denylist pattern — rethrow ServerError, CipherAPIServiceError,
    ResponseValidationError < 500; all other errors trigger offline save):
    a. If cipher was created offline (.create pending change), clean up locally only
       (delete local record + pending change) — no server operation needed
-   b. Otherwise: soft-delete locally (move to trash in local storage)
-   c. Queue a PendingCipherChange with changeType = .softDelete
-   d. Return success to the UI
+   b. Guard against organization ciphers (throw if org-owned)
+   c. Otherwise: hard-delete locally via deleteCipherWithLocalStorage()
+   d. Queue a PendingCipherChange with changeType = .softDelete
+   e. Return success to the UI
 
-2. On sync (see Section 6):
-   a. Fetch server version to check for conflicts
-   b. If server version unchanged: sync soft delete to server
-   c. If server version changed (conflict):
-      → Create backup of server version (retains original folder)
-      → Complete the soft delete on server
+Note: deleteCipher() uses deleteCipherWithLocalStorage (removes the CipherData record)
+rather than updating it with a deletedDate. The pending change still uses .softDelete
+changeType so the server-side operation is a soft delete on sync.
+```
+
+**Changes to `softDeleteCipher()` (move to trash): [Updated to reflect current code]**
+
+```
+1. Guard against missing cipher ID
+2. Set deletedDate on cipher, encrypt via encryptAndUpdateCipher()
+3. Attempt API call (softDeleteCipherWithServer)
+4. On success: clean up any orphaned pending change from a prior offline operation
+5. If API call fails (denylist pattern — rethrow ServerError, CipherAPIServiceError,
+   ResponseValidationError < 500; all other errors trigger offline save):
+   a. Guard against organization ciphers (throw if org-owned)
+   b. If cipher was created offline (.create pending change), clean up locally only
+      (delete local record + pending change) — no server operation needed
+   c. Otherwise: persist soft-deleted cipher locally via updateCipherWithLocalStorage()
+      (cipher appears in trash with deletedDate set)
+   d. Queue a PendingCipherChange with changeType = .softDelete
+   e. Return success to the UI
+
+Note: Unlike deleteCipher(), softDeleteCipher() uses updateCipherWithLocalStorage to
+preserve the cipher record with its deletedDate, so it appears in the user's trash.
+```
+
+**Both delete methods — On sync (see Section 6):**
+
+```
+1. Fetch server version to check for conflicts
+   → If server returns 404: cipher already deleted; clean up locally and done
+2. If server version unchanged: sync soft delete to server
+3. If server version changed (conflict):
+   → Create backup of server version (retains original folder)
+   → Complete the soft delete on server
 ```
 
 ---
@@ -149,19 +185,21 @@ set data: nil). Offline-created ciphers now encrypt correctly. A UI fallback
 
 ### New File: `BitwardenShared/Core/Vault/Models/Data/PendingCipherChangeData.swift`
 
-**Core Data entity `PendingCipherChangeData`:**
+**Core Data entity `PendingCipherChangeData`: [Updated to reflect current code — optional types match `@NSManaged` declarations]**
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `id` | `String` | Primary key for the pending change record (UUID string) |
-| `cipherId` | `String` | The cipher's ID (or temporary client ID for new items) |
-| `userId` | `String` | Active user ID |
-| `changeType` | `Int16` | Enum: `.update`, `.create`, `.softDelete` |
-| `cipherData` | `Data` | JSON-encoded **encrypted** `CipherDetailsResponseModel` snapshot (see Security note below) |
+| `id` | `String?` | Primary key for the pending change record (UUID string, set via convenience init) |
+| `cipherId` | `String?` | The cipher's ID (or temporary client ID for new items) |
+| `userId` | `String?` | Active user ID |
+| `changeTypeRaw` | `Int16` | Stored as raw value; accessed via computed property `changeType` (enum: `.update`, `.create`, `.softDelete`) |
+| `cipherData` | `Data?` | JSON-encoded **encrypted** `CipherDetailsResponseModel` snapshot (see Security note below) |
 | `originalRevisionDate` | `Date?` | The cipher's `revisionDate` before the first offline edit (nil for new items) |
-| `createdDate` | `Date` | When this pending change was first queued |
-| `updatedDate` | `Date` | When this pending change was last updated |
+| `createdDate` | `Date?` | When this pending change was first queued (set via convenience init) |
+| `updatedDate` | `Date?` | When this pending change was last updated (set via convenience init) |
 | `offlinePasswordChangeCount` | `Int16` | Number of password changes made across offline edits for this cipher |
+
+Note: Core Data `@NSManaged` properties for `String` and `Date` types are declared as optionals (`String?`, `Date?`) per Core Data conventions, even though the convenience initializer always provides non-nil values. The `changeType` enum is accessed via a computed property that wraps `changeTypeRaw` (defaulting to `.update` if the raw value is unrecognized).
 
 **Security: `cipherData` stores encrypted data only.** This field contains the same JSON-encoded `CipherDetailsResponseModel` format used by the existing `CipherData` entity (see `CipherData.swift:8`). All sensitive fields (name, login, notes, password history, custom fields) are encrypted by the SDK before storage. The metadata fields on the `PendingCipherChangeData` entity itself (`offlinePasswordChangeCount`, `originalRevisionDate`, `changeType`) are non-sensitive and comparable to metadata already exposed by `CipherData`.
 
@@ -440,20 +478,18 @@ Organisation-owned ciphers have complications that make offline editing risky:
 - Organisation policies could change while offline
 - Organisation key rotation would invalidate locally encrypted data
 
-### Implementation
+### Implementation [Updated to reflect current code]
 
 **Modified File: `BitwardenShared/Core/Vault/Repositories/VaultRepository.swift`**
 
-In the modified `updateCipher()` flow:
+Organisation cipher exclusion is applied in all offline-capable methods:
 
-```
-1. Before attempting the API call, check cipher.organizationId
-2. If organizationId != nil AND API call fails with network error:
-   → Do NOT queue as pending change
-   → Surface user-facing error: "Organisation items cannot be edited while offline.
-     Please reconnect to save changes to this item."
-3. If organizationId == nil: proceed with offline queue as described above
-```
+- **`updateCipher()`**: Checks `organizationId` before the API call. If org-owned and API fails: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
+- **`addCipher()`**: Checks `organizationId` before the API call. If org-owned and API fails: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
+- **`softDeleteCipher()`**: Checks `organizationId` before the API call. If org-owned and API fails: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
+- **`deleteCipher()`** (hard delete): The org check is inside `handleOfflineDelete`, which checks `cipher.organizationId` after fetching the cipher from local storage. If org-owned: throws `OfflineSyncError.organizationCipherOfflineEditNotSupported`.
+
+In all cases, the error propagates through existing generic error handling in the UI layer.
 
 This cleanly excludes org ciphers without affecting any other flow.
 
@@ -480,7 +516,7 @@ This cleanly excludes org ciphers without affecting any other flow.
 | `Bitwarden.xcdatamodeld` | `BitwardenShared/Core/Platform/Services/Stores/` | Add `PendingCipherChangeData` entity |
 | `Services.swift` | `BitwardenShared/Core/Platform/Services/` | Add `HasPendingCipherChangeDataStore`, `HasOfflineSyncResolver` protocols; add to `Services` typealias |
 | `ServiceContainer.swift` | `BitwardenShared/Core/Platform/Services/` | Register new services, add properties and init params |
-| `VaultRepository.swift` | `BitwardenShared/Core/Vault/Repositories/` | Offline-aware `updateCipher()`, `addCipher()`, `deleteCipher()` with API failure catch-and-queue |
+| `VaultRepository.swift` | `BitwardenShared/Core/Vault/Repositories/` | Offline-aware `updateCipher()`, `addCipher()`, `deleteCipher()`, `softDeleteCipher()` with API failure catch-and-queue |
 | `SyncService.swift` | `BitwardenShared/Core/Vault/Services/` | Add early-abort pattern: resolve pending changes before `fetchSync()`, abort if unresolved to protect offline edits |
 | ~~`CipherService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — Existing protocol methods were sufficient. No changes needed. |
 | ~~`FolderService.swift`~~ | ~~`BitwardenShared/Core/Vault/Services/`~~ | **[Not modified]** — ~~Existing API sufficient for conflict folder creation.~~ **[Updated]** `FolderService` is no longer used by the resolver; the conflict backup folder has been removed. |
