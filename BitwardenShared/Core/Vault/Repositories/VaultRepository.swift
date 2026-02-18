@@ -534,7 +534,7 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher else {
-                throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+                throw error
             }
             try await handleOfflineAdd(
                 encryptedCipher: cipherEncryptionContext.cipher,
@@ -672,7 +672,7 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as CipherAPIServiceError {
             throw error
         } catch {
-            try await handleOfflineDelete(cipherId: id)
+            try await handleOfflineDelete(cipherId: id, originalError: error)
         }
     }
 
@@ -941,7 +941,7 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher else {
-                throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+                throw error
             }
             try await handleOfflineSoftDelete(cipherId: id, encryptedCipher: encryptedCipher)
         }
@@ -981,7 +981,7 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher else {
-                throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+                throw error
             }
             try await handleOfflineUpdate(
                 cipherView: cipherView,
@@ -1091,9 +1091,12 @@ extension DefaultVaultRepository: VaultRepository {
 
     /// Handles deleting a cipher when the server API call fails.
     ///
-    /// - Parameter cipherId: The ID of the cipher to soft-delete.
+    /// - Parameters:
+    ///   - cipherId: The ID of the cipher to delete.
+    ///   - originalError: The original network error that triggered the offline fallback,
+    ///     re-thrown for organization ciphers that cannot be edited offline.
     ///
-    private func handleOfflineDelete(cipherId: String) async throws {
+    private func handleOfflineDelete(cipherId: String, originalError: Error) async throws {
         let userId = try await stateService.getActiveAccountId()
 
         // If this cipher was created offline and hasn't been synced to the server,
@@ -1114,7 +1117,7 @@ extension DefaultVaultRepository: VaultRepository {
 
         // Organization ciphers cannot be deleted offline
         guard cipher.organizationId == nil else {
-            throw OfflineSyncError.organizationCipherOfflineEditNotSupported
+            throw originalError
         }
 
         // Soft-delete locally

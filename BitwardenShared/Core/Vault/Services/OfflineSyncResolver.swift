@@ -16,9 +16,6 @@ enum OfflineSyncError: LocalizedError, Equatable {
     /// The vault is locked; sync resolution cannot proceed without an active crypto context.
     case vaultLocked
 
-    /// Organization items cannot be edited offline.
-    case organizationCipherOfflineEditNotSupported
-
     /// The cipher was not found on the server (HTTP 404).
     case cipherNotFound
 
@@ -30,8 +27,6 @@ enum OfflineSyncError: LocalizedError, Equatable {
             "The pending change record is missing a cipher ID."
         case .vaultLocked:
             "The vault is locked. Please unlock to sync offline changes."
-        case .organizationCipherOfflineEditNotSupported:
-            "Organization items cannot be edited while offline. Please try again when connected."
         case .cipherNotFound:
             "The cipher was not found on the server."
         }
