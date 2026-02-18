@@ -1096,9 +1096,11 @@ class SyncServiceTests: BitwardenTestCase {
     // MARK: - Offline Sync Resolution Tests
 
     /// `fetchSync()` resolves pending changes and proceeds with sync when all are resolved.
+    @MainActor
     func test_fetchSync_preSyncResolution_triggersPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
         // First call returns 1 (pending changes exist), second call returns 0 (all resolved).
         pendingCipherChangeDataStore.pendingChangeCountResults = [1, 0]
 
@@ -1122,9 +1124,11 @@ class SyncServiceTests: BitwardenTestCase {
     }
 
     /// `fetchSync()` skips resolution and proceeds with sync when there are no pending changes.
+    @MainActor
     func test_fetchSync_preSyncResolution_noPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
         pendingCipherChangeDataStore.pendingChangeCountResult = 0
 
         try await subject.fetchSync(forceSync: false)
@@ -1137,9 +1141,11 @@ class SyncServiceTests: BitwardenTestCase {
 
     /// `fetchSync()` aborts the sync when pending changes remain after resolution,
     /// to prevent `replaceCiphers` from overwriting local offline edits.
+    @MainActor
     func test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
         // First call returns 2 (pending changes exist), second call returns 2 (resolution failed for some).
         pendingCipherChangeDataStore.pendingChangeCountResults = [2, 2]
 
@@ -1155,8 +1161,10 @@ class SyncServiceTests: BitwardenTestCase {
     /// `fetchSync()` propagates the error when `processPendingChanges` throws a hard
     /// error (e.g., Core Data failure), ensuring the entire sync fails and no API
     /// requests are made.
+    @MainActor
     func test_fetchSync_preSyncResolution_resolverThrows_syncFails() async throws {
         stateService.activeAccount = .fixture()
+        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
         // Pending changes exist, triggering resolution.
         pendingCipherChangeDataStore.pendingChangeCountResults = [1]
 
