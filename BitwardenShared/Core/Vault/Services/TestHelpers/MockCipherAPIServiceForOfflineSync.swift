@@ -23,12 +23,21 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
         return try getCipherResult.get()
     }
 
-    var softDeleteCipherResult: Result<EmptyResponse, Error> = .success(EmptyResponse())
+    var softDeleteCipherError: Error?
     var softDeleteCipherId: String?
 
     func softDeleteCipher(withID id: String) async throws -> EmptyResponse {
         softDeleteCipherId = id
-        return try softDeleteCipherResult.get()
+        if let softDeleteCipherError {
+            throw softDeleteCipherError
+        }
+        return try EmptyResponse(response: HTTPResponse(
+            url: URL(string: "https://example.com")!,
+            statusCode: 200,
+            headers: [:],
+            body: Data(),
+            requestID: UUID()
+        ))
     }
 
     // MARK: Unused stubs - required by protocol

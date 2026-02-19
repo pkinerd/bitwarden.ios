@@ -704,7 +704,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         ))
 
         // Make the soft delete API call fail.
-        cipherAPIService.softDeleteCipherResult = .failure(BitwardenTestError.example)
+        cipherAPIService.softDeleteCipherError = BitwardenTestError.example
 
         try await subject.processPendingChanges(userId: "1")
 
