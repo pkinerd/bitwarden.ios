@@ -168,3 +168,126 @@ The review confirms the original assessment with important code-level details. A
 - `.offlineSyncEnableOfflineChanges` (`"offline-sync-enable-offline-changes"`) — gates offline save fallback in VaultRepository (only effective when resolution is also enabled)
 
 Both default to `false` (server-controlled rollout). Tests explicitly set flag values via `configService.featureFlagsBool` and do not depend on `initialValue`.
+
+---
+
+## S8.a: Orphaned Pending Changes When Feature Flag Is Disabled
+
+> **Issue:** #51 from ConsolidatedOutstandingIssues.md
+> **Severity:** Low | **Complexity:** Medium
+> **Status:** Triaged
+
+### Problem Statement
+
+When the feature flags (`offlineSyncEnableResolution` and/or `offlineSyncEnableOfflineChanges`) are disabled (either by server configuration or because they default to `false` before being enabled), existing pending change records remain in Core Data with no cleanup or notification mechanism. These records:
+
+1. Are not processed during sync (the resolution block at `SyncService.swift:341` is skipped entirely when `offlineSyncEnableResolution` is `false`)
+2. Are not deleted or cleaned up (no code runs to remove them when flags are disabled)
+3. Are not visible to the user (no UI indicator exists for pending changes)
+4. Continue to occupy Core Data storage indefinitely
+
+If the flags are later re-enabled, these pending changes will be processed on the next sync cycle. If the flags are never re-enabled, the records persist until the user logs out (at which point `DataStore.deleteDataForUser` at `DataStore.swift:91-109` clears them).
+
+### Current Code
+
+**SyncService flag check at SyncService.swift:341-351:**
+```swift
+if await configService.getFeatureFlag(.offlineSyncEnableResolution),
+   !isVaultLocked {
+    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+    if pendingCount > 0 {
+        try await offlineSyncResolver.processPendingChanges(userId: userId)
+        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+        if remainingCount > 0 {
+            return
+        }
+    }
+}
+```
+
+When `offlineSyncEnableResolution` is `false`, the entire block is skipped. No count check, no resolution, no abort. The `replaceCiphers` call proceeds normally, potentially overwriting local cipher data that was modified by offline edits. However, the pending change records are NOT deleted -- they remain in Core Data.
+
+**VaultRepository flag check (e.g., addCipher at VaultRepository.swift:536-541):**
+```swift
+guard !isOrgCipher,
+      await configService.getFeatureFlag(.offlineSyncEnableResolution),
+      await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
+else {
+    throw error
+}
+```
+
+When either flag is `false`, errors propagate normally -- no new pending changes are created.
+
+**Data cleanup on logout at DataStore.swift:105:**
+```swift
+PendingCipherChangeData.deleteByUserIdRequest(userId: userId),
+```
+
+Pending changes are cleaned up on user logout/account deletion.
+
+### Assessment
+
+**Validity:** This issue is valid. When flags are disabled, pending changes become orphaned -- they exist in Core Data but are neither processed nor cleaned up. However, the practical impact is low:
+
+1. **The "orphan" state is intentional and documented.** The feature flag design explicitly chose to leave pending changes in place when the flag is disabled, rather than deleting them. This is the safer approach -- if the flag is re-enabled, the changes can be resolved. Deleting them would permanently lose the user's offline edits.
+
+2. **Storage impact is negligible.** Pending change records are small (a few KB each, plus the cipher data blob which is typically 1-5 KB). Even dozens of orphaned records would consume less than 100 KB. There is no performance impact from their presence.
+
+3. **`replaceCiphers` overwrites local edits.** When resolution is skipped, the full sync's `replaceCiphers` call will overwrite the local cipher data with server data. If the user made offline edits to an existing cipher, those edits are lost from the local `CipherData` store. However, the `PendingCipherChangeData` record still contains the cipher data snapshot -- so the edits are preserved in the pending change record, awaiting resolution when the flag is re-enabled.
+
+4. **No notification is needed.** The user has no visibility into pending changes regardless of flag state (see AP-U3). Adding a notification specifically for the flag-disabled case would require first implementing the pending changes UI indicator.
+
+5. **The scenario is transient.** Flags will either be enabled (changes resolved) or the user will eventually log out (changes cleaned up). The orphaned state is not permanent.
+
+**Blast radius:** Orphaned pending changes in Core Data:
+- Occupy negligible storage (~1-5 KB per record)
+- Do not affect app performance or behavior
+- Contain the user's offline edit data, which could be resolved if flags are re-enabled
+- Are cleaned up on user logout
+
+**Likelihood:** This scenario occurs whenever:
+- Flags default to `false` (the current default) and the user made offline edits before the flags were activated (not possible -- flags must be enabled for offline edits to be created)
+- Flags were enabled, user made offline edits, then flags were disabled by the server (the intended kill-switch scenario)
+
+The second scenario is the only realistic case, and it represents the deliberate use of the kill switch in a production emergency.
+
+### Options for S8.a
+
+#### Option A: Add Cleanup on Flag Disable (Cautious Approach)
+- **Effort:** Medium (3-5 hours)
+- **Description:** When the resolution flag is checked and found to be `false` in `SyncService.fetchSync()`, check if pending changes exist and log a warning. Optionally, provide a configuration option to auto-delete orphaned changes after a grace period (e.g., 30 days of the flag being disabled).
+- **Pros:** Prevents indefinite orphaned records; provides observability
+- **Cons:** Deleting pending changes permanently loses the user's offline edits; the grace period is arbitrary; adds complexity to the sync service; the records are harmless
+
+#### Option B: Add Logging Only (Observability)
+- **Effort:** Small (1 hour)
+- **Description:** When `offlineSyncEnableResolution` is `false` in `SyncService.fetchSync()`, check pending change count and log a warning if > 0. This provides server-side telemetry about orphaned changes without changing behavior.
+- **Pros:** Zero risk; provides insight into how many users have orphaned changes; helps inform future decisions
+- **Cons:** Does not clean up the records; requires server-side log aggregation to be useful
+- **Implementation:**
+  ```swift
+  if await configService.getFeatureFlag(.offlineSyncEnableResolution),
+     !isVaultLocked {
+      // ... existing resolution logic ...
+  } else if !isVaultLocked {
+      let orphanedCount = try? await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+      if let orphanedCount, orphanedCount > 0 {
+          Logger.application.warning(
+              "Offline sync resolution disabled; \(orphanedCount) pending changes remain orphaned"
+          )
+      }
+  }
+  ```
+
+#### Option C: Accept As-Is
+- **Rationale:** Orphaned pending changes are the deliberate and documented result of the kill-switch design. The records are small, harmless, and cleaned up on logout. The pending change data preserves the user's offline edits, which could be recovered if the flags are re-enabled. Deleting them preemptively would permanently lose that data, which is worse than leaving them. The flag disable scenario is inherently an emergency measure -- the team is prioritizing stability over offline sync, and the orphaned records are an acceptable trade-off. Adding cleanup logic for this emergency scenario adds complexity for minimal benefit.
+
+### Recommendation for S8.a
+
+**Option C: Accept As-Is**, with **Option B's logging** as a low-effort enhancement for observability. The orphaned records are intentional, harmless, and preserve user data. The only action worth taking is adding a log warning for telemetry purposes, which helps the team understand the impact when flags are disabled in production.
+
+### Dependencies for S8.a
+
+- **AP-U3_NoPendingChangesIndicator.md** (Issue U3): A pending changes UI indicator would make orphaned changes visible to users. Without it, users have no awareness of orphaned changes regardless of flag state.
+- **AP-R2-MAIN-7** (Issue #43): If a maximum pending change count is implemented, it would also limit the number of orphaned records.
