@@ -106,3 +106,16 @@ The review confirms the original assessment. After reviewing the implementation:
 4. **Defensive error handling**: The `missingCipherData` error thrown by the resolver is the correct safety net. If the contract is violated, the error is caught by the per-item catch, logged, and the item remains pending. This is the right behavior.
 
 **Updated conclusion**: Original recommendation (Option C - accept current design) confirmed. The defensive guards in the resolver correctly handle the violation case. The implicit contract is well-maintained by the 4 VaultRepository callers. Adding a comment (Option A) is nice but not necessary. Priority: Low, no change needed.
+
+---
+
+## Resolution
+
+**Approach taken:** Neither Option A, B, nor C. Instead, the implicit contract was eliminated entirely by replacing the `cipherData` decode + `cipherService.softDeleteCipherWithServer(id:cipher:)` call with a direct call to `cipherAPIService.softDeleteCipher(withID:)`. The local storage upsert that `softDeleteCipherWithServer` performed is redundant in the resolver context because the resolver runs during sync, and the subsequent full sync updates local storage from the server.
+
+**Changes:**
+- `OfflineSyncResolver.swift`: `resolveSoftDelete` no longer decodes `cipherData` or calls `softDeleteCipherWithServer`; calls `cipherAPIService.softDeleteCipher(withID:)` directly
+- `MockCipherAPIServiceForOfflineSync.swift`: `softDeleteCipher(withID:)` stub replaced with working mock
+- `OfflineSyncResolverTests.swift`: 5 soft delete tests updated to assert against `cipherAPIService` instead of `cipherService`
+
+**Result:** The `cipherData` dependency and implicit contract are eliminated for soft delete resolution. The `missingCipherData` error and guard remain in `resolveCreate` and `resolveUpdate` where they are still needed.

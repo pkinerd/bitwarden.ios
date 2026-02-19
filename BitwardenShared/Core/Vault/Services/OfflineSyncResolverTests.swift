@@ -123,7 +123,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     }
 
     /// `processPendingChanges(userId:)` with a `.softDelete` change calls
-    /// `softDeleteCipherWithServer` and deletes the pending change.
+    /// `cipherAPIService.softDeleteCipher(withID:)` and deletes the pending change.
     func test_processPendingChanges_softDelete_noConflict() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherResponseModel = CipherDetailsResponseModel.fixture(
@@ -152,8 +152,8 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
         try await subject.processPendingChanges(userId: "1")
 
-        // Should call softDeleteCipherWithServer
-        XCTAssertEqual(cipherService.softDeleteCipherId, "cipher-1")
+        // Should call cipherAPIService.softDeleteCipher(withID:) directly.
+        XCTAssertEqual(cipherAPIService.softDeleteCipherId, "cipher-1")
 
         // Should delete the pending change record.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
@@ -525,9 +525,8 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Should create a backup of the server cipher before deleting.
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
 
-        // Should complete the soft delete.
-        XCTAssertEqual(cipherService.softDeleteCipherId, "cipher-1")
-        XCTAssertNotNil(cipherService.softDeleteCipher)
+        // Should complete the soft delete via direct API call.
+        XCTAssertEqual(cipherAPIService.softDeleteCipherId, "cipher-1")
 
         // Should delete the pending change record.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
@@ -598,7 +597,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")
 
         // Should NOT attempt to soft delete on the server.
-        XCTAssertNil(cipherService.softDeleteCipherId)
+        XCTAssertNil(cipherAPIService.softDeleteCipherId)
 
         // Should delete the pending change record.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
@@ -677,7 +676,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     }
 
     /// `processPendingChanges(userId:)` retains the pending record when a `.softDelete`
-    /// resolution fails because `softDeleteCipherWithServer` throws.
+    /// resolution fails because `cipherAPIService.softDeleteCipher(withID:)` throws.
     func test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherResponseModel = CipherDetailsResponseModel.fixture(
@@ -705,7 +704,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         ))
 
         // Make the soft delete API call fail.
-        cipherService.softDeleteWithServerResult = .failure(BitwardenTestError.example)
+        cipherAPIService.softDeleteCipherResult = .failure(BitwardenTestError.example)
 
         try await subject.processPendingChanges(userId: "1")
 
@@ -825,8 +824,8 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Update should call updateCipherWithServer.
         XCTAssertEqual(cipherService.updateCipherWithServerCiphers.count, 1)
 
-        // SoftDelete should call softDeleteCipherWithServer.
-        XCTAssertNotNil(cipherService.softDeleteCipherId)
+        // SoftDelete should call cipherAPIService.softDeleteCipher(withID:) directly.
+        XCTAssertNotNil(cipherAPIService.softDeleteCipherId)
 
         // All three pending records should be deleted.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 3)

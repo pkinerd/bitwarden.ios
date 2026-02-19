@@ -23,6 +23,14 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
         return try getCipherResult.get()
     }
 
+    var softDeleteCipherResult: Result<EmptyResponse, Error> = .success(EmptyResponse())
+    var softDeleteCipherId: String?
+
+    func softDeleteCipher(withID id: String) async throws -> EmptyResponse {
+        softDeleteCipherId = id
+        return try softDeleteCipherResult.get()
+    }
+
     // MARK: Unused stubs - required by protocol
 
     func addCipher(_ cipher: Cipher, encryptedFor: String?) async throws -> CipherDetailsResponseModel { fatalError() }
@@ -57,7 +65,7 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
         _ cipher: Cipher,
         encryptedFor: String?
     ) async throws -> CipherDetailsResponseModel { fatalError() }
-    func softDeleteCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
+
     func unarchiveCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
     func updateCipher(
         _ cipher: Cipher,

@@ -293,13 +293,10 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
             )
         }
 
-        // Complete the soft delete on the server
-        guard let cipherData = pendingChange.cipherData else {
-            throw OfflineSyncError.missingCipherData
-        }
-        let localResponseModel = try JSONDecoder().decode(CipherDetailsResponseModel.self, from: cipherData)
-        let localCipher = Cipher(responseModel: localResponseModel)
-        try await cipherService.softDeleteCipherWithServer(id: cipherId, localCipher)
+        // Complete the soft delete on the server.
+        // The local storage update is handled by the subsequent full sync,
+        // so only the API call is needed here.
+        _ = try await cipherAPIService.softDeleteCipher(withID: cipherId)
 
         if let recordId = pendingChange.id {
             try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)
