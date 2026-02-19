@@ -1,8 +1,8 @@
 # Offline Sync — Consolidated Outstanding Issues
 
-> **Generated:** 2026-02-19 (updated 2026-02-19 — gap analysis pass)
+> **Generated:** 2026-02-19 (updated 2026-02-19 — second gap analysis pass)
 > **Source:** All documents in `_OfflineSyncDocs/` including ActionPlans/, ActionPlans/Resolved/, ActionPlans/Superseded/, and Review2/
-> **Scope:** 53 documents reviewed across 13 parallel review passes + gap analysis pass
+> **Scope:** 53 documents reviewed across 13 parallel review passes + 2 gap analysis passes
 
 ---
 
@@ -14,9 +14,9 @@
 | **Open — Accepted (No Code Change Planned)** | 12 |
 | **Partially Addressed** | 5 |
 | **Deferred (Future Enhancement)** | 5 |
-| **New from Review2 (Not Yet Triaged)** | 35 |
+| **New from Review2 (Not Yet Triaged)** | 37 |
 | **Resolved / Superseded** | 21 |
-| **Total Unique Issues** | 83 |
+| **Total Unique Issues** | 85 |
 
 ---
 
@@ -101,6 +101,7 @@ These issues were identified in the second review pass and have not yet been eva
 | 74 | **R2-RES-10** | Resolver simplification: `resolveConflict` local-newer and server-newer branches have symmetric structure; could be abstracted (current explicit form more readable) | Low | Low | Review2/02_OfflineSyncResolver |
 | 75 | **R2-RES-11** | `softConflictPasswordChangeThreshold` hardcoded to 4 as `static let` — not configurable without code change; tuning based on user feedback would require recompilation | Low | Low | Review2/02_OfflineSyncResolver |
 | 76 | **R2-VR-9** | VaultRepository simplification: use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON (~20 lines savings per handler) — would require different serialization approach | Low | Low | OfflineSyncCodeReview.md |
+| 84 | **R2-EXT-5** | Simplification: consider inlining `CipherView+OfflineSync` extension — `withId` and `update(name:)` are small and used in only 2 places; review recommends keeping current extension approach as cleaner | Low | Low | Review2/00_Main |
 
 ### 5b. Test Coverage Gaps
 
@@ -170,6 +171,7 @@ These issues were identified in the second review pass and have not yet been eva
 | 81 | **PLAN-4** | Core Data store does not configure explicit `NSFileProtectionComplete` (`DataStore.swift:50-83`) — relies on iOS default file protection (Complete Until First User Authentication), application-level encryption, and application sandbox; existing characteristic unchanged by this feature | Low | Medium | OfflineSyncPlan.md |
 | 82 | **R2-CROSS-1** | If both R1 (data format versioning) and R3 (retry backoff) are implemented, Core Data schema changes should be bundled in a single migration step to minimize schema churn | Low | Low | AP-00_CrossReferenceMatrix.md |
 | 83 | **SEC-2.a** | SEC-2 (plaintext `offlinePasswordChangeCount`) resolution should be revisited if: full Core Data encryption at rest is pursued, security model mandates all metadata encryption, count becomes persistent, or security audit mandates field-level encryption | Low | Low | AP-SEC2 |
+| 85 | **R2-UI-4** | `buildViewItemState(from:)` in `ViewItemProcessor` is ~35 lines — could benefit from further decomposition; review rates as "within acceptable limits" | Low | Low | Review2/06_UILayer |
 
 ---
 
