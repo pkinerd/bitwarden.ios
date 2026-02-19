@@ -253,10 +253,10 @@ public class ServiceContainer: Services { // swiftlint:disable:this type_body_le
     ///   - notificationService: The service used by the application to handle notifications.
     ///   - offlineSyncResolver: The service used to resolve pending offline cipher changes against server state.
     ///   - pasteboardService: The service used by the application for sharing data with other apps.
-    ///   - rehydrationHelper: The helper used for app rehydration.
-    ///   - reviewPromptService: The service used by the application to manage app review prompts related data.
     ///   - pendingAppIntentActionMediator: The mediator to execute pending `AppIntent` actions.
     ///   - policyService: The service for managing the polices for the user.
+    ///   - rehydrationHelper: The helper used for app rehydration.
+    ///   - reviewPromptService: The service used by the application to manage app review prompts related data.
     ///   - searchProcessorMediatorFactory: The factory to make `SearchProcessorMediator`s.
     ///   - sendRepository: The repository used by the application to manage send data for the UI layer.
     ///   - settingsRepository: The repository used by the application to manage data for the UI layer.
