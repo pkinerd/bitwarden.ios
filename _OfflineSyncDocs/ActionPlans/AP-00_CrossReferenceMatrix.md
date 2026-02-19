@@ -16,17 +16,17 @@ This document maps dependencies and implications between all 32 action plans. An
 > - **T8** — 1 pre-sync resolution failure test added to `SyncServiceTests.swift`.
 > - **S7** — Resolver-level 404 tests exist; VaultRepository-level `handleOfflineDelete` not-found test gap remains open.
 
-### Cluster 2: Reliability & Safety (R3, R4, S8, R1, ~~R2~~)
+### Cluster 2: Reliability & Safety (R3, R4, ~~S8~~, R1, ~~R2~~)
 
 These issues form a layered defense system:
 
-1. **S8 (feature flag)** is the outermost safety layer — can disable the entire feature remotely.
+1. ~~**S8 (feature flag)**~~ **[Resolved]** — the outermost safety layer. Two server-controlled flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) gate all offline sync entry points. Both default to `false` (server-controlled rollout).
 2. **R3 (retry backoff)** prevents permanently stuck items from blocking sync.
 3. **R4 (logging)** provides observability into what's happening.
 4. **R1 (format versioning)** prevents format mismatches from creating permanently stuck items.
 5. ~~**R2 (thread safety)** prevents concurrent access bugs.~~ **[Resolved]** — `DefaultOfflineSyncResolver` converted to `actor`. The `conflictFolderId` mutable state that originally motivated R2 has since been removed entirely (conflict folder eliminated).
 
-**Implication:** If S8 (feature flag) is implemented, R3 (retry backoff) becomes less critical since the feature can be disabled entirely. However, R3 is still valuable for graceful degradation. R4 (logging) should be implemented regardless — it's trivial and provides debugging value.
+**Implication:** ~~If S8 (feature flag) is implemented, R3 (retry backoff) becomes less critical since the feature can be disabled entirely.~~ S8 is now resolved. R3 (retry backoff) is still valuable for graceful degradation — the feature flag is a blunt kill switch, while R3 provides automated recovery for individual failing items. R4 (logging) should be implemented regardless — it's trivial and provides debugging value.
 
 **Implication:** R1 (format versioning) and R3 (retry backoff with expiry) both address the "permanently stuck item" problem. Implementing R3 with TTL-based expiry covers the format versioning case (old items expire) without needing a version field. Both together provide defense in depth.
 
@@ -80,7 +80,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | ~~**SEC-2**~~ | — | — **[Resolved — Will Not Implement]** — Encryption of `offlinePasswordChangeCount` prototyped (AES-256-GCM) and reverted. Plaintext storage accepted as consistent with existing security model. See [Resolved/AP-SEC2](Resolved/AP-SEC2_PasswordChangeCountEncryption.md). |
 | ~~**S6**~~ | — | ~~T7~~ (T7 resolved separately) **[Resolved]** — 4 password change counting tests added |
 | **S7** | — | VR-2 (delete context) — **[Partially Resolved]** Resolver-level 404 tests added via RES-2 fix; VaultRepository-level `handleOfflineDelete` not-found test gap remains open |
-| **S8** | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — |
+| ~~**S8**~~ | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — | **[Resolved]** Two flags added, both defaulting to `false` |
 | ~~**EXT-1**~~ | ~~T6 (test updates)~~ | ~~SEC-1 (holistic review), R3 (false-positive mitigation)~~ **[Superseded]** — Extension deleted |
 | ~~**A3**~~ | ~~R2 (simpler migration)~~ | ~~R3 (timeProvider may be repurposed)~~ **[Resolved]** — Removed in commit `a52d379`. Note: if R3 (retry backoff) is implemented, `timeProvider` would need to be re-introduced to the resolver. |
 | ~~**CS-1**~~ | — | — **[Resolved]** — Removed in commit `a52d379` |

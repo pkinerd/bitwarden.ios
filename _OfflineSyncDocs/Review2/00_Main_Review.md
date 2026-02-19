@@ -59,7 +59,7 @@ When a user creates, edits, deletes, or soft-deletes a vault cipher and the serv
 - **No offline support for organization ciphers** — Shared/org items require server-side policy enforcement that can't be replicated offline.
 - **No offline support for attachment operations** — Attachment upload/download requires server communication.
 - **No user-visible pending changes indicator** — The user has no UI feedback that changes are pending sync.
-- **No feature flag** — The offline behavior is always active; there's no way to disable it.
+- ~~**No feature flag**~~ **[Resolved]** — Two server-controlled feature flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) gate all offline sync entry points. Both default to `false` for server-controlled rollout.
 
 ---
 
@@ -279,7 +279,7 @@ This is the most critical assessment for a password manager. The offline sync fe
 | Silent sync abort on remaining changes | **Medium** | User has no visibility into why vault isn't updating |
 | No data format versioning | **Low** | Old pending changes may fail to decode after app update |
 | No maximum pending change age/count | **Low** | Unbounded accumulation possible during extended offline |
-| No feature flag to disable offline mode | **Low** | Cannot disable if issues found in production |
+| ~~No feature flag to disable offline mode~~ | ~~**Low**~~ **[Resolved]** | Two server-controlled flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) gate all entry points; both default to `false` |
 
 ---
 
@@ -368,7 +368,7 @@ These are organized by priority:
 |----|---------|---------|
 | R3 | No retry backoff | Failed resolutions retry every sync without exponential backoff |
 | R4 | Silent sync abort | User has no visibility when sync is paused due to pending changes |
-| S8 | No feature flag | Cannot disable offline mode if issues found in production |
+| ~~S8~~ | ~~No feature flag~~ | ~~Cannot disable offline mode if issues found in production~~ — **[Resolved]** Two server-controlled flags added |
 | RES1 | Duplicate on create retry | If create succeeds but cleanup fails, retry creates duplicate |
 | DI1 | DataStore in Services typealias | `PendingCipherChangeDataStore` exposed to UI layer unnecessarily |
 

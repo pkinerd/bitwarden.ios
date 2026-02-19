@@ -1135,7 +1135,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | ~~[VI-1](./ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md)~~ | ~~Offline-created cipher view failure~~ — **[Resolved]** Root cause fixed by `CipherView.withId()` (commit `3f7240a`); all 5 recommended fixes implemented in Phase 2 | ~~Medium~~ N/A |
 | ~~[S6](./ActionPlans/Resolved/AP-S6_PasswordChangeCountingTest.md)~~ | ~~No password change counting test~~ -- **[Resolved]** in commit `4d65465` | ~~Medium~~ N/A |
 | [S7](./ActionPlans/Resolved/AP-S7_CipherNotFoundPathTest.md) | No cipher-not-found path test — **Partially Resolved** (resolver-level tests added; VaultRepository gap remains) | Medium |
-| [S8](./ActionPlans/AP-S8_FeatureFlag.md) | No feature flag for remote disable | Medium |
+| ~~[S8](./ActionPlans/AP-S8_FeatureFlag.md)~~ | ~~No feature flag for remote disable~~ — **[Resolved]** Two server-controlled flags added (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`), both defaulting to `false` (server-controlled rollout) | ~~Medium~~ N/A |
 | [R4](./ActionPlans/AP-R4_SilentSyncAbort.md) | Silent sync abort (no logging) | Medium |
 
 **Phase 3 — Nice-to-Have:**

@@ -73,6 +73,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         vaultListDirectorStrategyFactory.makeReturnValue = vaultListDirectorStrategy
         vaultListDirectorStrategyFactory.makeSearchStrategyReturnValue = vaultListSearchDirectorStrategy
 
+        // Enable offline sync flags by default so existing tests that rely on
+        // offline sync behavior continue to work. Individual tests can override.
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
+
         subject = DefaultVaultRepository(
             cipherService: cipherService,
             clientService: clientService,
@@ -224,6 +229,40 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.changeType, .create)
+    }
+
+    /// `addCipher()` throws the original error instead of falling back to offline
+    /// when the offline sync feature flag is disabled.
+    @MainActor
+    func test_addCipher_offlineFallback_disabledByFeatureFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
+        cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
+            try await subject.addCipher(.fixture())
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `addCipher()` throws the original error instead of falling back to offline
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
+    @MainActor
+    func test_addCipher_offlineFallback_disabledByResolutionFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
+        cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
+            try await subject.addCipher(.fixture())
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `addCipher()` rethrows `ServerError` instead of falling back to offline,
@@ -905,6 +944,42 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         cipherService.fetchCipherResult = .success(.fixture(id: "123", organizationId: "org-1"))
 
         await assertAsyncThrows(error: URLError(.notConnectedToInternet)) {
+            try await subject.deleteCipher("123")
+        }
+
+        // Should NOT delete locally or queue a pending change.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `deleteCipher()` throws the original error instead of falling back to offline
+    /// when the offline sync feature flag is disabled.
+    @MainActor
+    func test_deleteCipher_offlineFallback_disabledByFeatureFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
+            try await subject.deleteCipher("123")
+        }
+
+        // Should NOT delete locally or queue a pending change.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `deleteCipher()` throws the original error instead of falling back to offline
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
+    @MainActor
+    func test_deleteCipher_offlineFallback_disabledByResolutionFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
             try await subject.deleteCipher("123")
         }
 
@@ -1931,6 +2006,40 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pending?.changeType, .update)
     }
 
+    /// `updateCipher()` throws the original error instead of falling back to offline
+    /// when the offline sync feature flag is disabled.
+    @MainActor
+    func test_updateCipher_offlineFallback_disabledByFeatureFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
+            try await subject.updateCipher(.fixture(id: "123"))
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `updateCipher()` throws the original error instead of falling back to offline
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
+    @MainActor
+    func test_updateCipher_offlineFallback_disabledByResolutionFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
+        cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
+            try await subject.updateCipher(.fixture(id: "123"))
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
     /// `updateCipher()` rethrows `ServerError` instead of falling back to offline,
     /// because it indicates the server is reachable but rejected the request.
     func test_updateCipher_serverError_rethrows() async throws {
@@ -2251,6 +2360,44 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.cipherId, "123")
         XCTAssertEqual(pending?.changeType, .softDelete)
+    }
+
+    /// `softDeleteCipher()` throws the original error instead of falling back to offline
+    /// when the offline sync feature flag is disabled.
+    @MainActor
+    func test_softDeleteCipher_offlineFallback_disabledByFeatureFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        cipherService.softDeleteWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
+            try await subject.softDeleteCipher(.fixture(id: "123"))
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
+    /// `softDeleteCipher()` throws the original error instead of falling back to offline
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
+    @MainActor
+    func test_softDeleteCipher_offlineFallback_disabledByResolutionFlag() async {
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
+        stateService.accounts = [.fixtureAccountLogin()]
+        stateService.activeAccount = .fixtureAccountLogin()
+        cipherService.softDeleteWithServerResult = .failure(URLError(.notConnectedToInternet))
+
+        await assertAsyncThrows {
+            try await subject.softDeleteCipher(.fixture(id: "123"))
+        }
+
+        // Should NOT save locally or queue a pending change.
+        XCTAssertTrue(cipherService.updateCipherWithLocalStorageCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
     /// `softDeleteCipher()` rethrows `ServerError` instead of falling back to offline,

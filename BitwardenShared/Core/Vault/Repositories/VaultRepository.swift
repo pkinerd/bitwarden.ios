@@ -533,7 +533,10 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as CipherAPIServiceError {
             throw error
         } catch {
-            guard !isOrgCipher else {
+            guard !isOrgCipher,
+                  await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
+            else {
                 throw error
             }
             try await handleOfflineAdd(
@@ -672,6 +675,11 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as CipherAPIServiceError {
             throw error
         } catch {
+            guard await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
+            else {
+                throw error
+            }
             try await handleOfflineDelete(cipherId: id, originalError: error)
         }
     }
@@ -940,7 +948,10 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as CipherAPIServiceError {
             throw error
         } catch {
-            guard !isOrgCipher else {
+            guard !isOrgCipher,
+                  await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
+            else {
                 throw error
             }
             try await handleOfflineSoftDelete(cipherId: id, encryptedCipher: encryptedCipher)
@@ -980,7 +991,10 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as CipherAPIServiceError {
             throw error
         } catch {
-            guard !isOrgCipher else {
+            guard !isOrgCipher,
+                  await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
+            else {
                 throw error
             }
             try await handleOfflineUpdate(
