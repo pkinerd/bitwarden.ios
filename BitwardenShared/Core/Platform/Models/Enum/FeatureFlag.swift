@@ -40,7 +40,7 @@ extension FeatureFlag: @retroactive CaseIterable {
     /// When this flag is disabled, `offlineSync` is implicitly disabled as well —
     /// there is no point queuing new offline saves if resolution cannot run.
     static let enableOfflineSyncResolution = FeatureFlag(
-        rawValue: "enable-offline-sync-resolution",
+        rawValue: "offline-sync-enable-resolution",
         initialValue: .bool(true)
     )
 
@@ -51,7 +51,7 @@ extension FeatureFlag: @retroactive CaseIterable {
     ///
     /// This flag is only effective when `enableOfflineSyncResolution` is also enabled.
     /// If resolution is disabled, no new offline saves are queued regardless of this flag.
-    static let offlineSync = FeatureFlag(rawValue: "offline-sync", initialValue: .bool(true))
+    static let offlineSync = FeatureFlag(rawValue: "offline-sync-enable-offline-changes", initialValue: .bool(true))
 
     /// Flag to enable/disable sends email verification feature.
     static let sendEmailVerification = FeatureFlag(rawValue: "pm-19051-send-email-verification")

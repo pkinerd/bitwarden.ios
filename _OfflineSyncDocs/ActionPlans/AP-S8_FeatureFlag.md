@@ -34,7 +34,7 @@ Add a server-controlled feature flag using the existing `FeatureFlag` system and
 **Concrete Approach:**
 1. Add flag definition in `BitwardenShared/Core/Platform/Models/Enum/FeatureFlag.swift`:
    ```swift
-   static let offlineSync = FeatureFlag(rawValue: "offline-sync")
+   static let offlineSync = FeatureFlag(rawValue: "offline-sync-enable-offline-changes")
    ```
 2. Add to `allCases` array in the same file
 3. In VaultRepository's catch blocks (requires adding `configService` dependency or passing flag value):

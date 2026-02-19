@@ -118,7 +118,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 ## Key Decision Points
 
 ### 1. Feature Flag (S8) — Implement now or defer?
-**Recommendation: Implement now.** The project already has 9 server-controlled feature flags and `SyncService` already uses `configService.getFeatureFlag(.migrateMyVaultToMyItems)` at line 560 — a direct precedent. Adding `static let offlineSync = FeatureFlag(rawValue: "offline-sync")` to `FeatureFlag.swift` and a guard in `SyncService.fetchSync()` is a ~10-line change.
+**Recommendation: Implement now.** The project already has 9 server-controlled feature flags and `SyncService` already uses `configService.getFeatureFlag(.migrateMyVaultToMyItems)` at line 560 — a direct precedent. Adding `static let offlineSync = FeatureFlag(rawValue: "offline-sync-enable-offline-changes")` to `FeatureFlag.swift` and a guard in `SyncService.fetchSync()` is a ~10-line change.
 
 ### 2. Retry Backoff (R3) — Essential or nice-to-have?
 **Recommendation: Implement before wide rollout.** Without retry backoff, a single permanently failing item blocks ALL syncing for the user (due to the early-abort at `SyncService.swift:339`). This is the most impactful reliability issue. **[Updated]** The `timeProvider` has been removed (A3 resolved). If R3 is implemented, `timeProvider` can be re-added with a clear purpose for TTL-based expiry.
