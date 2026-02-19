@@ -968,6 +968,11 @@ extension DefaultVaultRepository: VaultRepository {
     }
 
     func updateCipher(_ cipherView: CipherView) async throws {
+        if await shouldUnarchiveCipherOnUpdate(cipherView) {
+            try await updateCipher(cipherView.update(archivedDate: nil))
+            return
+        }
+
         // Organization ciphers cannot be edited offline
         let isOrgCipher = cipherView.organizationId != nil
 
@@ -1006,6 +1011,11 @@ extension DefaultVaultRepository: VaultRepository {
     }
 
     func updateCipherCollections(_ cipherView: CipherView) async throws {
+        if await shouldUnarchiveCipherOnUpdate(cipherView) {
+            try await updateCipherCollections(cipherView.update(archivedDate: nil))
+            return
+        }
+
         let cipher = try await encryptAndUpdateCipher(cipherView)
         try await cipherService.updateCipherCollectionsWithServer(cipher)
     }
@@ -1318,5 +1328,19 @@ extension DefaultVaultRepository: VaultRepository {
             cipherListView: cipherListView,
             fido2CredentialAutofillView: fido2CredentialAutofillView,
         )
+    }
+
+    /// Checks whether the cipher should be unarchived when it's being updated.
+    /// - Parameter cipher: The cipher to check.
+    /// - Returns: `true` if it should be unarchived, `false` otherwise.
+    private func shouldUnarchiveCipherOnUpdate(_ cipher: CipherView) async -> Bool {
+        guard cipher.archivedDate != nil else {
+            return false
+        }
+
+        let archiveItemsFF: Bool = await configService.getFeatureFlag(.archiveVaultItems)
+        let hasPremium = await stateService.doesActiveAccountHavePremium()
+
+        return archiveItemsFF && !hasPremium
     }
 } // swiftlint:disable:this file_length
