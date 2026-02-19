@@ -1,8 +1,8 @@
 # Offline Sync — Consolidated Outstanding Issues
 
-> **Generated:** 2026-02-19
+> **Generated:** 2026-02-19 (updated 2026-02-19 — gap analysis pass)
 > **Source:** All documents in `_OfflineSyncDocs/` including ActionPlans/, ActionPlans/Resolved/, ActionPlans/Superseded/, and Review2/
-> **Scope:** 53 documents reviewed across 13 parallel review passes
+> **Scope:** 53 documents reviewed across 13 parallel review passes + gap analysis pass
 
 ---
 
@@ -14,9 +14,9 @@
 | **Open — Accepted (No Code Change Planned)** | 12 |
 | **Partially Addressed** | 5 |
 | **Deferred (Future Enhancement)** | 5 |
-| **New from Review2 (Not Yet Triaged)** | 24 |
+| **New from Review2 (Not Yet Triaged)** | 35 |
 | **Resolved / Superseded** | 21 |
-| **Total Unique Issues** | 72 |
+| **Total Unique Issues** | 83 |
 
 ---
 
@@ -96,6 +96,11 @@ These issues were identified in the second review pass and have not yet been eva
 | 32 | **R2-MAIN-21** | `handleOfflineDelete` and `handleOfflineSoftDelete` share 80% of logic; could consolidate | Low | Low | Review2/00_Main, Review2/03_VaultRepository |
 | 33 | **R2-EXT-3** | Three `/// - Important` comments about SDK fragility across files could reference a shared document | Low | Low | Review2/07_CipherViewExtensions |
 | 34 | **R2-EXT-4** | `@retroactive CipherWithArchive` conformance change rationale unclear | Low | Low | Review2/07_CipherViewExtensions |
+| 72 | **R2-SS-5** | SyncService simplification: two `pendingChangeCount` calls could be replaced by resolver returning boolean — saves one Core Data query | Low | Low | Review2/04_SyncService |
+| 73 | **R2-SS-6** | SyncService simplification: extract 15-line pre-sync resolution block into private method `resolveOfflineChangesIfNeeded(userId:isVaultLocked:)` | Low | Low | Review2/04_SyncService |
+| 74 | **R2-RES-10** | Resolver simplification: `resolveConflict` local-newer and server-newer branches have symmetric structure; could be abstracted (current explicit form more readable) | Low | Low | Review2/02_OfflineSyncResolver |
+| 75 | **R2-RES-11** | `softConflictPasswordChangeThreshold` hardcoded to 4 as `static let` — not configurable without code change; tuning based on user feedback would require recompilation | Low | Low | Review2/02_OfflineSyncResolver |
+| 76 | **R2-VR-9** | VaultRepository simplification: use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON (~20 lines savings per handler) — would require different serialization approach | Low | Low | OfflineSyncCodeReview.md |
 
 ### 5b. Test Coverage Gaps
 
@@ -109,6 +114,7 @@ These issues were identified in the second review pass and have not yet been eva
 | 40 | **P2-T4** | Fallback fetch in `ViewItemProcessor` doesn't re-establish subscription; no test for cipher update after fallback | Low | Medium | OfflineSyncCodeReview_Phase2.md |
 | 41 | **TC-6** | Mock defaults silently bypass abort logic: 24 of 25 `fetchSync` tests use default `pendingChangeCountResult = 0` with no assertions about offline resolution | Medium | Low | ReviewSection_TestChanges.md |
 | 42 | **R2-TEST-4** | Very long cipher names in backup naming pattern not tested for edge cases | Low | Low | Review2/08_TestCoverage |
+| 77 | **PLAN-3** | Phase 5 integration tests (end-to-end offline→reconnect→resolve scenarios) were planned in OfflineSyncPlan.md but status is unknown — no evidence of implementation | Medium | Medium | OfflineSyncPlan.md |
 
 ### 5c. Reliability / Edge Cases
 
@@ -132,6 +138,7 @@ These issues were identified in the second review pass and have not yet been eva
 | 53 | **R2-UI-1** | Fallback `fetchCipherDetailsDirectly()` is a one-time fetch, not a stream — no live updates while viewing offline-created cipher | Low | Medium | Review2/06_UILayer |
 | 54 | **R2-UI-2** | Generic "An error has occurred" message when both publisher stream and fallback fail — should show offline-specific message | Low | Low | Review2/06_UILayer |
 | 55 | **VR-4** | No user feedback on successful offline save — operation completes silently | Low | Medium | ReviewSection_VaultRepository.md |
+| 78 | **R2-MAIN-2** | No offline support for attachment operations — attachment upload/download requires server communication; distinct from org cipher exclusion (U2) | Low | High | Review2/00_Main |
 
 ### 5e. Upstream / Process Concerns
 
@@ -141,6 +148,8 @@ These issues were identified in the second review pass and have not yet been eva
 | 57 | **R2-UP-3** | `MockCipherService` changed `cipherChangesSubject` from `CurrentValueSubject` to `PassthroughSubject` — alters timing semantics for existing tests | Medium | Low | Review2/09_UpstreamChanges |
 | 58 | **R2-UP-4** | ~60% of changed files are upstream changes, complicating offline sync diff review | Low | Low | Review2/09_UpstreamChanges |
 | 59 | **R2-UP-5** | `ExportVaultService` typo fix mixed into offline sync commits — should be separate commit | Low | Low | Review2/09_UpstreamChanges |
+| 79 | **R2-DI-6** | ServiceContainer includes two additional incidental typo fixes unrelated to offline sync (`DefultExportVaultService` → `DefaultExportVaultService`, `Exhange` → `Exchange`) | Low | Low | Review2/05_DIWiring |
+| 80 | **R2-UP-6** | `AuthCoordinator.swift` parameter rename (`attemptAutmaticBiometricUnlock` → `attemptAutomaticBiometricUnlock`) is a compile-affecting upstream change mixed into the offline sync diff | Low | Low | Review2/09_UpstreamChanges |
 
 ### 5f. Minor / Informational
 
@@ -158,6 +167,9 @@ These issues were identified in the second review pass and have not yet been eva
 | 69 | **R2-UP-2** | `CipherPermissionsModel` typo fix ("acive" to "active") — low risk but needs verification | Low | Low | Review2/09_UpstreamChanges |
 | 70 | **PLAN-1** | Denylist pattern may miss new error types in future SDK updates that should be rethrown | Low | Low | OfflineSyncPlan.md |
 | 71 | **PLAN-2** | Sync resolution may be delayed up to one sync interval (~30 min) vs immediate connectivity-based trigger | Low | Medium | OfflineSyncPlan.md |
+| 81 | **PLAN-4** | Core Data store does not configure explicit `NSFileProtectionComplete` (`DataStore.swift:50-83`) — relies on iOS default file protection (Complete Until First User Authentication), application-level encryption, and application sandbox; existing characteristic unchanged by this feature | Low | Medium | OfflineSyncPlan.md |
+| 82 | **R2-CROSS-1** | If both R1 (data format versioning) and R3 (retry backoff) are implemented, Core Data schema changes should be bundled in a single migration step to minimize schema churn | Low | Low | AP-00_CrossReferenceMatrix.md |
+| 83 | **SEC-2.a** | SEC-2 (plaintext `offlinePasswordChangeCount`) resolution should be revisited if: full Core Data encryption at rest is pursued, security model mandates all metadata encryption, count becomes persistent, or security audit mandates field-level encryption | Low | Low | AP-SEC2 |
 
 ---
 
@@ -203,4 +215,4 @@ These issues were identified in the second review pass and have not yet been eva
 ### Post-Release
 6. **U3** — Pending changes indicator (toast on offline save)
 7. **EXT-3** — Monitor SDK updates for property changes (ongoing)
-8. **Review2 test gaps** — Items 35-42 above
+8. **Review2 test gaps** — Items 35-42, 77 above
