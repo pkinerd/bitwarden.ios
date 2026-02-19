@@ -1100,7 +1100,7 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_triggersPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
         // First call returns 1 (pending changes exist), second call returns 0 (all resolved).
         pendingCipherChangeDataStore.pendingChangeCountResults = [1, 0]
 
@@ -1116,7 +1116,7 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_skipsWhenVaultLocked() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
         vaultTimeoutService.isClientLocked["1"] = true
 
         try await subject.fetchSync(forceSync: false)
@@ -1129,7 +1129,7 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_noPendingChanges() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
         pendingCipherChangeDataStore.pendingChangeCountResult = 0
 
         try await subject.fetchSync(forceSync: false)
@@ -1146,7 +1146,7 @@ class SyncServiceTests: BitwardenTestCase {
     func test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
         // First call returns 2 (pending changes exist), second call returns 2 (resolution failed for some).
         pendingCipherChangeDataStore.pendingChangeCountResults = [2, 2]
 
@@ -1165,7 +1165,7 @@ class SyncServiceTests: BitwardenTestCase {
     @MainActor
     func test_fetchSync_preSyncResolution_resolverThrows_syncFails() async throws {
         stateService.activeAccount = .fixture()
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
         // Pending changes exist, triggering resolution.
         pendingCipherChangeDataStore.pendingChangeCountResults = [1]
 
@@ -1184,15 +1184,15 @@ class SyncServiceTests: BitwardenTestCase {
         XCTAssertNil(cipherService.replaceCiphersCiphers)
     }
 
-    /// `fetchSync()` still resolves existing pending changes even when the `offlineSync`
-    /// feature flag is disabled, because `offlineSync` only gates *new* saves in
-    /// VaultRepository. Resolution is controlled by `enableOfflineSyncResolution`.
+    /// `fetchSync()` still resolves existing pending changes even when the `offlineSyncEnableOfflineChanges`
+    /// feature flag is disabled, because `offlineSyncEnableOfflineChanges` only gates *new* saves in
+    /// VaultRepository. Resolution is controlled by `offlineSyncEnableResolution`.
     @MainActor
     func test_fetchSync_preSyncResolution_stillResolvesWhenOfflineSyncFlagDisabled() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
-        configService.featureFlagsBool[.offlineSync] = false
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
         // Pending changes exist from before the flag was disabled.
         pendingCipherChangeDataStore.pendingChangeCountResults = [1, 0]
 
@@ -1205,14 +1205,14 @@ class SyncServiceTests: BitwardenTestCase {
     }
 
     /// `fetchSync()` skips the entire resolution block when
-    /// `enableOfflineSyncResolution` is disabled. Pending change records remain
+    /// `offlineSyncEnableResolution` is disabled. Pending change records remain
     /// in the database but are not processed, and `replaceCiphers` proceeds
     /// normally — potentially overwriting local edits.
     @MainActor
     func test_fetchSync_preSyncResolution_skipsWhenResolutionFlagDisabled() async throws {
         client.result = .httpSuccess(testData: .syncWithCiphers)
         stateService.activeAccount = .fixture()
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
 
         try await subject.fetchSync(forceSync: false)
 

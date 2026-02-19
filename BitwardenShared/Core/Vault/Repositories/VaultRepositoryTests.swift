@@ -75,8 +75,8 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
         // Enable offline sync flags by default so existing tests that rely on
         // offline sync behavior continue to work. Individual tests can override.
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
-        configService.featureFlagsBool[.offlineSync] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
 
         subject = DefaultVaultRepository(
             cipherService: cipherService,
@@ -235,8 +235,8 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// when the offline sync feature flag is disabled.
     @MainActor
     func test_addCipher_offlineFallback_disabledByFeatureFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
-        configService.featureFlagsBool[.offlineSync] = false
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
         cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
         await assertAsyncThrows {
@@ -249,11 +249,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     }
 
     /// `addCipher()` throws the original error instead of falling back to offline
-    /// when offline sync resolution is disabled, even if the `offlineSync` flag is on.
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
     @MainActor
     func test_addCipher_offlineFallback_disabledByResolutionFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = false
-        configService.featureFlagsBool[.offlineSync] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
         cipherService.addCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
         await assertAsyncThrows {
@@ -956,8 +956,8 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// when the offline sync feature flag is disabled.
     @MainActor
     func test_deleteCipher_offlineFallback_disabledByFeatureFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
-        configService.featureFlagsBool[.offlineSync] = false
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
         stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
@@ -971,11 +971,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     }
 
     /// `deleteCipher()` throws the original error instead of falling back to offline
-    /// when offline sync resolution is disabled, even if the `offlineSync` flag is on.
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
     @MainActor
     func test_deleteCipher_offlineFallback_disabledByResolutionFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = false
-        configService.featureFlagsBool[.offlineSync] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
         stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
@@ -2010,8 +2010,8 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// when the offline sync feature flag is disabled.
     @MainActor
     func test_updateCipher_offlineFallback_disabledByFeatureFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
-        configService.featureFlagsBool[.offlineSync] = false
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
         await assertAsyncThrows {
@@ -2024,11 +2024,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     }
 
     /// `updateCipher()` throws the original error instead of falling back to offline
-    /// when offline sync resolution is disabled, even if the `offlineSync` flag is on.
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
     @MainActor
     func test_updateCipher_offlineFallback_disabledByResolutionFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = false
-        configService.featureFlagsBool[.offlineSync] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
         await assertAsyncThrows {
@@ -2366,8 +2366,8 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// when the offline sync feature flag is disabled.
     @MainActor
     func test_softDeleteCipher_offlineFallback_disabledByFeatureFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = true
-        configService.featureFlagsBool[.offlineSync] = false
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = true
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = false
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()
         cipherService.softDeleteWithServerResult = .failure(URLError(.notConnectedToInternet))
@@ -2382,11 +2382,11 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     }
 
     /// `softDeleteCipher()` throws the original error instead of falling back to offline
-    /// when offline sync resolution is disabled, even if the `offlineSync` flag is on.
+    /// when offline sync resolution is disabled, even if the `offlineSyncEnableOfflineChanges` flag is on.
     @MainActor
     func test_softDeleteCipher_offlineFallback_disabledByResolutionFlag() async {
-        configService.featureFlagsBool[.enableOfflineSyncResolution] = false
-        configService.featureFlagsBool[.offlineSync] = true
+        configService.featureFlagsBool[.offlineSyncEnableResolution] = false
+        configService.featureFlagsBool[.offlineSyncEnableOfflineChanges] = true
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()
         cipherService.softDeleteWithServerResult = .failure(URLError(.notConnectedToInternet))

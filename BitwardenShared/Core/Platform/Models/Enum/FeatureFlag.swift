@@ -37,9 +37,9 @@ extension FeatureFlag: @retroactive CaseIterable {
     /// database so they can be resolved when the flag is re-enabled, though they
     /// will likely lose conflict resolution against newer server data.
     ///
-    /// When this flag is disabled, `offlineSync` is implicitly disabled as well —
+    /// When this flag is disabled, `offlineSyncEnableOfflineChanges` is implicitly disabled as well —
     /// there is no point queuing new offline saves if resolution cannot run.
-    static let enableOfflineSyncResolution = FeatureFlag(
+    static let offlineSyncEnableResolution = FeatureFlag(
         rawValue: "offline-sync-enable-resolution",
         initialValue: .bool(true)
     )
@@ -49,9 +49,9 @@ extension FeatureFlag: @retroactive CaseIterable {
     /// and resolved on the next successful sync. Disabling this flag prevents new offline saves
     /// from being queued in VaultRepository.
     ///
-    /// This flag is only effective when `enableOfflineSyncResolution` is also enabled.
+    /// This flag is only effective when `offlineSyncEnableResolution` is also enabled.
     /// If resolution is disabled, no new offline saves are queued regardless of this flag.
-    static let offlineSync = FeatureFlag(rawValue: "offline-sync-enable-offline-changes", initialValue: .bool(true))
+    static let offlineSyncEnableOfflineChanges = FeatureFlag(rawValue: "offline-sync-enable-offline-changes", initialValue: .bool(true))
 
     /// Flag to enable/disable sends email verification feature.
     static let sendEmailVerification = FeatureFlag(rawValue: "pm-19051-send-email-verification")
@@ -63,11 +63,11 @@ extension FeatureFlag: @retroactive CaseIterable {
             .cxpImportMobile,
             .cipherKeyEncryption,
             .enableCipherKeyEncryption,
-            .enableOfflineSyncResolution,
+            .offlineSyncEnableResolution,
             .forceUpdateKdfSettings,
             .migrateMyVaultToMyItems,
             .noLogoutOnKdfChange,
-            .offlineSync,
+            .offlineSyncEnableOfflineChanges,
             .sendEmailVerification,
         ]
     }

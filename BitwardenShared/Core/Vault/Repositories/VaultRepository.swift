@@ -534,8 +534,8 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher,
-                  await configService.getFeatureFlag(.enableOfflineSyncResolution),
-                  await configService.getFeatureFlag(.offlineSync)
+                  await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
             else {
                 throw error
             }
@@ -675,8 +675,8 @@ extension DefaultVaultRepository: VaultRepository {
         } catch let error as CipherAPIServiceError {
             throw error
         } catch {
-            guard await configService.getFeatureFlag(.enableOfflineSyncResolution),
-                  await configService.getFeatureFlag(.offlineSync)
+            guard await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
             else {
                 throw error
             }
@@ -949,8 +949,8 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher,
-                  await configService.getFeatureFlag(.enableOfflineSyncResolution),
-                  await configService.getFeatureFlag(.offlineSync)
+                  await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
             else {
                 throw error
             }
@@ -992,8 +992,8 @@ extension DefaultVaultRepository: VaultRepository {
             throw error
         } catch {
             guard !isOrgCipher,
-                  await configService.getFeatureFlag(.enableOfflineSyncResolution),
-                  await configService.getFeatureFlag(.offlineSync)
+                  await configService.getFeatureFlag(.offlineSyncEnableResolution),
+                  await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
             else {
                 throw error
             }

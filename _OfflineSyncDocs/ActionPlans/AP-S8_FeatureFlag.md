@@ -40,13 +40,13 @@ Add a server-controlled feature flag using the existing `FeatureFlag` system and
 3. In VaultRepository's catch blocks (requires adding `configService` dependency or passing flag value):
    ```swift
    catch let error as URLError where error.isNetworkConnectionError {
-       guard await configService.getFeatureFlag(.offlineSync) else { throw error }
+       guard await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges) else { throw error }
        // ... handleOffline...
    }
    ```
 4. In SyncService's pre-sync block (already has `configService` via existing pattern):
    ```swift
-   guard await configService.getFeatureFlag(.offlineSync) else { /* skip resolution */ }
+   guard await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges) else { /* skip resolution */ }
    ```
 5. Default the flag to `true` via `initialValue: AnyCodable(true)` (feature enabled by default)
 
@@ -145,7 +145,7 @@ Accept the current state — no feature flag. Rely on the feature's built-in saf
 
 The review confirms the original assessment with important code-level details. After reviewing the implementation:
 
-1. **Feature flag system verification**: `FeatureFlag.swift` defines 9 existing flags as static properties on `FeatureFlag` extension (line 7). The pattern is `static let flagName = FeatureFlag(rawValue: "server-flag-name")`. The `allCases` array at line 35 lists all 9 flags. Adding `.offlineSync` would follow this exact pattern. **No offline sync feature flag has been added yet.**
+1. **Feature flag system verification**: `FeatureFlag.swift` defines 9 existing flags as static properties on `FeatureFlag` extension (line 7). The pattern is `static let flagName = FeatureFlag(rawValue: "server-flag-name")`. The `allCases` array at line 35 lists all 9 flags. Adding `.offlineSyncEnableOfflineChanges` would follow this exact pattern. **No offline sync feature flag has been added yet.**
 
 2. **SyncService precedent verified**: `SyncService.swift` already uses `configService.getFeatureFlag(.migrateMyVaultToMyItems)` at line 561. The pre-sync resolution block at lines 329-343 is the natural place for the offline sync flag check.
 
@@ -159,4 +159,4 @@ The review confirms the original assessment with important code-level details. A
 
 6. **Recommendation updated**: **Option A (server-controlled flag)** remains correct. **[Updated]** Now that VaultRepository has `configService`, both tiers can be implemented together with minimal effort. The implementation should gate both entry points: (a) the SyncService pre-sync block at lines 329-343 (skip entire block when flag is off), and (b) VaultRepository's offline catch blocks (let errors propagate normally when flag is off). This provides complete control without the asymmetry risk of Tier 1 alone.
 
-**Updated conclusion**: Recommendation stands. **The feature flag has NOT been implemented yet** — no `.offlineSync` flag exists in `FeatureFlag.swift` and no flag check gates the offline sync code paths. The implementation cost is now lower than originally estimated since VaultRepository already has `configService`. Priority remains Medium — this should be implemented before production release.
+**Updated conclusion**: Recommendation stands. **The feature flag has NOT been implemented yet** — no `.offlineSyncEnableOfflineChanges` flag exists in `FeatureFlag.swift` and no flag check gates the offline sync code paths. The implementation cost is now lower than originally estimated since VaultRepository already has `configService`. Priority remains Medium — this should be implemented before production release.

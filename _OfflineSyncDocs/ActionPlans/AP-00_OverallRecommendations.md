@@ -10,7 +10,7 @@ This document summarizes the recommended approach for each issue and proposes an
 
 After reviewing the actual source code, architecture docs (`Docs/Architecture.md`, `Docs/Testing.md`), contribution guidelines, and all related implementation files, the following findings materially affect the recommendations:
 
-1. **Feature flags are mature and established.** The project has 9 existing server-controlled feature flags via `ConfigService.getFeatureFlag()`. SyncService already uses this pattern (line 560 for `.migrateMyVaultToMyItems`). Adding `.offlineSync` is trivial.
+1. **Feature flags are mature and established.** The project has 9 existing server-controlled feature flags via `ConfigService.getFeatureFlag()`. SyncService already uses this pattern (line 560 for `.migrateMyVaultToMyItems`). Adding `.offlineSyncEnableOfflineChanges` is trivial.
 
 2. **Swift actors are a proven pattern.** 7 existing services use `actor` instead of `class` (`DefaultPolicyService`, `DefaultStateService`, `DefaultClientService`, `DefaultTokenService`, etc.). Converting `DefaultOfflineSyncResolver` to an actor follows established project conventions.
 
