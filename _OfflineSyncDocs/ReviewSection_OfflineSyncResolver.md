@@ -161,12 +161,13 @@ processPendingChanges(userId:)
    If hasConflict (dates differ):
      → Create backup of server version BEFORE deleting
 
-3. Decode local pending cipher data
-4. Call cipherService.softDeleteCipherWithServer(id: cipherId, localCipher)
-5. Delete pending change record
+3. Call cipherAPIService.softDeleteCipher(withID: cipherId) directly
+4. Delete pending change record
 ```
 
 **[Updated]** 404 handling added. If the server returns 404, the cipher is already deleted — no server operation needed. Local cleanup and pending change deletion are sufficient.
+
+**[Updated]** Steps 3-4 from the original flow (decode `cipherData`, call `softDeleteCipherWithServer`) replaced with a single direct API call to `cipherAPIService.softDeleteCipher(withID:)`. The local storage upsert previously performed by `softDeleteCipherWithServer` is redundant because the resolver runs during sync, and the full sync updates local storage afterward. This eliminates the `cipherData` dependency for soft delete resolution (see resolved RES-9).
 
 **Design Note:** The soft delete always proceeds, even when there's a conflict. The rationale is that the user explicitly chose to delete the item. The backup preserves the server version (which may have been edited by another user or device) so nothing is lost.
 
@@ -305,6 +306,8 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 **[Updated]** The dedicated "Offline Sync Conflicts" folder has been removed entirely. Backup ciphers now retain their original folder assignment. This observation is no longer applicable. See [AP-U4](ActionPlans/AP-U4_EnglishOnlyConflictFolderName.md).
 
-### Observation RES-9: `resolveSoftDelete` Requires `cipherData` but Creates Should Use Only `cipherId`
+### ~~Observation RES-9: `resolveSoftDelete` Requires `cipherData` but Creates Should Use Only `cipherId`~~ **[Resolved]**
 
-For soft delete resolution, the implementation decodes `cipherData` to get a local `Cipher` for the `softDeleteCipherWithServer(id: cipherId, localCipher)` call. If `cipherData` is nil, it throws `missingCipherData`. This means the `handleOfflineSoftDelete` caller must always provide cipher data. This is guaranteed by the current `VaultRepository` implementation but is an implicit contract.
+~~For soft delete resolution, the implementation decodes `cipherData` to get a local `Cipher` for the `softDeleteCipherWithServer(id: cipherId, localCipher)` call. If `cipherData` is nil, it throws `missingCipherData`. This means the `handleOfflineSoftDelete` caller must always provide cipher data. This is guaranteed by the current `VaultRepository` implementation but is an implicit contract.~~
+
+**[Resolved]** `resolveSoftDelete` now calls `cipherAPIService.softDeleteCipher(withID:)` directly instead of decoding `cipherData` and calling `cipherService.softDeleteCipherWithServer`. The local storage update is handled by the subsequent full sync. This eliminates the `cipherData` dependency and the implicit contract for soft delete pending changes.

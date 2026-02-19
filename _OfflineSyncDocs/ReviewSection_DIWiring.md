@@ -145,7 +145,7 @@ This ensures that when a user logs out or their account is deleted, all pending 
 | DocC on Has* protocols | **Pass** | Both have summary documentation and property-level documentation |
 | DocC on container properties | **Pass** | Stored properties documented |
 | DocC on init parameters | **Pass** | Both new parameters in init DocC |
-| Alphabetical ordering | **Partial** | Stored properties, init parameters, and assignments are in alphabetical order; however, the DocC parameter documentation block in the `ServiceContainer` init has `pendingAppIntentActionMediator` and `pendingCipherChangeDataStore` listed after `reviewPromptService` instead of before `policyService`, mismatching the actual init parameter order |
+| Alphabetical ordering | **Pass** | Stored properties, init parameters, assignments, and DocC parameter documentation are all in correct alphabetical order |
 
 ### Security Compliance
 
@@ -184,11 +184,11 @@ Similarly, `HasOfflineSyncResolver` is added to the `Services` typealias. The re
 
 Same as CS-1 (stray blank line). See [AP-CS1](ActionPlans/Resolved/AP-CS1_StrayBlankLine.md). Removed in commit `a52d379`.
 
-### Issue DI-5: DocC Parameter Order Mismatch in `ServiceContainer` Init (Low)
+### ~~Issue DI-5: DocC Parameter Order Mismatch in `ServiceContainer` Init~~ [Resolved]
 
-The DocC parameter documentation block in `ServiceContainer.swift` init lists `pendingAppIntentActionMediator` and `pendingCipherChangeDataStore` after `rehydrationHelper` and `reviewPromptService` (lines 259–262), but the actual init parameter list has them in correct alphabetical order before `policyService` (lines 323–324). This means the DocC parameter order does not match the actual parameter order. The mismatch appears to be from the offline sync parameters being appended to the DocC block near where they semantically fit rather than in strict alphabetical position.
+~~The DocC parameter documentation block in `ServiceContainer.swift` init lists `pendingAppIntentActionMediator` and `pendingCipherChangeDataStore` after `rehydrationHelper` and `reviewPromptService` (lines 259–262), but the actual init parameter list has them in correct alphabetical order before `policyService` (lines 323–324). This means the DocC parameter order does not match the actual parameter order. The mismatch appears to be from the offline sync parameters being appended to the DocC block near where they semantically fit rather than in strict alphabetical position.~~
 
-**Assessment:** Low severity. The actual init parameters, stored properties, and assignments are all in correct alphabetical order. Only the DocC parameter documentation block is out of order.
+**[Resolved]** The DocC parameter documentation block in the `ServiceContainer` init has been reordered so that `pendingAppIntentActionMediator` now appears in its correct alphabetical position (after `pasteboardService`, before `policyService`), matching the actual init parameter order. Note: `pendingCipherChangeDataStore` is not a stored property on `ServiceContainer` and does not appear in the main init's parameter list or DocC block — it is only passed through the convenience initializer when constructing other objects.
 
 ### Observation DI-4: Same Resolver Instance Shared Between SyncService and Container
 
