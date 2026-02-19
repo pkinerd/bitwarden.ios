@@ -1,0 +1,305 @@
+name: Build, Test & Package Simulator
+
+on:
+  push:
+    branches:
+      - "main"
+      - "rc"
+      - "hotfix-rc"
+      - "dev"
+    paths-ignore:
+      - _OfflineSyncDocs/**
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - Authenticator/**
+      - AuthenticatorShared/**
+      - _OfflineSyncDocs/**
+  workflow_dispatch:
+    inputs:
+      xcode-version:
+        description: "Xcode version override - e.g. '15.2'"
+        type: string
+      simulator-name:
+        description: "Simulator name override - e.g. 'iPhone 16 Pro'"
+        type: string
+      simulator-version:
+        description: "Simulator iOS version override - e.g. '18.0.1'"
+        type: string
+      compiler-flags:
+        description: "Compiler Flags - e.g. 'DEBUG_MENU FEATURE2'"
+        type: string
+  workflow_call:
+    inputs:
+      xcode-version:
+        description: "Xcode version override - e.g. '15.2'"
+        type: string
+      simulator-name:
+        description: "Simulator name override - e.g. 'iPhone 16 Pro'"
+        type: string
+      simulator-version:
+        description: "Simulator iOS version override - e.g. '18.0.1'"
+        type: string
+      compiler-flags:
+        description: "Compiler Flags - e.g. 'DEBUG_MENU FEATURE2'"
+        type: string
+
+env:
+  MINT_LINK_PATH: .mint/bin # used by mint in bootstrap.sh
+  MINT_PATH: .mint/lib # used by mint in bootstrap.sh
+  _COVERAGE_PATH: build/coverage.xml
+  _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+  _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+  _SIMULATOR_NAME: ${{ inputs.simulator-name }}
+  _SIMULATOR_VERSION: ${{ inputs.simulator-version }}
+  _XCODE_VERSION: ${{ inputs.xcode-version }}
+  _COMPILER_FLAGS: ${{ inputs.compiler-flags }}
+  _GITHUB_ACTION_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: macos-26
+    timeout-minutes: 90
+    permissions:
+      contents: read
+
+    steps:
+      - name: Log inputs to job summary
+        uses: bitwarden/ios/.github/actions/log-inputs@main
+        with:
+          inputs: "${{ toJson(inputs) }}"
+
+      - name: Check out repo
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Optimize macOS Runner
+        uses: ./.github/actions/macos-runner-tuneup
+
+      - name: Read Xcode version and simulator configuration from file if not provided
+        run: |
+          if [ -z "$_XCODE_VERSION" ]; then
+            echo "_XCODE_VERSION=$(cat .xcode-version | tr -d '\n')" >> "$GITHUB_ENV"
+          fi
+          if [ -z "$_SIMULATOR_NAME" ]; then
+            echo "_SIMULATOR_NAME=$(cat .test-simulator-device-name | tr -d '\n')" >> "$GITHUB_ENV"
+          fi
+          if [ -z "$_SIMULATOR_VERSION" ]; then
+            echo "_SIMULATOR_VERSION=$(cat .test-simulator-ios-version | tr -d '\n')" >> "$GITHUB_ENV"
+          fi
+
+      - name: Set Xcode version
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: ${{ env._XCODE_VERSION }}
+
+      - name: Configure Ruby
+        uses: ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0
+        with:
+          bundler-cache: true
+
+      - name: Cache Mint packages
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: .mint
+          key: ${{ runner.os }}-mint-${{ hashFiles('**/Mintfile') }}
+          restore-keys: |
+            ${{ runner.os }}-mint-
+
+      - name: Cache SPM packages
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/DerivedData/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Update local config
+        run: |
+          ./Scripts/update_test_local_config.sh "${_COMPILER_FLAGS}"
+
+      - name: Install Homebrew Dependencies and run bootstrap.sh
+        run: |
+          brew update
+          brew bundle
+          ./Scripts/bootstrap.sh
+
+      - name: Boot Simulator
+        id: boot-simulator
+        uses: ./.github/actions/boot-simulator
+        with:
+          simulator-name: ${{ env._SIMULATOR_NAME }}
+          simulator-version: ${{ env._SIMULATOR_VERSION }}
+
+      - name: Build
+        env:
+          _SIMULATOR_ID: ${{ steps.boot-simulator.outputs.simulator-id }}
+        run: |
+            python Scripts/pyeetd/main.py & PYEETD_PID=$!
+            xcrun xcodebuild build-for-testing \
+              -workspace Bitwarden.xcworkspace \
+              -scheme Bitwarden \
+              -configuration Debug \
+              -destination "platform=iOS Simulator,id=$_SIMULATOR_ID" \
+              -derivedDataPath build/DerivedData \
+              -resultBundlePath "$_BUILD_RESULT_BUNDLE_PATH" \
+              ONLY_ACTIVE_ARCH=YES \
+              -quiet
+            kill "$PYEETD_PID"
+
+      - name: "Package: Simulator .app artifact"
+        run: |
+          APP_PATH="build/DerivedData/Build/Products/Debug-iphonesimulator/Bitwarden.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "::error::Bitwarden.app not found at $APP_PATH"
+            exit 1
+          fi
+          mkdir -p build/artifacts
+          cd build/DerivedData/Build/Products/Debug-iphonesimulator
+          zip -r -q ../../../../artifacts/Bitwarden-Simulator.zip Bitwarden.app -x "Bitwarden.app/Watch/*"
+
+      - name: "Upload: Simulator .app"
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: Bitwarden-Simulator-Debug
+          path: build/artifacts/Bitwarden-Simulator.zip
+          if-no-files-found: error
+
+      # - name: "Upload: Sauce Labs"
+      #   env:
+      #     SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      #     SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      #   run: |
+      #     RESPONSE=$(curl -s -w "\n%{http_code}" \
+      #       -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+      #       --request POST 'https://api.us-west-1.saucelabs.com/v1/storage/upload' \
+      #       --form 'payload=@"build/artifacts/Bitwarden-Simulator.zip"' \
+      #       --form 'name="Bitwarden-Simulator.zip"')
+      #     HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      #     BODY=$(echo "$RESPONSE" | sed '$d')
+      #     echo "$BODY" | python3 -m json.tool || echo "$BODY"
+      #     if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+      #       echo "::error::Sauce Labs upload failed with HTTP $HTTP_CODE"
+      #       exit 1
+      #     fi
+      #     FILE_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['item']['id'])" 2>/dev/null || true)
+      #     if [ -n "$FILE_ID" ]; then
+      #       echo "Sauce Labs file ID: $FILE_ID"
+      #       echo "### Sauce Labs Upload" >> "$GITHUB_STEP_SUMMARY"
+      #       echo "File ID: \`$FILE_ID\`" >> "$GITHUB_STEP_SUMMARY"
+      #     fi
+
+      - name: "Prepare: Appetize upload note"
+        id: appetize-note
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BRANCH: ${{ github.head_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            NOTE="PR #${PR_NUMBER}: ${PR_TITLE} | Branch: ${PR_BRANCH} | Commit: ${SHORT_SHA} | ${PR_URL}"
+          else
+            NOTE="Push to ${REF_NAME} | Commit: ${SHORT_SHA} | $_GITHUB_ACTION_RUN_URL"
+          fi
+          echo "note=${NOTE}" >> "$GITHUB_OUTPUT"
+
+      - name: "Upload: Appetize"
+        uses: appetizeio/github-action-appetize@v1.0.5
+        with:
+          apiToken: ${{ secrets.APPETIZE_API_TOKEN }}
+          appFile: build/artifacts/Bitwarden-Simulator.zip
+          platform: 'ios'
+          note: ${{ steps.appetize-note.outputs.note }}
+
+      - name: Test
+        env:
+          _SIMULATOR_ID: ${{ steps.boot-simulator.outputs.simulator-id }}
+        run: |
+            python Scripts/pyeetd/main.py & PYEETD_PID=$!
+            xcrun xcodebuild test-without-building \
+              -workspace Bitwarden.xcworkspace \
+              -scheme Bitwarden \
+              -configuration Debug \
+              -destination "platform=iOS Simulator,id=$_SIMULATOR_ID" \
+              -resultBundlePath "$_TESTS_RESULT_BUNDLE_PATH" \
+              -derivedDataPath build/DerivedData \
+              -test-timeouts-enabled yes \
+              -maximum-test-execution-time-allowance 1 \
+              -quiet
+            kill "$PYEETD_PID"
+
+      - name: Print Logs Summary
+        if: always()
+        run: |
+          xcresultparser -o cli "$_TESTS_RESULT_BUNDLE_PATH"
+          echo "# Test Summary" >> "$GITHUB_STEP_SUMMARY"
+          xcresultparser -f -o txt "$_TESTS_RESULT_BUNDLE_PATH" | grep "Number of" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Convert coverage to Cobertura
+        run: |
+          set -o pipefail && \
+            xcresultparser --output-format cobertura \
+            "$_TESTS_RESULT_BUNDLE_PATH" > "$_COVERAGE_PATH"
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: always()
+        with:
+          name: test-reports
+          compression-level: 9
+          path: |
+            ${{ env._COVERAGE_PATH }}
+            ${{ env._TESTS_RESULT_BUNDLE_PATH }}
+            ${{ env._BUILD_RESULT_BUNDLE_PATH }}
+
+  report:
+    name: Process Test Reports
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+      pull-requests: write
+    if: success()
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          sparse-checkout: .github/codecov.yml
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: test-reports
+
+      - name: Upload to codecov.io
+        id: upload-to-codecov
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
+        continue-on-error: true
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
+          version: v11.2.3 # Do not bump until this is fixed: https://github.com/getsentry/prevent-cli/issues/101
+
+      - name: Comment PR if tests failed
+        if: steps.upload-to-codecov.outcome == 'failure'
+        env:
+            PR_NUMBER: ${{ github.event.number }}
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            RUN_ACTOR: ${{ github.triggering_actor }}
+        run: |
+          echo "> [!WARNING]" >> "$GITHUB_STEP_SUMMARY"
+          echo "> Uploading code coverage report failed. Please check the \"Upload to codecov.io\" step of \"Process Test Reports\" job for more details." >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ! -z "$PR_NUMBER" ]; then
+            message=$'> [!WARNING]\n> @'$RUN_ACTOR' Uploading code coverage report failed. Please check the "Upload to codecov.io" step of [Process Test Reports job]('$_GITHUB_ACTION_RUN_URL') for more details.'
+            gh pr comment --repo "$GITHUB_REPOSITORY" "$PR_NUMBER" --body "$message"
+          fi
