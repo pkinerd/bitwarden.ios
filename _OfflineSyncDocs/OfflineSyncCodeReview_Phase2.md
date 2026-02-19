@@ -73,9 +73,9 @@ let cipherEncryptionContext = try await clientService.vault().ciphers()
 
 **Review:**
 - **Architecture:** Correct. Assigning the ID at the `CipherView` level before encryption ensures the SDK's encrypt-decrypt cycle preserves it.
-- **Dead code:** The old `Cipher.withTemporaryId(_:)` method on the `origin/main` branch's `CipherView+OfflineSync.swift` has been completely removed. On `master`, only `CipherView.withId(_:)` and `CipherView.update(name:)` exist. Clean removal. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original folder assignment.
+- **Dead code:** The old `Cipher.withTemporaryId(_:)` method on the `origin/main` branch's `CipherView+OfflineSync.swift` has been completely removed. On `master`, only `CipherView.withId(_:)` and `CipherView.update(name:)` exist. Clean removal. **[Updated]** `folderId` parameter removed from `update` — backup ciphers now retain the original folder assignment. **[Updated 2]** Both `withId(_:)` and `update(name:)` now delegate to a single private `makeCopy(id:key:name:attachments:attachmentDecryptionFailures:)` method, consolidating the full `CipherView` init into exactly one call site.
 - **Naming:** `withId(_:)` is more generic than `withTemporaryId(_:)`, which is appropriate since the method is not inherently "temporary" - it's just setting an ID.
-- **Issue CS-2 update:** The fragility concern from the original review still applies to `CipherView.withId(_:)` - it manually copies all properties. If `CipherView` gains new properties, this method will silently drop them. Severity remains low.
+- ~~**Issue CS-2 update:** The fragility concern from the original review still applies to `CipherView.withId(_:)` - it manually copies all properties. If `CipherView` gains new properties, this method will silently drop them. Severity remains low.~~ **[Mitigated]** The fragility concern has been substantially mitigated by two changes: (1) `withId(_:)` and `update(name:)` now both delegate to a single `makeCopy` method, reducing the surface area for missed properties to one call site; (2) A SDK property count guard test (`test_cipherView_propertyCount_matchesExpected` in `CipherViewOfflineSyncTests.swift`) uses `Mirror` to verify `CipherView` has exactly 28 properties — if the SDK adds properties, this test will fail, alerting developers. A similar guard exists for `LoginView`. Residual risk is low.
 
 ### 2.2 Error Type Filtering in Catch Blocks (Important Hardening)
 
@@ -94,6 +94,22 @@ let cipherEncryptionContext = try await clientService.vault().ciphers()
     // Offline fallback for network errors, 5xx, unknown errors
 }
 ```
+
+**[Updated 2]** The offline fallback blocks inside the final `catch` clause are now additionally gated by two server-controlled feature flags and an org-cipher guard:
+
+```swift
+} catch {
+    guard !isOrgCipher,
+          await configService.getFeatureFlag(.offlineSyncEnableResolution),
+          await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)
+    else {
+        throw error
+    }
+    // offline fallback logic...
+}
+```
+
+When either feature flag is disabled or the cipher belongs to an organization, the error is rethrown instead of falling through to offline save. This provides a server-side kill switch for the entire offline sync feature. The error type filtering pattern itself (ServerError, 4xx, CipherAPIServiceError) remains unchanged across all four CRUD operations.
 
 **Review:**
 - **Correctness:** This is the right approach. `ServerError` means the server processed the request and rejected it (e.g., validation failure). `ResponseValidationError` with 4xx means a client issue (bad request, unauthorized). `CipherAPIServiceError` means a pre-condition failed (missing ID). None of these should trigger offline save.
@@ -152,7 +168,9 @@ if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(...)
 
 ### 2.5 Temp-ID Cleanup in `resolveCreate` (Important)
 
-**`OfflineSyncResolver.swift:158-167` (master):**
+**[Updated 2]** Note: `DefaultOfflineSyncResolver` has been converted from a `class` to an `actor` (commit `9415019`), improving thread safety for concurrent sync operations.
+
+**`OfflineSyncResolver.swift:145-166` (master):**
 ```swift
 let tempId = cipher.id
 try await cipherService.addCipherWithServer(cipher, encryptedFor: userId)
@@ -285,6 +303,16 @@ if !isVaultLocked {
 }
 ```
 
+**[Updated 2]** The entire block is now additionally gated by the `offlineSyncEnableResolution` feature flag:
+
+```swift
+if await configService.getFeatureFlag(.offlineSyncEnableResolution),
+   !isVaultLocked {
+    let pendingCount = ...
+```
+
+When the feature flag is disabled, the pre-sync resolution is skipped entirely, and full sync proceeds unconditionally (pending changes are ignored). This provides a server-side kill switch for the resolution process.
+
 **Review:**
 - **Optimization:** Avoids calling `processPendingChanges` when there are no pending changes. The resolver already handles the empty case (`guard !pendingChanges.isEmpty else { return }`), but the pre-check avoids the Core Data fetch inside the resolver.
 - **Test update:** `test_fetchSync_preSyncResolution_noPendingChanges` now verifies that the resolver is NOT called when pending count is 0. Previously it verified the resolver was always called.
@@ -326,6 +354,11 @@ The phase 2 commits add significant test coverage:
 
 **Total new tests in phase 2: ~35 tests** (including subsequently added `updateCipher` error type tests)
 
+**[Added post-review]** Additional tests added after the initial Phase 2 review:
+- SDK property count guard tests (`test_cipherView_propertyCount_matchesExpected`, `test_loginView_propertyCount_matchesExpected`) — detect SDK property additions that would break `makeCopy`
+- Password history preservation tests for offline sync conflict resolution
+- Feature flag gating tests for offline fallback and pre-sync resolution
+
 ### 5.3 Test Gaps Remaining
 
 | ID | Component | Gap | Severity |
@@ -352,7 +385,7 @@ The phase 2 commits add significant test coverage:
 | Processor handles state/logic, not View | **Pass** | `buildViewItemState` and `fetchCipherDetailsDirectly` are private processor methods |
 | Repository abstracts data sources | **Pass** | Error type filtering in `VaultRepository` is appropriate — it's the layer that decides online vs offline behavior |
 | No UI-layer direct service access | **Pass** | Fallback fetch goes through `vaultRepository.fetchCipher`, not a data store |
-| DI via ServiceContainer | **Pass** | No new dependencies introduced in phase 2 |
+| DI via ServiceContainer | **Pass** | ~~No new dependencies introduced in phase 2~~ **[Updated 2]** `configService` dependency added to `VaultRepository` and `SyncService` for feature flag checks; follows existing DI patterns |
 
 ### 6.2 Unidirectional Data Flow
 
@@ -385,6 +418,8 @@ The error filtering catches `CipherAPIServiceError` and rethrows it. This preven
 - No new cryptographic code in Swift
 - No new external network calls
 - Fallback fetch in `ViewItemProcessor` goes through the same decrypt path as the stream
+- **[Added]** Server-controlled feature flags provide an additional security layer — offline sync can be disabled remotely if issues are discovered post-deployment
+- **[Added]** Organization ciphers are excluded from offline fallback, preventing offline edits to shared vault items
 
 ---
 
@@ -428,7 +463,16 @@ The file header has `// MARK: - CipherView + OfflineSync` but only contains one 
 | ~~`FolderView(id:name:revisionDate:)` — SDK init~~ | ~~**Safe**~~ **[Superseded]** — Conflict folder removed; no longer used in offline sync |
 | ~~`clientService.vault().folders().encrypt(folder:)` — SDK method~~ | ~~**Safe**~~ **[Superseded]** — Conflict folder removed; no longer used in offline sync |
 
-### 9.2 Potential Build Issues
+### 9.2 New Type Interactions (Post-Review)
+
+| Interaction | Safety |
+|-------------|--------|
+| `configService.getFeatureFlag(.offlineSyncEnableResolution)` — `Bool` | **Safe** — server-controlled feature flag, standard pattern |
+| `configService.getFeatureFlag(.offlineSyncEnableOfflineChanges)` — `Bool` | **Safe** — server-controlled feature flag, standard pattern |
+| `DefaultOfflineSyncResolver` converted from `class` to `actor` | **Safe** — improves thread safety; callers already use `await` |
+| `Mirror(reflecting:).children.count` in property guard test | **Safe** — test-only; uses Swift reflection API |
+
+### 9.3 Potential Build Issues
 
 None identified. All changes use existing types and APIs. The `@testable import` fixes (`6c0fda1`, `8656bce`) resolved actual build errors in test targets.
 
@@ -461,13 +505,14 @@ None identified. All changes use existing types and APIs. The `@testable import`
 
 | Original ID | Status | Notes |
 |-------------|--------|-------|
-| CS-2 (`Cipher.withTemporaryId` fragile) | **Updated** | Now applies to `CipherView.withId(_:)` — same fragility concern |
+| ~~CS-2 (`Cipher.withTemporaryId` fragile)~~ | ~~**Updated**~~ ~~Now applies to `CipherView.withId(_:)` — same fragility concern~~ **[Mitigated]** | Consolidated into single `makeCopy` helper + SDK property count guard test (`test_cipherView_propertyCount_matchesExpected`). Residual risk is low. |
 | ~~SEC-1~~ | **[Superseded]** | See [AP-SEC1](ActionPlans/Resolved/AP-SEC1_SecureConnectionFailedClassification.md). Error filtering now catches specific types; unknown errors fall through to offline save. |
 | ~~S3~~ (batch processing test) | **[Resolved]** | Three batch processing tests now exist in `OfflineSyncResolverTests.swift` |
 | ~~S4~~ (API failure during resolution test) | **[Resolved]** | Four API failure tests now exist in `OfflineSyncResolverTests.swift`: `test_processPendingChanges_create_apiFailure_pendingRecordRetained`, `test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained`, `test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained`, `test_processPendingChanges_update_backupFailure_pendingRecordRetained` |
 | ~~S6~~ (password change counting) | **[Resolved]** | Four password change counting tests now exist in `VaultRepositoryTests.swift` plus soft conflict threshold test in `OfflineSyncResolverTests.swift` |
 | ~~T7~~ (subsequent offline edit) | **[Resolved]** | See [AP-T7](ActionPlans/Resolved/AP-T7_SubsequentOfflineEditTest.md). Covered by `test_updateCipher_offlineFallback_preservesCreateType`. |
 | ~~P2-T1~~ (`updateCipher` error filtering tests) | **[Resolved]** | `test_updateCipher_serverError_rethrows` and `test_updateCipher_responseValidationError4xx_rethrows` now exist |
+| ~~CS-2~~ (`CipherView.withId` fragile copy) | **[Mitigated]** | Consolidated into `makeCopy` + SDK property count guard test. See section 2.1. |
 
 ---
 
@@ -480,6 +525,9 @@ None identified. All changes use existing types and APIs. The `@testable import`
 - **Incremental commits:** Changes are well-separated into atomic commits with clear descriptions, making the evolution easy to follow
 - **Consistency:** Error filtering pattern applied uniformly across all four CRUD operations
 - ~~**Security fix for folder name encryption** — caught and fixed before production deployment~~ **[Superseded]** — Conflict folder removed entirely
+- **[Added]** **Server-controlled feature flag gating** — All offline fallback paths (`VaultRepository`) and pre-sync resolution (`SyncService`) are now gated by `offlineSyncEnableResolution` and `offlineSyncEnableOfflineChanges` feature flags, providing a server-side kill switch. Organization ciphers are excluded from offline fallback entirely.
+- **[Added]** **Actor conversion for thread safety** — `DefaultOfflineSyncResolver` converted from `class` to `actor`, preventing potential data races during concurrent sync operations.
+- **[Added]** **SDK property count guard tests** — `test_cipherView_propertyCount_matchesExpected` and `test_loginView_propertyCount_matchesExpected` use `Mirror` to detect SDK property additions, providing an automated safety net for the fragile `makeCopy` method.
 
 ---
 
@@ -496,4 +544,11 @@ The phase 2 changes address all known bugs from testing and significantly harden
 
 The code quality remains high, following project architecture and style guidelines. Test coverage is substantially improved with ~35 new tests. All previously open items from the original review (S3 batch processing, S4 API failure, S6 password change counting, T7 subsequent offline edit) have now been resolved with dedicated tests.
 
-**Recommendation:** The phase 2 changes are ready for merge. The previously identified medium-priority gap (P2-T1 — `updateCipher` error type filter tests) has been resolved. Only low-priority gaps remain (P2-T2 through P2-T4).
+**Post-review hardening (added since initial Phase 2 review):**
+- Server-controlled feature flags (`offlineSyncEnableResolution`, `offlineSyncEnableOfflineChanges`) now gate all offline fallback and pre-sync resolution paths, providing a kill switch
+- `DefaultOfflineSyncResolver` converted from class to actor for thread safety
+- `CipherView` property copying consolidated into single `makeCopy` method with SDK property count guard tests (mitigating CS-2)
+- Dead code removed (`organizationCipherOfflineEditNotSupported` enum case)
+- Organization ciphers excluded from offline fallback (re-throw original error)
+
+**Recommendation:** The phase 2 changes are ready for merge. The previously identified medium-priority gap (P2-T1 — `updateCipher` error type filter tests) has been resolved. CS-2 (fragile property copying) has been substantially mitigated. Only low-priority gaps remain (P2-T2 through P2-T4).
