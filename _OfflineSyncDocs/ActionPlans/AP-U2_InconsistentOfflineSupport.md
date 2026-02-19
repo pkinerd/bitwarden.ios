@@ -97,7 +97,7 @@ Keep the current inconsistency and track it as a future enhancement.
 
 ## Related Issues
 
-- **S8**: Feature flag — the feature flag should gate the existing offline operations. If new operations are added (Option A), they should be gated by the same flag.
+- **S8**: Feature flag — **[Resolved]** the two feature flags (`.offlineSyncEnableResolution` gates resolution, `.offlineSyncEnableOfflineChanges` gates offline saves) now gate the existing offline operations. If new operations are added (Option A), they should be gated by these same flags.
 - **U1**: Org cipher error timing — both are UX concerns about error presentation.
 - **U3**: Pending changes indicator — if more operations go offline, a pending changes indicator becomes more important.
 - **VR-2**: Delete converted to soft delete — similar design decision about how operations behave differently offline.

@@ -119,7 +119,7 @@ Accept the risk of permanently failing items and address specific cases as they 
 **Pros:**
 - No code change
 - Simpler implementation
-- The feature flag (S8) can be used as a kill switch if issues arise
+- The feature flags (S8 — now resolved: `.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) can be used as a kill switch if issues arise
 
 **Cons:**
 - A single permanently failing item blocks all syncing
@@ -145,7 +145,7 @@ If implementing a full retry backoff (Option C) is feasible, it is the technical
 - **R1 (PCDS-3)**: Data format versioning — both involve pending changes becoming unresolvable. If format versioning is implemented (version mismatch → delete), it provides a partial solution.
 - **A3 (RES-5)**: Unused timeProvider — if retry backoff uses time-based expiry, `timeProvider` could be repurposed instead of removed.
 - **R4 (SS-3)**: Silent sync abort — if items are expired/deleted, logging becomes even more important.
-- **S8**: Feature flag — a feature flag is a complementary safety mechanism if retry backoff is not implemented.
+- **S8**: Feature flag — **[Resolved]** the two feature flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) provide a complementary production safety mechanism. Both default to `false` (server-controlled rollout).
 - **SS-4**: Pre-sync resolution on every sync — retry backoff directly addresses the efficiency concern of retrying failed items on every sync.
 
 ## Updated Review Findings
@@ -183,4 +183,4 @@ The review confirms this is the most impactful reliability issue. After reviewin
 
 6. **Updated recommendation**: **Option D (failed state)** combined with **Option A (retry count)** is the best approach. Add a `.failed` case to `PendingCipherChangeType` (value 3). After 10 failures, mark as `.failed`. In SyncService, only count non-failed items for the early-abort check. Failed items are preserved for manual resolution or future automated recovery. This avoids silently deleting user data.
 
-**Updated conclusion**: This is the most impactful reliability improvement. A permanently failing item blocks ALL syncing for the user. Recommend Option D (failed state) + Option A (retry count). Priority should be elevated to Medium. The feature flag (S8) provides complementary protection but requires manual intervention; retry backoff is automated.
+**Updated conclusion**: This is the most impactful reliability improvement. A permanently failing item blocks ALL syncing for the user. Recommend Option D (failed state) + Option A (retry count). Priority should be elevated to Medium. The feature flags (S8 — now resolved: `.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) provide complementary production safety but require manual server-side intervention; retry backoff is automated client-side recovery.

@@ -621,9 +621,9 @@ The plan (Section 9) lists `AddEditItemProcessor.swift` as a modified file. In t
 
 The plan lists both as modified files. In the implementation, they were not modified — the resolver uses existing methods on their protocols.
 
-### 12.3 No Feature Flag
+### ~~12.3 No Feature Flag~~ [Resolved]
 
-The feature has no feature flag or kill switch. If issues are discovered in production, the only mitigation is a code change and app update.
+~~The feature has no feature flag or kill switch. If issues are discovered in production, the only mitigation is a code change and app update.~~ **[Resolved]** Two server-controlled feature flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) now gate all offline sync entry points. Both default to `false` (server-controlled rollout). See [AP-S8](ActionPlans/AP-S8_FeatureFlag.md).
 
 ### 12.4 Simplifications Applied
 
@@ -656,7 +656,7 @@ The feature has no feature flag or kill switch. If issues are discovered in prod
 |----|-----------|-------|-----------------|
 | ~~VI-1~~ | ~~`ViewItemProcessor` / `VaultRepository`~~ | ~~Offline-created cipher fails to load in detail view (infinite spinner)~~ — **[Resolved]** Symptom fixed by `fetchCipherDetailsDirectly()` fallback (PR #31). Root cause (`data: nil` in `Cipher.withTemporaryId()`) **fixed** by `CipherView.withId()` (commit `3f7240a`). All 5 recommended fixes implemented in Phase 2. | [AP-VI1](ActionPlans/AP-VI1_OfflineCreatedCipherViewFailure.md) |
 | ~~S6~~ | ~~`VaultRepositoryTests`~~ | ~~`handleOfflineUpdate` password change counting not directly tested~~ — **[Resolved]** 4 password change detection tests added: `test_updateCipher_offlineFallback_passwordChanged_incrementsCount`, `test_updateCipher_offlineFallback_passwordUnchanged_zeroCount`, `test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount`, `test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount` | [AP-S6](ActionPlans/Resolved/AP-S6_PasswordChangeCountingTest.md) |
-| S8 | Feature | Consider adding a feature flag for production safety | Section 12.3 |
+| ~~S8~~ | ~~Feature~~ | ~~Consider adding a feature flag for production safety~~ — **[Resolved]** Two server-controlled flags added. See Section 12.3. | Section 12.3 |
 
 ### Low Priority
 
@@ -914,7 +914,7 @@ The VI-1 root cause and all related edge cases have been **fully resolved in Pha
 
 | Priority | ID | Description |
 |----------|-----|-------------|
-| Medium | S8 | Feature flag for production safety |
+| ~~Medium~~ | ~~S8~~ | ~~Feature flag for production safety~~ — **[Resolved]** |
 | Low | A2 | Remove unused `stateService` from `OfflineSyncResolver` (~4 lines) |
 | Low | R3 | Add retry backoff for permanently failing resolution items |
 | Low | R4 | Add logging on sync abort (`SyncService.swift:340`) |
@@ -926,7 +926,7 @@ The VI-1 root cause and all related edge cases have been **fully resolved in Pha
 | Info | U2 | Archive/unarchive/collections/restore not offline-aware |
 | Info | U3 | No user-visible indicator for pending offline changes |
 
-Of these, S8 (feature flag) is the highest-impact item. The remaining items are low-priority or informational and do not block merge.
+~~Of these, S8 (feature flag) is the highest-impact item.~~ **[S8 Resolved]** Two server-controlled flags now gate all offline sync entry points. The remaining items are low-priority or informational and do not block merge.
 
 ### 17.4 Recommendation
 

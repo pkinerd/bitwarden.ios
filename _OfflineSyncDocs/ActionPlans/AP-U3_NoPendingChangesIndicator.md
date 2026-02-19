@@ -118,7 +118,7 @@ Track this as a future enhancement and ship the initial feature without a pendin
 - **R3 (SS-5)**: Retry backoff — if pending changes expire/are deleted after max retries, the user should be notified (ties into this indicator).
 - **R4 (SS-3)**: Silent sync abort — the abort could trigger a notification instead of being silent.
 - **DI-1**: DataStore exposed to UI layer — if a UI indicator is built, `HasPendingCipherChangeDataStore` in the `Services` typealias is actually needed.
-- **S8**: Feature flag — the indicator should respect the feature flag state.
+- **S8**: Feature flag — **[Resolved]** the indicator should respect the feature flag state (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`). Both default to `false` (server-controlled rollout).
 
 ## Updated Review Findings
 

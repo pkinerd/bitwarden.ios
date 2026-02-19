@@ -84,7 +84,7 @@ Accept the timeout delay as an inherent tradeoff of detecting offline status by 
 
 - **U2**: Inconsistent offline support — similar UX concern about what happens for unsupported operations offline.
 - **EXT-1**: `.timedOut` classification — the timeout duration affects how long the user waits before the org error appears.
-- **S8**: Feature flag — a feature flag doesn't address this specific UX issue but provides a way to disable the entire feature if UX issues accumulate.
+- **S8**: Feature flag — **[Resolved]** the two feature flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) don't address this specific UX issue but provide a way to disable the entire feature if UX issues accumulate. Both default to `false` (server-controlled rollout).
 
 ## Updated Review Findings
 

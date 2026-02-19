@@ -54,7 +54,7 @@ Add a server-controlled feature flag using the existing `FeatureFlag` system and
 - Can disable instantly via server configuration — no app update needed
 - Follows the exact same pattern already used in `SyncService.swift:560` for `.migrateMyVaultToMyItems`
 - Granular control (can enable/disable per user segment, region, etc.)
-- Standard pattern for production safety — consistent with 9 existing feature flags
+- Standard pattern for production safety — consistent with 11 existing feature flags
 - Minimal code change at the two entry points
 
 **Cons:**

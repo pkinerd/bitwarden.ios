@@ -100,7 +100,7 @@ enum SyncResult {
 ## Related Issues
 
 - **R3 (SS-5)**: Retry backoff — if retry backoff causes items to be skipped or expired, those events should also be logged.
-- **S8**: Feature flag — when a feature flag controls offline sync behavior, logging the flag state during sync decisions is valuable.
+- **S8**: Feature flag — **[Resolved]** the two feature flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) control offline sync behavior. Logging the flag state during sync decisions is valuable for debugging flag-gated behavior.
 - **U3 (VR-4)**: Pending changes indicator — Option C (return status) could be the foundation for a user-visible indicator.
 - **T8 (SS-1)**: Hard error in pre-sync resolution — logging should distinguish between "aborted due to remaining items" and "failed due to error."
 
