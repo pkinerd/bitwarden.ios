@@ -197,7 +197,7 @@ This is consistent with the security model of the existing cipher storage.
 ### Potential Attack Vectors
 
 1. **Local device compromise**: If a device is compromised, the attacker could see that offline edits were made and what type (create/update/delete). However, this is the same level of information available from the existing `CipherData` entity.
-2. **Password change counting**: The `offlinePasswordChangeCount` reveals how many times a password was changed offline but not the actual passwords. This is a minor information leak.
+2. **Password change counting**: The `offlinePasswordChangeCount` reveals how many times a password was changed offline but not the actual passwords. This is a minor information leak. **[Explored and Resolved — Will Not Implement]** Encrypting this count was prototyped (AES-256-GCM with HKDF-derived key) and reverted after analysis showed the surrounding plaintext metadata (`changeTypeRaw`, timestamps, row count) and comparable unencrypted counts elsewhere in the app provide equivalent information to an attacker. See [AP-SEC2](../ActionPlans/Resolved/AP-SEC2_PasswordChangeCountEncryption.md).
 
 **Overall Security Rating: Good** — The offline sync feature maintains the same security guarantees as the existing offline vault copy.
 

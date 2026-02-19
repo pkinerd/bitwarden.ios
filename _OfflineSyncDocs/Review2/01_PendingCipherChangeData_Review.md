@@ -63,9 +63,9 @@ The entity has these attributes:
   - `userId` — Also stored plaintext in existing entities.
   - `changeTypeRaw` — Reveals the type of operation (create/update/delete). This is minor metadata.
   - `originalRevisionDate`, `createdDate`, `updatedDate` — Timestamps revealing when offline edits occurred. This is comparable to the `revisionDate` stored in `CipherData`.
-  - `offlinePasswordChangeCount` — Reveals the number of password changes. This is a minor information leak but does not reveal the actual passwords.
+  - `offlinePasswordChangeCount` — Reveals the number of password changes. This is a minor information leak but does not reveal the actual passwords. **[Explored — Will Not Implement encryption]** See [AP-SEC2](../ActionPlans/Resolved/AP-SEC2_PasswordChangeCountEncryption.md).
 
-**Assessment**: The security posture of `PendingCipherChangeData` is **equivalent to `CipherData`** — sensitive content is encrypted by the SDK, and only non-sensitive metadata is stored as separate attributes. The pending change data is protected to the same level as the offline vault copy.
+**Assessment**: The security posture of `PendingCipherChangeData` is **equivalent to `CipherData`** — sensitive content is encrypted by the SDK, and only non-sensitive metadata is stored as separate attributes. The pending change data is protected to the same level as the offline vault copy. The `offlinePasswordChangeCount` plaintext storage was formally evaluated for encryption and determined to be consistent with the existing security model (see AP-SEC2).
 
 ### Data Cleanup on Logout/Account Delete
 
