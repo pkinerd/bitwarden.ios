@@ -48,7 +48,7 @@ Add a server-controlled feature flag using the existing `FeatureFlag` system and
    ```swift
    guard await configService.getFeatureFlag(.offlineSyncEnableOfflineChanges) else { /* skip resolution */ }
    ```
-5. Default the flag to `true` via `initialValue: AnyCodable(true)` (feature enabled by default)
+5. Both flags default to `false` (no `initialValue`) — the server must explicitly enable them, consistent with all other feature flags in the project
 
 **Pros:**
 - Can disable instantly via server configuration — no app update needed
@@ -145,18 +145,26 @@ Accept the current state — no feature flag. Rely on the feature's built-in saf
 
 The review confirms the original assessment with important code-level details. After reviewing the implementation:
 
-1. **Feature flag system verification**: `FeatureFlag.swift` defines 9 existing flags as static properties on `FeatureFlag` extension (line 7). The pattern is `static let flagName = FeatureFlag(rawValue: "server-flag-name")`. The `allCases` array at line 35 lists all 9 flags. Adding `.offlineSyncEnableOfflineChanges` would follow this exact pattern. **No offline sync feature flag has been added yet.**
+1. **Feature flag system verification**: `FeatureFlag.swift` defines 9 existing flags as static properties on `FeatureFlag` extension (line 7). The pattern is `static let flagName = FeatureFlag(rawValue: "server-flag-name")`. The `allCases` array at line 35 lists all 9 flags. Adding `.offlineSyncEnableOfflineChanges` would follow this exact pattern. ~~**No offline sync feature flag has been added yet.**~~ **[Resolved]** Two feature flags have been added: `.offlineSyncEnableResolution` and `.offlineSyncEnableOfflineChanges`.
 
 2. **SyncService precedent verified**: `SyncService.swift` already uses `configService.getFeatureFlag(.migrateMyVaultToMyItems)` at line 561. The pre-sync resolution block at lines 329-343 is the natural place for the offline sync flag check.
 
 3. **VaultRepository dependency resolved**: **[Updated]** `VaultRepository.swift` now HAS a `configService` dependency (line 332). This removes the previously identified blocker for Tier 2 gating. Both SyncService and VaultRepository can check the feature flag without additional dependency wiring.
 
-4. **Pragmatic approach - two-tier gating**:
-   - **Tier 1 (simple, immediate)**: Gate only the SyncService resolution path. Add flag check before `pendingCipherChangeDataStore.pendingChangeCount` at line 335. When flag is off: skip resolution, proceed to normal sync. Existing pending changes remain in Core Data silently.
-   - **Tier 2 (complete, now straightforward)**: Also gate VaultRepository offline fallback. When flag is off: network errors propagate normally (no offline save). **[Updated]** VaultRepository already has `configService` (line 332), so this is now a simple guard addition at each catch block — no dependency wiring needed.
+4. ~~**Pragmatic approach - two-tier gating**:~~
+   - ~~**Tier 1 (simple, immediate)**: Gate only the SyncService resolution path.~~
+   - ~~**Tier 2 (complete, now straightforward)**: Also gate VaultRepository offline fallback.~~
 
-5. **Important consideration**: Tier 1 alone creates an asymmetry: offline saves still happen (VaultRepository catches errors), but resolution never runs (SyncService skips it). Pending changes accumulate and sync is permanently aborted by the early-abort pattern. This is actually WORSE than no flag. **Recommendation refinement**: If implementing only Tier 1, the SyncService flag check should skip BOTH the resolution AND the early-abort. When flagged off, the pre-sync block should be entirely skipped, allowing normal sync to proceed. This means pending changes are not resolved and their local data may be overwritten by `replaceCiphers`, but the feature is effectively disabled.
+   **[Resolved]** Both tiers were implemented together:
+   - **SyncService** (`SyncService.swift:341`): `offlineSyncEnableResolution` gates the entire pre-sync resolution block — when `false`, the block is skipped entirely (both resolution AND abort check), and `replaceCiphers` proceeds normally.
+   - **VaultRepository** (`VaultRepository.swift`): Both `offlineSyncEnableResolution` AND `offlineSyncEnableOfflineChanges` must be `true` for offline save fallback. Each cipher operation's catch block (`addCipher`, `updateCipher`, `deleteCipher`, `softDeleteCipher`) checks both flags via AND logic — when either is `false`, errors propagate normally.
 
-6. **Recommendation updated**: **Option A (server-controlled flag)** remains correct. **[Updated]** Now that VaultRepository has `configService`, both tiers can be implemented together with minimal effort. The implementation should gate both entry points: (a) the SyncService pre-sync block at lines 329-343 (skip entire block when flag is off), and (b) VaultRepository's offline catch blocks (let errors propagate normally when flag is off). This provides complete control without the asymmetry risk of Tier 1 alone.
+5. ~~**Important consideration**: Tier 1 alone creates an asymmetry~~ **[Resolved]** — Both tiers were implemented together, avoiding the asymmetry concern. The two-flag design additionally provides granular control: `offlineSyncEnableResolution` can be disabled independently to stop resolution while still allowing offline saves to drain (though documentation notes this is not recommended).
 
-**Updated conclusion**: Recommendation stands. **The feature flag has NOT been implemented yet** — no `.offlineSyncEnableOfflineChanges` flag exists in `FeatureFlag.swift` and no flag check gates the offline sync code paths. The implementation cost is now lower than originally estimated since VaultRepository already has `configService`. Priority remains Medium — this should be implemented before production release.
+6. **Flag default values**: Both flags default to `false` (no `initialValue`), consistent with the project convention where all 11 feature flags use server-controlled rollout. An earlier iteration set `initialValue: .bool(true)` (enabled by default, acting as kill switches), but this was revised to align with the established project pattern. The server must explicitly enable both flags for offline sync to activate.
+
+**Updated conclusion**: ~~Recommendation stands. **The feature flag has NOT been implemented yet** — no `.offlineSyncEnableOfflineChanges` flag exists in `FeatureFlag.swift` and no flag check gates the offline sync code paths. The implementation cost is now lower than originally estimated since VaultRepository already has `configService`. Priority remains Medium — this should be implemented before production release.~~ **[Resolved]** S8 is fully implemented. Two server-controlled feature flags gate the offline sync feature at all entry points:
+- `.offlineSyncEnableResolution` (`"offline-sync-enable-resolution"`) — gates pre-sync resolution in SyncService
+- `.offlineSyncEnableOfflineChanges` (`"offline-sync-enable-offline-changes"`) — gates offline save fallback in VaultRepository (only effective when resolution is also enabled)
+
+Both default to `false` (server-controlled rollout). Tests explicitly set flag values via `configService.featureFlagsBool` and do not depend on `initialValue`.
