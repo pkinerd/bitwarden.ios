@@ -427,7 +427,7 @@ func deleteCipher(_ id: String) async throws {
 }
 ```
 
-**Design note:** `deleteCipher` queues a **`.hardDelete`** pending change and removes the CipherData record locally via `deleteCipherWithLocalStorage`. On sync, the resolver performs a permanent delete on the server when no conflict is detected, or restores the server version locally if the cipher was modified on the server while offline. See [AP-VR2](./ActionPlans/Accepted/AP-VR2_DeleteConvertedToSoftDelete.md).
+**Design note:** `deleteCipher` queues a **`.hardDelete`** pending change and removes the CipherData record locally via `deleteCipherWithLocalStorage`. On sync, the resolver performs a permanent delete on the server when no conflict is detected, or restores the server version locally if the cipher was modified on the server while offline. See [AP-VR2](./ActionPlans/Resolved/AP-VR2_DeleteConvertedToSoftDelete.md).
 
 ### 6b. New Offline Handlers
 
@@ -1123,7 +1123,7 @@ Three related changes:
 
 **Tests:** Updated 3 existing assertions from `.softDelete` to `.hardDelete` in VaultRepositoryTests. Updated soft delete conflict test to assert restore behavior. Added 4 new hard delete tests: no-conflict, conflict, 404, and API failure. Updated `MockCipherAPIServiceForOfflineSync` to track `deleteCipher(withID:)` calls.
 
-This resolves [AP-VR2](./ActionPlans/Accepted/AP-VR2_DeleteConvertedToSoftDelete.md) Option B — permanent deletes are now honored on sync when no conflict exists.
+This resolves [AP-VR2](./ActionPlans/Resolved/AP-VR2_DeleteConvertedToSoftDelete.md) Option B — permanent deletes are now honored on sync when no conflict exists.
 
 ---
 

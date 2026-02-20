@@ -78,7 +78,7 @@ do {
 3. On failure: calls `handleOfflineDelete`
 
 **Assessment**:
-- **Design decision — Hard delete now uses `.hardDelete` pending change**: **[Updated]** When a hard delete fails offline, `handleOfflineDelete` performs a local deletion and records a `.hardDelete` pending change. On sync, the resolver calls the permanent delete API when no conflict exists, or restores the server version locally when a conflict is detected. This replaces the previous behavior of converting to `.softDelete`. See resolved [AP-VR2](../ActionPlans/Accepted/AP-VR2_DeleteConvertedToSoftDelete.md).
+- **Design decision — Hard delete now uses `.hardDelete` pending change**: **[Updated]** When a hard delete fails offline, `handleOfflineDelete` performs a local deletion and records a `.hardDelete` pending change. On sync, the resolver calls the permanent delete API when no conflict exists, or restores the server version locally when a conflict is detected. This replaces the previous behavior of converting to `.softDelete`. See resolved [AP-VR2](../ActionPlans/Resolved/AP-VR2_DeleteConvertedToSoftDelete.md).
 - **Good**: If the cipher was created offline and hasn't been synced, the delete just cleans up locally (no server operation needed).
 
 ### `softDeleteCipher(_:)` — Lines 920-951
