@@ -148,7 +148,9 @@ processPendingChanges(userId:)
 
 **Important Design Note:** The timestamp comparison uses `>` (strict greater-than). If timestamps are equal (`localTimestamp == serverTimestamp`), the server version wins. This is a conservative choice — in the case of ambiguity, preserving the server state and backing up the local state ensures no data loss.
 
-#### 5c. Soft Delete Resolution (`resolveSoftDelete`)
+#### ~~5c. Soft Delete Resolution (`resolveSoftDelete`)~~ → Delete Resolution (`resolveDelete`) **[Refactored]**
+
+**[Updated]** `resolveSoftDelete` has been refactored into a unified `resolveDelete(pendingChange:cipherId:userId:permanent:)` method that handles both `.softDelete` and `.hardDelete` pending changes.
 
 ```
 1. Fetch server version via cipherAPIService.getCipher(withId:)
@@ -159,17 +161,19 @@ processPendingChanges(userId:)
 2. Compare server.revisionDate with pendingChange.originalRevisionDate
 
    If hasConflict (dates differ):
-     → Create backup of server version BEFORE deleting
+     → Restore server version to local storage via updateCipherWithLocalStorage
+     → Drop the pending delete (user can review and re-decide)
 
-3. Call cipherAPIService.softDeleteCipher(withID: cipherId) directly
-4. Delete pending change record
+   If no conflict:
+     → permanent == true:  cipherAPIService.deleteCipher(withID:)
+     → permanent == false: cipherAPIService.softDeleteCipher(withID:)
+
+3. Delete pending change record
 ```
 
-**[Updated]** 404 handling added. If the server returns 404, the cipher is already deleted — no server operation needed. Local cleanup and pending change deletion are sufficient.
+**[Updated]** The conflict behavior has changed from the original implementation. Previously, the resolver would create a backup of the server version and then complete the delete. Now, when a conflict is detected, the resolver restores the server version locally and drops the pending delete entirely. This means the user sees the updated cipher reappear and can decide whether to delete it again. This is safer because backups may lack attachments (RES-7) and the user might not notice a backup copy.
 
-**[Updated]** Steps 3-4 from the original flow (decode `cipherData`, call `softDeleteCipherWithServer`) replaced with a single direct API call to `cipherAPIService.softDeleteCipher(withID:)`. The local storage upsert previously performed by `softDeleteCipherWithServer` is redundant because the resolver runs during sync, and the full sync updates local storage afterward. This eliminates the `cipherData` dependency for soft delete resolution (see resolved RES-9).
-
-**Design Note:** The soft delete always proceeds, even when there's a conflict. The rationale is that the user explicitly chose to delete the item. The backup preserves the server version (which may have been edited by another user or device) so nothing is lost.
+**[Updated]** The `permanent` parameter enables the resolver to call the correct server delete API based on the original user intent (`.softDelete` → trash, `.hardDelete` → permanent delete).
 
 ### 6. Backup Cipher Creation (`createBackupCipher`)
 
@@ -246,7 +250,11 @@ processPendingChanges(userId:)
 | `test_processPendingChanges_update_conflict_localNewer` | Conflict where local wins — pushes local, backs up server |
 | `test_processPendingChanges_update_conflict_serverNewer` | Conflict where server wins — updates local, backs up local |
 | `test_processPendingChanges_update_softConflict` | Soft conflict (4+ password changes, no server change) |
-| `test_processPendingChanges_softDelete_conflict` | Soft delete with server-side changes — backs up server, then deletes |
+| `test_processPendingChanges_softDelete_conflict` | Soft delete with server-side changes — restores server version locally, drops pending delete |
+| `test_processPendingChanges_hardDelete_noConflict` | **[New]** Hard delete: no conflict → permanent delete on server |
+| `test_processPendingChanges_hardDelete_conflict` | **[New]** Hard delete with server-side changes — restores server version locally, drops pending delete |
+| `test_processPendingChanges_hardDelete_cipherNotFound_cleansUp` | **[New]** Hard delete where server returns 404 — cleans up locally |
+| `test_processPendingChanges_hardDelete_apiFailure_pendingRecordRetained` | **[New]** Hard delete API failure: pending record retained for retry |
 | ~~`test_processPendingChanges_update_conflict_createsConflictFolder`~~ | ~~Verifies folder creation and backup cipher assignment~~ **[Removed]** — Conflict folder eliminated |
 | `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
 | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
@@ -310,4 +318,4 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 ~~For soft delete resolution, the implementation decodes `cipherData` to get a local `Cipher` for the `softDeleteCipherWithServer(id: cipherId, localCipher)` call. If `cipherData` is nil, it throws `missingCipherData`. This means the `handleOfflineSoftDelete` caller must always provide cipher data. This is guaranteed by the current `VaultRepository` implementation but is an implicit contract.~~
 
-**[Resolved]** `resolveSoftDelete` now calls `cipherAPIService.softDeleteCipher(withID:)` directly instead of decoding `cipherData` and calling `cipherService.softDeleteCipherWithServer`. The local storage update is handled by the subsequent full sync. This eliminates the `cipherData` dependency and the implicit contract for soft delete pending changes.
+**[Resolved]** `resolveDelete` (formerly `resolveSoftDelete`) now calls `cipherAPIService.softDeleteCipher(withID:)` or `cipherAPIService.deleteCipher(withID:)` directly instead of decoding `cipherData` and calling `cipherService.softDeleteCipherWithServer`. The local storage update is handled by the subsequent full sync. This eliminates the `cipherData` dependency and the implicit contract for soft/hard delete pending changes.

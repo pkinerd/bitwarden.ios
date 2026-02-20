@@ -1070,7 +1070,7 @@ extension DefaultVaultRepository: VaultRepository {
             userId: userId
         )
 
-        var passwordChangeCount: Int16 = existing?.offlinePasswordChangeCount ?? 0
+        var passwordChangeCount: Int = Int(existing?.offlinePasswordChangeCount ?? 0)
 
         // Detect password change by comparing with the previous version in local storage.
         // This must happen before updateCipherWithLocalStorage overwrites the previous version.
@@ -1126,15 +1126,15 @@ extension DefaultVaultRepository: VaultRepository {
             throw originalError
         }
 
-        // Soft-delete locally
+        // Delete locally
         try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
 
-        // cipherData is nil for soft-delete pending changes because the resolver
+        // cipherData is nil for delete pending changes because the resolver
         // only needs the cipher ID to issue the server API call.
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
-            changeType: .softDelete,
+            changeType: .hardDelete,
             cipherData: nil,
             originalRevisionDate: cipher.revisionDate,
             offlinePasswordChangeCount: 0

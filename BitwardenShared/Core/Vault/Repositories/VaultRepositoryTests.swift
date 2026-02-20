@@ -869,7 +869,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.cipherId, "123")
-        XCTAssertEqual(pending?.changeType, .softDelete)
+        XCTAssertEqual(pending?.changeType, .hardDelete)
     }
 
     /// `deleteCipher()` falls back to offline save when the server API call fails.
@@ -885,7 +885,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.cipherId, "123")
-        XCTAssertEqual(pending?.changeType, .softDelete)
+        XCTAssertEqual(pending?.changeType, .hardDelete)
     }
 
     /// `deleteCipher()` cleans up locally when deleting an offline-created cipher
@@ -947,7 +947,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         let pending = pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first
         XCTAssertEqual(pending?.cipherId, "123")
-        XCTAssertEqual(pending?.changeType, .softDelete)
+        XCTAssertEqual(pending?.changeType, .hardDelete)
     }
 
     /// `deleteCipher()` re-throws the original network error for organization ciphers

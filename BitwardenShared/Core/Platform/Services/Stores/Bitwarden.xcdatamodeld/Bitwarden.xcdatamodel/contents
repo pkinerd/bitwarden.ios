@@ -46,12 +46,12 @@
         <attribute name="id" attributeType="String"/>
         <attribute name="cipherId" attributeType="String"/>
         <attribute name="userId" attributeType="String"/>
-        <attribute name="changeTypeRaw" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="changeTypeRaw" attributeType="String" defaultValueString="update"/>
         <attribute name="cipherData" optional="YES" attributeType="Binary"/>
         <attribute name="originalRevisionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="createdDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="updatedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="offlinePasswordChangeCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="offlinePasswordChangeCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <uniquenessConstraints>
             <uniquenessConstraint>
                 <constraint value="userId"/>

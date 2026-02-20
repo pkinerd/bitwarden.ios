@@ -15,7 +15,7 @@
 | **Partially Addressed** | 1 |
 | **Deferred (Future Enhancement)** | 5 |
 | **Review2 — Triaged (Action Plans Created)** | 24 |
-| **Resolved / Superseded** | 44 |
+| **Resolved / Superseded** | 45 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -49,7 +49,6 @@ These issues have been worked on but still have remaining gaps.
 |---|----------|-------------|----------|------------|--------------|-------------------|
 | 23 | **U3** | No user-visible indicator for pending offline changes (badge, toast, banner) | Medium | High | DI-1 (data store UI exposure) | AP-U3, AP-00, OfflineSyncCodeReview.md, Review2/00_Main |
 | 24 | **U2-A** | Full offline support for archive/unarchive/restore operations (applies to all vaults — personal and org; archive requires premium; UI gated behind `.archiveVaultItems` feature flag) | Low | High | Archive UI gated behind `.archiveVaultItems` feature flag; archive requires premium | AP-U2, ReviewSection_VaultRepository.md |
-| 25 | **VR2-B** | Add `PendingCipherChangeType.permanentDelete` for true offline permanent delete | Low | Medium | N/A | AP-VR2 |
 | 26 | **DI-1-B** | Create separate `CoreServices` typealias for core-layer-only dependencies | Low | High | Significant DI refactoring | AP-DI1 |
 | 27 | **R4-C** | Return `SyncResult` enum from `fetchSync` (foundation for U3) | Low | Medium | API change affecting all callers | AP-R4 |
 
@@ -196,7 +195,8 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | S8.a | Orphaned pending changes when feature flag disabled | Design decision — two-flag architecture provides graceful wind-down path (disable new saves while draining existing queue); orphaned records are intentional, harmless (~1-5 KB), recoverable on re-enable, and cleaned on logout | AP-S8 (Resolved) |
 | R2-VR-4 | Offline update decryption cost (decrypt previous version to compare passwords) | Accept as-is — sub-millisecond AES-GCM decryption + JSON decode per user-initiated save; user editing cadence is natural rate limiter; Core Data I/O dominates cost | AP-64 (Resolved) |
 | SEC-2.a | SEC-2 revisit conditions (plaintext `offlinePasswordChangeCount`) | Accept as-is — none of four revisit conditions met (no DB encryption, no security model change, count remains ephemeral, no audit mandate); SEC-2 prototype available if conditions change | AP-83 (Resolved) |
-| VR-2 | Permanent delete converted to soft delete when offline | Accepted design decision — safety-first for offline conflict scenarios; soft delete preserves backup/recovery path; user can empty trash after reconnecting | AP-VR2 (Resolved) |
+| VR-2 | Permanent delete converted to soft delete when offline | `.hardDelete` change type added; resolver calls permanent delete API; conflict restores server version | `34b6c24` |
+| VR2-B | Add `PendingCipherChangeType.permanentDelete` for offline permanent delete | `.hardDelete` added to `PendingCipherChangeType` with string-backed raw value | `34b6c24` |
 | RES-7 | Backup ciphers do not include attachments | Accepted design decision — attachment duplication requires download/re-encrypt/upload per attachment, disproportionately complex for sync resolution; primary cipher attachments preserved | AP-RES7 (Resolved) |
 | SS-1 | Pre-sync resolution error propagation blocks all syncing | Accepted design decision — correct fail-safe behavior; Core Data failure indicates serious system issue; blocking sync prevents data corruption | N/A (Resolved) |
 | T5 / RES-6 | Manual mock uses 16 `fatalError()` stubs | Accepted design decision — compiler enforces conformance; `fatalError()` is runtime-only risk in tests; adding `AutoMockable` to `CipherAPIService` is broader project decision outside offline sync scope | AP-T5 (Resolved) |

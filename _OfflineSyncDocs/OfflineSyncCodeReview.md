@@ -74,7 +74,7 @@ The offline sync feature introduces two new data flows:
 
 *Operation-specific variations:*
 - **addCipher:** Before encryption, assigns a temporary client-side ID via `CipherView.withId(UUID().uuidString)` so it's baked into the encrypted content. Uses `handleOfflineAdd` which queues a `.create` pending change.
-- **deleteCipher:** No encryption step (ID only). `handleOfflineDelete` fetches the existing encrypted cipher from local storage, checks org ownership, and queues a `.softDelete`. **[Phase 2]** If the cipher was created offline (existing pending change has `.create` type), cleans up locally instead of queuing a server operation.
+- **deleteCipher:** No encryption step (ID only). `handleOfflineDelete` fetches the existing encrypted cipher from local storage, checks org ownership, and queues a `.hardDelete`. **[Updated]** Changed from `.softDelete` to `.hardDelete` to honor the user's permanent delete intent — the resolver calls the permanent delete API when no conflict exists, or restores the server version on conflict. **[Phase 2]** If the cipher was created offline (existing pending change has `.create` type), cleans up locally instead of queuing a server operation.
 - **softDeleteCipher:** Encrypts the soft-deleted cipher. `handleOfflineSoftDelete` queues a `.softDelete`. **[Phase 2]** Same offline-created cipher cleanup as deleteCipher.
 
 **Flow 2: Sync Resolution (connectivity restored)**
@@ -97,10 +97,10 @@ The offline sync feature introduces two new data flows:
       - No conflict, ≥4 pw changes: push local, create backup of server version
       - Conflict (revisionDates differ), local newer: push local, backup server version
       - Conflict, server newer: keep server, backup local version
-   c. .softDelete: fetch server version
+   c. .softDelete / .hardDelete: fetch server version
       - Server returns 404 (cipherNotFound): clean up local record, delete pending record
-      - No conflict: soft-delete on server
-      - Conflict: backup server version, then soft-delete on server
+      - No conflict: .softDelete → soft-delete on server; .hardDelete → permanent delete on server
+      - Conflict: restore server version locally, drop pending delete (user can review)
 5. All pending changes resolved → proceed to normal full sync (replaceCiphers, etc.)
 ```
 
@@ -486,7 +486,7 @@ If `cipherService.addCipherWithServer` in `resolveCreate` succeeds on the server
 | Opportunity | Estimated Savings | Trade-off |
 |-------------|-------------------|-----------|
 | ~~Remove `timeProvider` from `DefaultOfflineSyncResolver`~~ | ~~5 lines~~ | **[Done]** — Removed in commit `a52d379` |
-| Merge `handleOfflineDelete` and `handleOfflineSoftDelete` | ~40 lines | Slight increase in complexity of one method; both queue `.softDelete` changes and both now contain duplicated offline-created cipher cleanup logic (checking for `.create` type, deleting locally, removing the pending record) |
+| Merge `handleOfflineDelete` and `handleOfflineSoftDelete` | ~40 lines | Slight increase in complexity of one method; both now contain duplicated offline-created cipher cleanup logic (checking for `.create` type, deleting locally, removing the pending record). **Note:** These methods now queue different change types (`.hardDelete` vs `.softDelete`). |
 | Use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON | ~20 lines per handler | Would require a different serialization approach for `cipherData`; the current JSON approach matches existing `CipherData` patterns |
 | ~~Remove `CipherView.update(name:)` and inline the `CipherView(...)` init call in the resolver~~ | ~~~20 lines~~ | **[Partially addressed]** — `update(name:)` and `withId(_:)` now delegate to a shared `makeCopy` helper, so the full `CipherView` initializer is called in exactly one place. The thin wrappers are only ~5 lines each and improve readability. |
 | Use existing project-level mock for `CipherAPIService` (if one exists) instead of inline `MockCipherAPIServiceForOfflineSync` | ~40 lines | Depends on whether a project mock exists with `fatalError` stubs for unused methods. The inline mock currently has 16 `fatalError()` stubs for unused protocol methods. |
@@ -683,7 +683,7 @@ The plan lists both as modified files. In the implementation, they were not modi
 | U2 | UX | Archive/unarchive/collections/restore not offline-aware (inconsistent) | Section 8.2 |
 | U3 | UX | No user-visible indicator for pending offline changes | Section 8.2 |
 | ~~U4~~ | ~~UX~~ | ~~Conflict folder name is English-only~~ — **[Superseded]** Conflict folder removed | ~~Section 8.2~~ |
-| VR-2 | `VaultRepository` | `deleteCipher` (permanent) converted to soft delete offline | [VR-2](ReviewSection_VaultRepository.md) |
+| ~~VR-2~~ | `VaultRepository` | ~~`deleteCipher` (permanent) converted to soft delete offline~~ **[Resolved]** Now uses `.hardDelete` pending change; permanent delete honored on sync when no conflict | [VR-2](ReviewSection_VaultRepository.md) |
 | RES-1 | `OfflineSyncResolver` | Potential duplicate cipher on create retry after partial failure | [RES-1](ReviewSection_OfflineSyncResolver.md) |
 | RES-7 | `OfflineSyncResolver` | Backup ciphers don't include attachments | [RES-7](ReviewSection_OfflineSyncResolver.md) |
 

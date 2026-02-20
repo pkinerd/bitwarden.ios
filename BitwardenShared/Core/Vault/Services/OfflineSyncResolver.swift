@@ -57,7 +57,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
 
     /// The minimum number of offline password changes that triggers a server backup
     /// even when no conflict is detected (soft conflict threshold).
-    static let softConflictPasswordChangeThreshold: Int16 = 4
+    static let softConflictPasswordChangeThreshold: Int64 = 4
 
     // MARK: Properties
 
@@ -131,7 +131,9 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         case .update:
             try await resolveUpdate(pendingChange: pendingChange, cipherId: cipherId, userId: userId)
         case .softDelete:
-            try await resolveSoftDelete(pendingChange: pendingChange, cipherId: cipherId, userId: userId)
+            try await resolveDelete(pendingChange: pendingChange, cipherId: cipherId, userId: userId, permanent: false)
+        case .hardDelete:
+            try await resolveDelete(pendingChange: pendingChange, cipherId: cipherId, userId: userId, permanent: true)
         }
     }
 
@@ -260,11 +262,19 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         }
     }
 
-    /// Resolves a pending soft delete against the server state.
-    private func resolveSoftDelete(
+    /// Resolves a pending delete (soft or hard) against the server state.
+    ///
+    /// - Parameters:
+    ///   - pendingChange: The pending change to resolve.
+    ///   - cipherId: The cipher ID.
+    ///   - userId: The user ID.
+    ///   - permanent: Whether to permanently delete (`true`) or soft-delete (`false`).
+    ///
+    private func resolveDelete(
         pendingChange: PendingCipherChangeData,
         cipherId: String,
-        userId: String
+        userId: String,
+        permanent: Bool
     ) async throws {
         // Check if the server version was modified while we were offline.
         let serverCipher: Cipher
@@ -285,18 +295,17 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         let hasConflict = originalRevisionDate != nil && serverCipher.revisionDate != originalRevisionDate
 
         if hasConflict {
-            // Create backup of the server version before deleting
-            try await createBackupCipher(
-                from: serverCipher,
-                timestamp: serverCipher.revisionDate,
-                userId: userId
-            )
+            // Server was modified while offline — restore the server version locally
+            // and drop the pending delete so the user can review and re-decide.
+            try await cipherService.updateCipherWithLocalStorage(serverCipher)
+        } else {
+            // No conflict — honor the original delete intent.
+            if permanent {
+                _ = try await cipherAPIService.deleteCipher(withID: cipherId)
+            } else {
+                _ = try await cipherAPIService.softDeleteCipher(withID: cipherId)
+            }
         }
-
-        // Complete the soft delete on the server.
-        // The local storage update is handled by the subsequent full sync,
-        // so only the API call is needed here.
-        _ = try await cipherAPIService.softDeleteCipher(withID: cipherId)
 
         if let recordId = pendingChange.id {
             try await pendingCipherChangeDataStore.deletePendingChange(id: recordId)

@@ -70,6 +70,17 @@ See `.swiftlint.yml` for the complete rule configuration.
 3. Review security considerations
 4. Update relevant documentation
 
+## Linting
+
+SwiftLint is enforced via `.swiftlint.yml`. Key constraints to keep in mind:
+- **File length**: Files must not exceed **1000 lines** (`file_length`). Extract helpers or split files proactively.
+- **Tuple size**: Tuples must have at most **2 members** (`large_tuple`). Use structs for grouped data instead.
+- **Type body length**: Large type bodies will trigger `type_body_length`. Use `// swiftlint:disable:next type_body_length` only when splitting is impractical (e.g., large test classes).
+- **Trailing commas**: Trailing commas are **mandatory** in multi-line collections (`trailing_comma`).
+- **Missing docs**: Public declarations require documentation (`missing_docs`), consistent with the DocC directive above.
+
+See `.swiftlint.yml` for the full rule configuration including custom rules.
+
 ## Anti-Patterns
 
 **Avoid these:**

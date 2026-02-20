@@ -39,7 +39,7 @@ protocol PendingCipherChangeDataStore: AnyObject {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int16
+        offlinePasswordChangeCount: Int
     ) async throws
 
     /// Deletes a pending change record by its record ID.
@@ -94,7 +94,7 @@ extension DataStore: PendingCipherChangeDataStore {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int16
+        offlinePasswordChangeCount: Int
     ) async throws {
         try await backgroundContext.performAndSave {
             let request = PendingCipherChangeData.fetchByCipherIdRequest(userId: userId, cipherId: cipherId)
@@ -105,7 +105,7 @@ extension DataStore: PendingCipherChangeDataStore {
                 existing.cipherData = cipherData
                 existing.changeTypeRaw = changeType.rawValue
                 existing.updatedDate = Date()
-                existing.offlinePasswordChangeCount = offlinePasswordChangeCount
+                existing.offlinePasswordChangeCount = Int64(offlinePasswordChangeCount)
                 // Do NOT overwrite originalRevisionDate - it's the baseline for conflict detection
             } else {
                 // Create new pending change record

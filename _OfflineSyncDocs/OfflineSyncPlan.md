@@ -140,12 +140,14 @@ set data: nil). Offline-created ciphers now encrypt correctly. A UI fallback
       (delete local record + pending change) — no server operation needed
    b. Guard against organization ciphers (throw if org-owned)
    c. Otherwise: hard-delete locally via deleteCipherWithLocalStorage()
-   d. Queue a PendingCipherChange with changeType = .softDelete
+   d. Queue a PendingCipherChange with changeType = .hardDelete
    e. Return success to the UI
 
 Note: deleteCipher() uses deleteCipherWithLocalStorage (removes the CipherData record)
-rather than updating it with a deletedDate. The pending change still uses .softDelete
-changeType so the server-side operation is a soft delete on sync.
+rather than updating it with a deletedDate. The pending change uses .hardDelete
+changeType so the server-side operation is a permanent delete on sync (when no
+conflict is detected). If a conflict IS detected, the server version is restored
+locally and the pending delete is dropped so the user can review and re-decide.
 ```
 
 **Changes to `softDeleteCipher()` (move to trash): [Updated to reflect current code]**
@@ -174,10 +176,12 @@ preserve the cipher record with its deletedDate, so it appears in the user's tra
 ```
 1. Fetch server version to check for conflicts
    → If server returns 404: cipher already deleted; clean up locally and done
-2. If server version unchanged: sync soft delete to server
+2. If server version unchanged (no conflict):
+   → .softDelete: sync soft delete to server
+   → .hardDelete: sync permanent delete to server
 3. If server version changed (conflict):
-   → Create backup of server version (retains original folder)
-   → Complete the soft delete on server
+   → Restore the server version to local storage
+   → Drop the pending delete (user can review and re-decide)
 ```
 
 ---
@@ -193,7 +197,7 @@ preserve the cipher record with its deletedDate, so it appears in the user's tra
 | `id` | `String?` | Primary key for the pending change record (UUID string, set via convenience init) |
 | `cipherId` | `String?` | The cipher's ID (or temporary client ID for new items) |
 | `userId` | `String?` | Active user ID |
-| `changeTypeRaw` | `Int16` | Stored as raw value; accessed via computed property `changeType` (enum: `.update`, `.create`, `.softDelete`) |
+| `changeTypeRaw` | `Int16` | Stored as raw value; accessed via computed property `changeType` (enum: `.update`, `.create`, `.softDelete`, `.hardDelete`) |
 | `cipherData` | `Data?` | JSON-encoded **encrypted** `CipherDetailsResponseModel` snapshot (see Security note below) |
 | `originalRevisionDate` | `Date?` | The cipher's `revisionDate` before the first offline edit (nil for new items) |
 | `createdDate` | `Date?` | When this pending change was first queued (set via convenience init) |
@@ -369,14 +373,15 @@ For each PendingCipherChangeData:
      → Delete pending change record
      → Done
 
-   If changeType == .softDelete:
+   If changeType == .softDelete or .hardDelete:
      → Fetch server version via getCipher()
        → If server returns 404: cipher already deleted; clean up locally and done
      → If server revisionDate == originalRevisionDate (no conflict):
-       → Sync soft delete to server
+       → .softDelete: sync soft delete to server
+       → .hardDelete: sync permanent delete to server
      → If server revisionDate != originalRevisionDate (conflict):
-       → Create backup of server version FIRST (retains original folder)
-       → Then sync soft delete to server
+       → Restore server version to local storage
+       → Drop the pending delete (user can review and re-decide)
      → Delete pending change record
      → Done
 
