@@ -51,11 +51,9 @@ All 5 recommended root cause fixes have been implemented:
 | `test_updateCipher_offlineFallback_preservesCreateType` | Fix #3 — `.create` type preserved on subsequent edit | Present (`VaultRepositoryTests.swift:1730`) |
 | `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on delete | Present (`VaultRepositoryTests.swift:854`) |
 | `test_softDeleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Fix #4 — local cleanup on soft delete | Present (`VaultRepositoryTests.swift:2166`) |
-| ~~`test_processPendingChanges_create_deletesOldTempIdCipher`~~ | ~~Fix #5 — temp-ID record cleanup~~ | **Not found** — temp-ID cleanup is covered implicitly by `test_processPendingChanges_create` (`OfflineSyncResolverTests.swift:69`) which tests the full create resolution path, but does not explicitly assert on `deleteCipherWithLocalStorage` for the temp ID |
-| ~~`test_processPendingChanges_create_nilId_skipsLocalDelete`~~ | ~~Fix #5 — nil guard~~ | **Not found** — no dedicated test for the `if let tempId` nil guard in `resolveCreate` |
 | `test_perform_appeared_errors_fallbackFetchThrows` | Symptom fix — fallback fetch | Present (`ViewItemProcessorTests.swift:310`) |
 
-> **Note** (2026-02-18): Two tests originally listed for Fix #5 (`test_processPendingChanges_create_deletesOldTempIdCipher` and `test_processPendingChanges_create_nilId_skipsLocalDelete`) do not exist in the codebase. The temp-ID cleanup code is present in `OfflineSyncResolver.swift:162-167` and is exercised through `test_processPendingChanges_create`, but explicit assertions on the temp-ID deletion and nil-ID guard are missing. Consider adding dedicated tests for these edge cases.
+> **Note** (2026-02-20): Two tests originally listed for Fix #5 (`deletesOldTempIdCipher` and `nilId_skipsLocalDelete`) were evaluated and intentionally not added. The temp-ID cleanup at `OfflineSyncResolver.swift:159-161` is already exercised by `test_processPendingChanges_create` (`OfflineSyncResolverTests.swift:69`). A dedicated assertion on `deleteCipherWithLocalStorage` would test an implementation detail already covered by that path. The `if let tempId` nil guard tests a state that cannot occur in practice — `handleOfflineAdd` guards `encryptedCipher.id != nil` before storing, so any `.create` pending change always has a non-nil cipher ID. Adding a test for an impossible state would be misleading cruft.
 
 ## Code Verification (2026-02-18)
 
