@@ -15,6 +15,29 @@ Core directives for maintaining code quality and consistency in the Bitwarden iO
 7. **Use Established Patterns**: Leverage existing components before creating new ones
 8. **File References**: Use file:line_number format when referencing code
 
+## SwiftLint Rules
+
+**This project enforces SwiftLint (`.swiftlint.yml`). You MUST ensure generated code passes all lint rules.**
+
+### File Length (Critical)
+- Files MUST NOT exceed **1000 lines** (`file_length` error threshold)
+- When writing or modifying test files, **check the file's current line count** before adding code
+- If a **new** file would exceed 1000 lines, split into extension files using the pattern: `<Type>Tests+<Category>.swift` (e.g., `VaultListProcessorTests+SearchTests.swift`)
+- If a file already has `// swiftlint:disable file_length`, you may continue adding code to it
+- Do NOT add `// swiftlint:disable file_length` to new files — split them instead
+
+### Key Rules
+- **`sorted_imports`**: Imports must be in alphabetical order
+- **`trailing_comma`**: Trailing commas are **required** in all multiline collections and parameter lists
+- **`type_contents_order`**: Members within types must follow this order: cases, type aliases, associated types, subtypes, type properties, instance properties, initializers, deinitializer, type methods, view lifecycle methods, other methods, subscripts
+- **`type_name`**: Type names must not exceed 50 characters
+- **`file_name`**: File name must match the primary type declared in the file
+- **`weak_navigator`**: Navigator properties must be declared `weak` (except in test files)
+- **`style_guide_font`**: Use `.font(.styleGuide(...))` instead of `.font(.system(...))`
+- **`todo_without_jira`**: TODOs must include a JIRA reference: `// TODO: BIT-123`
+
+See `.swiftlint.yml` for the complete rule configuration.
+
 ## Security Requirements
 
 **Every change must consider:**
