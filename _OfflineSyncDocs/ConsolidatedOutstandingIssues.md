@@ -14,8 +14,8 @@
 | **Open — Accepted (No Code Change Planned)** | 13 |
 | **Partially Addressed** | 1 |
 | **Deferred (Future Enhancement)** | 5 |
-| **Review2 — Triaged (Action Plans Created)** | 34 |
-| **Resolved / Superseded** | 29 |
+| **Review2 — Triaged (Action Plans Created)** | 33 |
+| **Resolved / Superseded** | 30 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -82,7 +82,6 @@ These issues were identified in the second review pass. All have been triaged an
 | 36 | **R2-TEST-2** | Core Data lightweight migration (adding `PendingCipherChangeData` entity) has no automated test | Medium | Medium | AP-36 | Review2/08_TestCoverage |
 | 37 | **R2-TEST-3** | `PendingCipherChangeData.deleteByUserIdRequest` addition to batch delete not explicitly tested | Medium | Low | AP-37 | Review2/08_TestCoverage |
 | 38 | **R2-TEST-5** | Corrupt `cipherData` in pending change — no test for resolver handling malformed JSON | Medium | Low | AP-38 | Review2/08_TestCoverage |
-| 39 | **P2-T2** | `resolveCreate` partial failure (server succeeds, local cleanup fails) — duplicate cipher scenario not tested | Low | Medium | AP-39 | OfflineSyncCodeReview_Phase2.md |
 | 40 | **P2-T4** | Fallback fetch in `ViewItemProcessor` doesn't re-establish subscription; no test for cipher update after fallback | Low | Medium | AP-40 | OfflineSyncCodeReview_Phase2.md |
 | 41 | **TC-6** | Mock defaults silently bypass abort logic: 24 of 25 `fetchSync` tests use default `pendingChangeCountResult = 0` with no assertions about offline resolution | Medium | Low | AP-41 | ReviewSection_TestChanges.md |
 | 42 | **R2-TEST-4** | Very long cipher names in backup naming pattern not tested for edge cases | Low | Low | AP-42 | Review2/08_TestCoverage |
@@ -200,6 +199,7 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | R2-MAIN-21 | `handleOfflineDelete`/`handleOfflineSoftDelete` duplication | Extracted `cleanUpOfflineCreatedCipherIfNeeded` helper | AP-32 (Resolved) |
 | TC-7 | Narrow error type coverage in offline fallback tests | Won't-fix — `unknownError` tests already prove generic catch path; additional error types add no branch coverage | N/A |
 | VI-1 | Offline-created cipher view failure (`data: nil`) | All 5 fixes implemented; `CipherView.withId()` replaces `Cipher.withTemporaryId()` | AP-VI1 (Resolved) |
+| P2-T2 | `resolveCreate` partial failure (duplicate cipher scenario) | Unrealistic — local storage failure implies catastrophic issues beyond offline sync scope; won't-fix | AP-39 (Resolved) |
 
 ---
 
