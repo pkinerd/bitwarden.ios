@@ -11,8 +11,8 @@
 | Category | Count |
 |----------|-------|
 | **Open — Requires Code Changes** | 3 |
-| **Open — Accepted (No Code Change Planned)** | 12 |
-| **Partially Addressed** | 2 |
+| **Open — Accepted (No Code Change Planned)** | 13 |
+| **Partially Addressed** | 1 |
 | **Deferred (Future Enhancement)** | 5 |
 | **Review2 — Triaged (Action Plans Created)** | 34 |
 | **Resolved / Superseded** | 29 |
@@ -39,7 +39,6 @@ These issues have been worked on but still have remaining gaps.
 | # | Issue ID | Description | What's Done | What Remains | Severity | Complexity | Related Documents |
 |---|----------|-------------|-------------|--------------|----------|------------|-------------------|
 | 6 | **EXT-3 / CS-2** | **SDK `CipherView` manual copy fragility.** `makeCopy` manually copies 28 properties; new SDK properties with defaults are silently dropped. | `makeCopy` consolidation, DocC `- Important:` callouts, Mirror-based property count guard tests (28 CipherView, 7 LoginView). | Underlying fragility remains inherent to external SDK types. Developers must still manually add properties to `makeCopy` when tests fail. 5 copy methods across 2 files affected. | High | Medium | AP-CS2, ReviewSection_SupportingExtensions.md, Review2/07_CipherViewExtensions |
-| 9 | **T5 / RES-6** | **Manual `MockCipherAPIServiceForOfflineSync` fragility.** Mock uses 16 `fatalError()` stubs. | Mock extracted to dedicated file with maintenance comment. Compiler enforces protocol conformance. | `// sourcery: AutoMockable` annotation on `CipherAPIService` not added. Mock still requires manual updates on protocol changes. | Low | Low | AP-T5, ReviewSection_OfflineSyncResolver.md |
 | 10 | **TC-2** | **Missing negative assertions in happy-path tests.** Four existing happy-path tests pass through new do/catch code but never assert offline handling was NOT triggered. | N/A — no changes made. | Add `XCTAssertFalse(pendingCipherChangeDataStore.upsertCalled)` or similar to 4 existing happy-path tests. | Medium | Low | ReviewSection_TestChanges.md |
 
 ---
@@ -62,6 +61,7 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | 20 | **VR-3** | Password change detection only compares `login?.password`, not other sensitive fields | Low | By design — soft conflict threshold targets highest-risk field. | ReviewSection_VaultRepository.md |
 | 21 | **A4** | `GetCipherRequest.validate(_:)` coupled to `OfflineSyncError` semantics | Low | Acceptable coupling. | OfflineSyncCodeReview.md |
 | 22 | **SS-1** | Pre-sync resolution error propagation blocks all syncing on Core Data failure | Low | Correct fail-safe behavior. | ReviewSection_SyncService.md |
+| 23 | **T5 / RES-6** | Manual `MockCipherAPIServiceForOfflineSync` uses 16 `fatalError()` stubs for unimplemented protocol methods | Low | Compiler enforces conformance; `fatalError()` stubs are runtime-only risk. Adding `AutoMockable` to `CipherAPIService` is a broader project decision outside offline sync scope. | AP-T5, ReviewSection_OfflineSyncResolver.md |
 
 ---
 
