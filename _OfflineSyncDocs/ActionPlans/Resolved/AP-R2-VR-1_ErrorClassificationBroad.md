@@ -2,7 +2,7 @@
 
 > **Issue:** #45 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Resolved (Design decision — catch-all bias toward data preservation is correct for password manager)
 > **Source:** Review2/03_VaultRepository_Review.md (Error Classification Pattern section)
 
 ## Problem Statement
@@ -111,6 +111,21 @@ Any other error type falls through to the offline fallback, including:
 **Option C: Accept As-Is.** The current error classification is appropriate for a password manager. The conservative fallback ensures user data is never lost due to ambiguous errors. The specific catches for `ServerError`, 4xx `ResponseValidationError`, and `CipherAPIServiceError` correctly exclude known business logic failures. The encryption step being outside the do block is a key design detail that prevents SDK errors from triggering offline fallback.
 
 If observability is desired, a minimal enhancement would be to add `Logger.application.info()` in the catch-all block to log the error type, without changing behavior. This is lower effort than Option A and provides the same diagnostic benefit.
+
+## Resolution
+
+**Resolved as design decision (2026-02-20).** Deep error-path tracing confirmed that only 2 error types realistically reach the catch-all: `URLError` (network unavailability) and `ResponseValidationError` with status >= 500 (server down). Both correctly warrant offline fallback. The 4 other theoretical error types that could reach the catch-all are all hypothetical:
+
+| Error Type | Why Hypothetical |
+|---|---|
+| `StateServiceError` | Same microsecond-window impossibility as R2-VR-6 — user can't reach vault UI without active account |
+| `DecodingError` | Requires server to ship breaking API change; would break all app operations, not just offline sync |
+| `NSError` (Core Data) | Same class as P2-T2 — Core Data writes on serial context don't realistically fail |
+| `HTTPResponseError` | Requires fundamentally broken HTTP stack; `.invalidResponse`/`.noURL` never occur in production iOS apps |
+
+The catch-all's bias toward data preservation (save offline rather than lose the edit) is the safer default for a password manager. Feature flags provide a remote kill switch if needed. The encryption step being outside the `do` block prevents SDK errors from triggering offline fallback.
+
+An optional future refinement would be switching to an allowlist approach (`catch let error as URLError` + `catch let error as ResponseValidationError where statusCode >= 500`), but this is a style improvement, not a bug fix.
 
 ## Dependencies
 

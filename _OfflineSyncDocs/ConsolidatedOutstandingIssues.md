@@ -14,8 +14,8 @@
 | **Open — Accepted (No Code Change Planned)** | 12 |
 | **Partially Addressed** | 1 |
 | **Deferred (Future Enhancement)** | 5 |
-| **Review2 — Triaged (Action Plans Created)** | 28 |
-| **Resolved / Superseded** | 36 |
+| **Review2 — Triaged (Action Plans Created)** | 27 |
+| **Resolved / Superseded** | 37 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -93,7 +93,6 @@ These issues were identified in the second review pass. All have been triaged an
 |---|----------|-------------|----------|------------|-------------|-------------------|
 | 43 | **R2-MAIN-7** | No maximum pending change age or count — unbounded accumulation possible during extended offline periods | Low | Low | AP-R2-MAIN-7 | Review2/00_Main |
 | 44 | **R2-RES-2** | Conflict resolution timestamp comparison uses client-side timestamps — device clock skew could select wrong "winner" | Low | Low | AP-R2-RES-2 | Review2/02_OfflineSyncResolver |
-| 45 | **R2-VR-1** | Error classification may be overly broad — catch-all block catches ANY unclassified error for offline fallback | Low | Low | AP-R2-VR-1 | Review2/03_VaultRepository |
 | 48 | **R2-PCDS-1** | No Core Data schema versioning step — current entity addition works via lightweight migration but future attribute changes require explicit versioning | Medium | Medium | AP-R2-PCDS-1 | Review2/01_PendingCipherChangeData |
 | 51 | **S8.a** | When feature flag is disabled, existing pending changes remain orphaned in Core Data with no cleanup or notification | Low | Medium | AP-S8 | AP-S8 |
 
@@ -200,6 +199,7 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | R2-VR-6 | `getActiveAccountId()` in `handleOfflineDelete` could throw on logout | Hypothetical — sub-millisecond window; state service returns stored state, not auth state; UI lifecycle prevents logout during active operation | AP-R2-VR-6 (Resolved) |
 | R2-PCDS-4 | Upsert race condition — fetch-then-insert/update not atomic | Hypothetical — prevented by serial backgroundContext, uniqueness constraint, and merge policy; same pattern used by all data stores | AP-R2-PCDS-4 (Resolved) |
 | R2-PCDS-5 | Core Data corruption risk — pending changes lost | Inherent platform limitation — applies to all Core Data entities equally; not specific to offline sync | AP-R2-PCDS-5 (Resolved) |
+| R2-VR-1 | Error classification catch-all may be overly broad | Design decision — only URLError and 5xx ResponseValidationError realistically reach catch-all; bias toward data preservation is correct for password manager; feature flags provide kill switch | AP-R2-VR-1 (Resolved) |
 
 ---
 
