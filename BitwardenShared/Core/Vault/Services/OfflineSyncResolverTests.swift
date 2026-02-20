@@ -868,4 +868,78 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // No pending records should be deleted since both failed.
         XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
     }
+
+    // MARK: Corrupt cipherData Tests
+
+    /// `processPendingChanges(userId:)` with a `.create` pending change containing corrupt
+    /// (non-JSON) `cipherData` logs the error, does not crash, and retains the pending record.
+    func test_processPendingChanges_create_corruptCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(
+            changeType: .create,
+            cipherData: Data("not-valid-json".utf8)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The cipher should NOT have been sent to the server.
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+
+        // The pending record should be retained for retry (not deleted).
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with an `.update` pending change containing corrupt
+    /// (non-JSON) `cipherData` logs the error, does not crash, and retains the pending record.
+    func test_processPendingChanges_update_corruptCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(
+            cipherId: "cipher-1",
+            changeType: .update,
+            cipherData: Data("not-valid-json".utf8),
+            originalRevisionDate: Date(year: 2026, month: 1, day: 1)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The server cipher fetch should NOT have been attempted (decode fails first).
+        XCTAssertTrue(cipherAPIService.getCipherCalledWith.isEmpty)
+
+        // The pending record should be retained for retry.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with a batch containing one corrupt and one valid
+    /// pending change resolves the valid item and skips the corrupt one.
+    func test_processPendingChanges_batch_corruptAndValid_validItemResolves() async throws {
+        // First item: corrupt cipherData (will fail to decode).
+        try await dataStore.upsertPendingChange(
+            cipherId: "corrupt-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: Data("{invalid".utf8),
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+
+        // Second item: valid cipherData (will succeed).
+        let validData = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "valid-1"))
+        try await dataStore.upsertPendingChange(
+            cipherId: "valid-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: validData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        pendingCipherChangeDataStore.fetchPendingChangesResult =
+            try await dataStore.fetchPendingChanges(userId: "1")
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Only the valid item should have been sent to the server.
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "valid-1")
+
+        // Only the valid item's pending record should be deleted.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
 }

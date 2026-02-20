@@ -11,11 +11,11 @@
 | Category | Count |
 |----------|-------|
 | **Open — Requires Code Changes** | 3 |
-| **Partially Addressed** | 2 |
+| **Partially Addressed** | 1 |
 | **Open — Accepted (No Code Change Planned)** | 8 |
 | **Deferred (Future Enhancement)** | 4 |
-| **Review2 — Triaged (Action Plans Created)** | 45 |
-| **Resolved / Superseded** | 23 |
+| **Review2 — Triaged (Action Plans Created)** | 43 |
+| **Resolved / Superseded** | 26 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -39,7 +39,6 @@ These issues have been worked on but still have remaining gaps.
 | # | Issue ID | Description | What's Done | What Remains | Severity | Complexity | Related Documents |
 |---|----------|-------------|-------------|--------------|----------|------------|-------------------|
 | 6 | **EXT-3 / CS-2** | **SDK `CipherView` manual copy fragility.** `makeCopy` manually copies 28 properties; new SDK properties with defaults are silently dropped. | `makeCopy` consolidation, DocC `- Important:` callouts, Mirror-based property count guard tests (28 CipherView, 7 LoginView). | Underlying fragility remains inherent to external SDK types. Developers must still manually add properties to `makeCopy` when tests fail. 5 copy methods across 2 files affected. | High | Medium | AP-CS2, ReviewSection_SupportingExtensions.md, Review2/07_CipherViewExtensions |
-| 10 | **TC-2** | **Missing negative assertions in happy-path tests.** Four existing happy-path tests pass through new do/catch code but never assert offline handling was NOT triggered. | N/A — no changes made. | Add `XCTAssertFalse(pendingCipherChangeDataStore.upsertCalled)` or similar to 4 existing happy-path tests. | Medium | Low | ReviewSection_TestChanges.md |
 
 ---
 
@@ -77,10 +76,8 @@ These issues were identified in the second review pass. All have been triaged an
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
-| 35 | **R2-TEST-1** | `GetCipherRequest` 404 validation (`validate(_:)` throwing `OfflineSyncError.cipherNotFound`) has no direct unit test | Medium | Low | AP-35 | Review2/08_TestCoverage |
 | 36 | **R2-TEST-2** | Core Data lightweight migration (adding `PendingCipherChangeData` entity) has no automated test | Medium | Medium | AP-36 | Review2/08_TestCoverage |
 | 37 | **R2-TEST-3** | `PendingCipherChangeData.deleteByUserIdRequest` addition to batch delete not explicitly tested | Medium | Low | AP-37 | Review2/08_TestCoverage |
-| 38 | **R2-TEST-5** | Corrupt `cipherData` in pending change — no test for resolver handling malformed JSON | Medium | Low | AP-38 | Review2/08_TestCoverage |
 | 40 | **P2-T4** | Fallback fetch in `ViewItemProcessor` doesn't re-establish subscription; no test for cipher update after fallback | Low | Medium | AP-40 | OfflineSyncCodeReview_Phase2.md |
 | 41 | **TC-6** | Mock defaults silently bypass abort logic: 24 of 25 `fetchSync` tests use default `pendingChangeCountResult = 0` with no assertions about offline resolution | Medium | Low | AP-41 | ReviewSection_TestChanges.md |
 | 42 | **R2-TEST-4** | Very long cipher names in backup naming pattern not tested for edge cases | Low | Low | AP-42 | Review2/08_TestCoverage |
@@ -203,6 +200,9 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | CD-TYPE-1 | `PendingCipherChangeType` stored as Int16 — fragile to enum case reordering; `offlinePasswordChangeCount` stored as Int16 — unnecessary constraint | Changed `changeTypeRaw` to String-backed storage and `offlinePasswordChangeCount` to Integer 64; also fixed `changeTypeRaw` optionality (`String` → `String?`) to match Core Data KVC semantics | `1bc17cb`, `d7a77c9` |
 | CD-TYPE-2 | Int32 vs Int16 type mismatch in `setupPendingChange` test helper | Fixed `offlinePasswordChangeCount` parameter type in test helper | `d168860` |
 | TEST-FLAKE-1 | Non-deterministic OfflineSyncResolverTests (13-15 failures) due to DataStore lifecycle — `setupPendingChange` created local DataStore that went out of scope, releasing managed object context via ARC | Promoted DataStore to class-level property in `setUp()` so context stays alive for full test duration | `710bc04` |
+| R2-TEST-1 | `GetCipherRequest` 404 validation (`validate(_:)` throwing `OfflineSyncError.cipherNotFound`) had no direct unit test | Created `GetCipherRequestTests.swift` with `test_method`, `test_path`, and `test_validate` covering 200/400/500 (no throw) and 404 (throws `.cipherNotFound`) | AP-35 (Resolved) |
+| R2-TEST-5 | Corrupt `cipherData` in pending change — no test for resolver handling malformed JSON | Added 3 tests: `create_corruptCipherData_skipsAndRetains`, `update_corruptCipherData_skipsAndRetains`, and `batch_corruptAndValid_validItemResolves` | AP-38 (Resolved) |
+| TC-2 | Missing negative assertions in happy-path tests — 4 tests pass through offline do/catch code without asserting upsert was NOT called | Added `XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)` to `test_addCipher`, `test_deleteCipher`, `test_updateCipher`, `test_softDeleteCipher` | N/A (Resolved) |
 
 ---
 
@@ -218,4 +218,4 @@ These issues have been reviewed and a deliberate decision was made to accept the
 ### Post-Release
 4. **U3** — Pending changes indicator (toast on offline save)
 5. **EXT-3** — Monitor SDK updates for property changes (ongoing)
-6. **Review2 test gaps** — Items 35-42, 77 above (all now have action plans: AP-35 through AP-42, AP-77)
+6. **Review2 test gaps** — Items 36-37, 40-42, 77 above (35 and 38 resolved; remaining have action plans: AP-36, AP-37, AP-40 through AP-42, AP-77)
