@@ -1070,7 +1070,7 @@ extension DefaultVaultRepository: VaultRepository {
             userId: userId
         )
 
-        var passwordChangeCount: Int = existing?.offlinePasswordChangeCount ?? 0
+        var passwordChangeCount: Int = Int(existing?.offlinePasswordChangeCount ?? 0)
 
         // Detect password change by comparing with the previous version in local storage.
         // This must happen before updateCipherWithLocalStorage overwrites the previous version.

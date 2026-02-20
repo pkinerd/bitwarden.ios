@@ -57,7 +57,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
 
     /// The minimum number of offline password changes that triggers a server backup
     /// even when no conflict is detected (soft conflict threshold).
-    static let softConflictPasswordChangeThreshold: Int = 4
+    static let softConflictPasswordChangeThreshold: Int64 = 4
 
     // MARK: Properties
 

@@ -40,7 +40,7 @@ class PendingCipherChangeData: NSManagedObject {
     @NSManaged var userId: String?
 
     /// The type of change, stored as a string corresponding to `PendingCipherChangeType`.
-    @NSManaged var changeTypeRaw: String
+    @NSManaged var changeTypeRaw: String?
 
     /// The JSON-encoded encrypted `CipherDetailsResponseModel` snapshot of the cipher.
     @NSManaged var cipherData: Data?
@@ -55,14 +55,14 @@ class PendingCipherChangeData: NSManagedObject {
     @NSManaged var updatedDate: Date?
 
     /// The number of password changes made across offline edits for this cipher.
-    @NSManaged var offlinePasswordChangeCount: Int
+    @NSManaged var offlinePasswordChangeCount: Int64
 
     // MARK: Computed Properties
 
     /// The typed change type for this pending change.
     var changeType: PendingCipherChangeType {
         get {
-            PendingCipherChangeType(rawValue: changeTypeRaw) ?? .update
+            changeTypeRaw.flatMap(PendingCipherChangeType.init(rawValue:)) ?? .update
         }
         set {
             changeTypeRaw = newValue.rawValue
@@ -102,7 +102,7 @@ class PendingCipherChangeData: NSManagedObject {
         self.originalRevisionDate = originalRevisionDate
         self.createdDate = Date()
         self.updatedDate = Date()
-        self.offlinePasswordChangeCount = offlinePasswordChangeCount
+        self.offlinePasswordChangeCount = Int64(offlinePasswordChangeCount)
     }
 }
 

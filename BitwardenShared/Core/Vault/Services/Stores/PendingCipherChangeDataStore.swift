@@ -105,7 +105,7 @@ extension DataStore: PendingCipherChangeDataStore {
                 existing.cipherData = cipherData
                 existing.changeTypeRaw = changeType.rawValue
                 existing.updatedDate = Date()
-                existing.offlinePasswordChangeCount = offlinePasswordChangeCount
+                existing.offlinePasswordChangeCount = Int64(offlinePasswordChangeCount)
                 // Do NOT overwrite originalRevisionDate - it's the baseline for conflict detection
             } else {
                 // Create new pending change record
