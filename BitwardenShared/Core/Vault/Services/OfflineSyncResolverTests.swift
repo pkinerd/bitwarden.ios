@@ -55,7 +55,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         changeType: PendingCipherChangeType,
         cipherData: Data? = nil,
         originalRevisionDate: Date? = nil,
-        offlinePasswordChangeCount: Int32 = 0
+        offlinePasswordChangeCount: Int16 = 0
     ) async throws {
         let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
