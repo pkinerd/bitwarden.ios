@@ -2,7 +2,7 @@
 
 > **Generated:** 2026-02-19 (updated 2026-02-20)
 > **Source:** All documents in `_OfflineSyncDocs/` including ActionPlans/, ActionPlans/Resolved/, ActionPlans/Superseded/, and Review2/
-> **Scope:** 53 documents reviewed across 13 parallel review passes + 2 gap analysis passes + action plan triage for all Review2 issues
+> **Scope:** 53 documents reviewed across 13 parallel review passes + 2 gap analysis passes + action plan triage for all Review2 issues + implementation-phase fixes
 
 ---
 
@@ -11,11 +11,11 @@
 | Category | Count |
 |----------|-------|
 | **Open — Requires Code Changes** | 3 |
+| **Partially Addressed** | 2 |
 | **Open — Accepted (No Code Change Planned)** | 8 |
-| **Partially Addressed** | 1 |
-| **Deferred (Future Enhancement)** | 5 |
-| **Review2 — Triaged (Action Plans Created)** | 24 |
-| **Resolved / Superseded** | 45 |
+| **Deferred (Future Enhancement)** | 4 |
+| **Review2 — Triaged (Action Plans Created)** | 45 |
+| **Resolved / Superseded** | 23 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -27,7 +27,7 @@ These issues have been identified across multiple review documents and have acti
 | # | Issue ID | Description | Severity | Complexity | Est. Effort | Related Documents | Notes |
 |---|----------|-------------|----------|------------|-------------|-------------------|-------|
 | 1 | **R3** | **No retry backoff for permanently failing resolution items.** A single permanently failing pending change blocks ALL syncing indefinitely via the early-abort pattern in `SyncService.swift:334-343`. No retry count, backoff, or expiry mechanism exists. | High | Medium | ~30-50 lines, 2-3 files, Core Data schema change | AP-R3, AP-00, OfflineSyncCodeReview.md, OfflineSyncChangelog.md, ReviewSection_SyncService.md, Review2/00_Main, Review2/02_OfflineSyncResolver | Most impactful remaining reliability issue. Recommended: Option D (`.failed` state) + Option A (retry count after 10 failures). Requires re-adding `timeProvider` dependency (removed in A3). |
-| 4 | **R1** | **No data format versioning for `cipherData` JSON.** If `CipherDetailsResponseModel` changes in a future app update, old pending records fail to decode permanently, blocking sync. | Medium | Low | ~15-20 lines, 2-3 files, Core Data schema change | AP-R1, AP-00, OfflineSyncCodeReview.md, ReviewSection_PendingCipherChangeDataStore.md, Review2/02_OfflineSyncResolver | Add `dataVersion: Int16` to Core Data entity. Deprioritize if R3 is implemented (R3 provides more general stuck-item solution). Bundle schema change with R3. |
+| 4 | **R1** | **No data format versioning for `cipherData` JSON.** If `CipherDetailsResponseModel` changes in a future app update, old pending records fail to decode permanently, blocking sync. | Medium | Low | ~15-20 lines, 2-3 files, Core Data schema change | AP-R1, AP-00, OfflineSyncCodeReview.md, ReviewSection_PendingCipherChangeDataStore.md, Review2/02_OfflineSyncResolver | Add `dataVersion` attribute to Core Data entity (use Integer 64 per current schema conventions from `1bc17cb`). Deprioritize if R3 is implemented (R3 provides more general stuck-item solution). Bundle schema change with R3. |
 | 5 | **U2-B** | **No offline-specific error messages for unsupported operations.** Archive, unarchive, restore, and collection assignment show generic network errors when attempted offline. | Medium | Low | ~20-30 lines, 1 file (VaultRepository.swift) | AP-U2, AP-00, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md, Review2/00_Main, Review2/03_VaultRepository | Add `OfflineSyncError.operationNotSupportedOffline` and catch blocks in 4 methods. Low effort, could ship in initial release. |
 
 ---
@@ -200,6 +200,9 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | RES-7 | Backup ciphers do not include attachments | Accepted design decision — attachment duplication requires download/re-encrypt/upload per attachment, disproportionately complex for sync resolution; primary cipher attachments preserved | AP-RES7 (Resolved) |
 | SS-1 | Pre-sync resolution error propagation blocks all syncing | Accepted design decision — correct fail-safe behavior; Core Data failure indicates serious system issue; blocking sync prevents data corruption | N/A (Resolved) |
 | T5 / RES-6 | Manual mock uses 16 `fatalError()` stubs | Accepted design decision — compiler enforces conformance; `fatalError()` is runtime-only risk in tests; adding `AutoMockable` to `CipherAPIService` is broader project decision outside offline sync scope | AP-T5 (Resolved) |
+| CD-TYPE-1 | `PendingCipherChangeType` stored as Int16 — fragile to enum case reordering; `offlinePasswordChangeCount` stored as Int16 — unnecessary constraint | Changed `changeTypeRaw` to String-backed storage and `offlinePasswordChangeCount` to Integer 64; also fixed `changeTypeRaw` optionality (`String` → `String?`) to match Core Data KVC semantics | `1bc17cb`, `d7a77c9` |
+| CD-TYPE-2 | Int32 vs Int16 type mismatch in `setupPendingChange` test helper | Fixed `offlinePasswordChangeCount` parameter type in test helper | `d168860` |
+| TEST-FLAKE-1 | Non-deterministic OfflineSyncResolverTests (13-15 failures) due to DataStore lifecycle — `setupPendingChange` created local DataStore that went out of scope, releasing managed object context via ARC | Promoted DataStore to class-level property in `setUp()` so context stays alive for full test duration | `710bc04` |
 
 ---
 
