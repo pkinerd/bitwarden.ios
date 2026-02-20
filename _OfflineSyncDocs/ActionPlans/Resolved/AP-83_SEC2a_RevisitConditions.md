@@ -2,7 +2,7 @@
 
 > **Issue:** #83 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Resolved (Accept as-is — none of the four revisit conditions are met; SEC-2 decision well-documented with prototype reference available if conditions change)
 > **Source:** AP-SEC2 (in Resolved/) — `_OfflineSyncDocs/ActionPlans/Resolved/AP-SEC2_PasswordChangeCountEncryption.md`
 
 ## Problem Statement
@@ -70,6 +70,19 @@ Key findings from that document:
 ## Recommendation
 
 **Option A: Accept As-Is.** The SEC-2 resolution is sound and well-documented. The revisit conditions provide clear triggers for reconsideration. No action needed until one of the four conditions is met. This action plan serves as the tracking document.
+
+## Resolution
+
+**Resolved as accepted design (2026-02-20).** All four revisit conditions remain unmet:
+
+| Condition | Status |
+|---|---|
+| Full Core Data encryption at rest (SQLCipher/`NSPersistentEncryptedStore`) | Not planned |
+| Security model change mandating all metadata encryption | No change |
+| Count becomes persistent beyond sync resolution | Remains ephemeral |
+| Security audit mandates field-level encryption | No audit mandate |
+
+The SEC-2 decision is well-documented with a full AES-256-GCM prototype reference in `AP-SEC2` if conditions change in the future. The `offlinePasswordChangeCount` remains low-sensitivity, ephemeral metadata consistent with other unencrypted metadata throughout the codebase.
 
 ## Dependencies
 

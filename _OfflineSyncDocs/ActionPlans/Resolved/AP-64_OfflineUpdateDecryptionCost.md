@@ -2,7 +2,7 @@
 
 > **Issue:** #64 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Resolved (Accept as-is — sub-millisecond AES-GCM decryption + JSON decode per user-initiated save; user editing cadence is the natural rate limiter)
 > **Source:** Review2/03_VaultRepository_Review.md
 
 ## Problem Statement
@@ -76,6 +76,18 @@ if let existingData = existing?.cipherData {
 ## Recommendation
 
 **Option A: Accept As-Is.** The performance concern is theoretical, not practical. The decrypt-compare cycle adds sub-millisecond overhead per save, which is undetectable by users. The current implementation is straightforward and correct. Optimizing it would introduce complexity without measurable benefit.
+
+## Resolution
+
+**Resolved as accepted design (2026-02-20).** The performance concern is theoretical, not practical:
+
+- SDK `decrypt(cipher:)` is in-memory AES-GCM: sub-millisecond per call
+- `JSONDecoder` for a single `CipherDetailsResponseModel`: sub-millisecond
+- The user's editing cadence is the natural rate limiter — this runs on save, not in a loop
+- The actual bottleneck is Core Data disk I/O, not decryption
+- Even 100 rapid edits (an unrealistic scenario) would add <100ms total overhead
+
+No optimization needed. The implementation is straightforward, correct, and performant for all realistic usage patterns.
 
 ## Dependencies
 
