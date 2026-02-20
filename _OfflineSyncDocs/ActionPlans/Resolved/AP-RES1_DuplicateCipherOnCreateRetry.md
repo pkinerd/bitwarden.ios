@@ -7,6 +7,7 @@
 | **ID** | RES-1 |
 | **Component** | `OfflineSyncResolver` |
 | **Severity** | Informational |
+| **Status** | Resolved (Hypothetical — same class as P2-T2) |
 | **Type** | Reliability / Edge Case |
 | **File** | `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` |
 
@@ -146,4 +147,8 @@ The review confirms the original assessment with code-level detail. After review
    - **Post-push cleanup with retry**: After successful push, retry `deletePendingChange` with a short retry loop. Reduces the window but doesn't eliminate it.
 
 **Updated conclusion**: Original recommendation (accept risk) confirmed. The scenario requires two simultaneous failures (rare), and the consequence (duplicate cipher) is recoverable (user can manually delete). The mitigation options either shift the risk to data loss or require server changes. Priority: Informational, accept risk for initial release.
+
+## Resolution
+
+**Resolved as hypothetical (2026-02-20).** This is the parent issue of P2-T2. The duplicate cipher scenario requires `deleteCipherWithLocalStorage` or `deletePendingChange` to fail after `addCipherWithServer` succeeds — the same Core Data write failure that P2-T2 was resolved for. As the action plan confirms: "Core Data write must fail (disk full, database corruption, etc.) — the app would need to survive this failure and attempt sync again — in practice, a Core Data failure severe enough to prevent deletion would likely also prevent the fetch in the next sync attempt." With P2-T2 resolved as unrealistic, this parent issue should be aligned: the trigger condition (local storage failure after server success) is the same impossibility.
 

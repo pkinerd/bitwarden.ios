@@ -2,7 +2,7 @@
 
 > **Issue:** #49 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Resolved (Hypothetical — prevented by serial context and uniqueness constraint)
 > **Source:** Review2/01_PendingCipherChangeData_Review.md (Reliability Concerns section)
 
 ## Problem Statement
@@ -119,6 +119,10 @@ private(set) lazy var backgroundContext: NSManagedObjectContext = {
 ## Recommendation
 
 **Option C: Accept As-Is.** The race condition is mitigated by three independent layers of protection (context serialization, uniqueness constraint, merge policy). The pattern is consistent with all other data stores in the project. The theoretical race requires conditions that cannot occur in the app's architecture (multiple DataStore instances or concurrent user operations on the same cipher).
+
+## Resolution
+
+**Resolved as hypothetical (2026-02-20).** The action plan's own assessment confirms: "The race condition is already prevented by three independent mechanisms." (1) The single `backgroundContext` serializes all `performAndSave` calls. (2) The `(userId, cipherId)` uniqueness constraint prevents duplicate inserts at the database level. (3) `NSMergeByPropertyObjectTrumpMergePolicy` gracefully resolves any constraint violations. The same fetch-then-update pattern is used by every other data store in the project without issues. The theoretical race requires conditions (multiple DataStore instances or concurrent user operations) that cannot occur in the app's architecture. This is the same class of impossibility as P2-T2.
 
 ## Dependencies
 

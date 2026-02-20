@@ -74,7 +74,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | **U3** — Pending indicator | Defer; implement toast (Option B) as first enhancement | Future |
 | ~~**U4** — English folder name~~ | ~~Accept English-only (Option C)~~ **[Superseded]** — Conflict folder removed | 0 |
 | **VR-2** — Delete → soft delete | Accept current behavior (Option A) | 0 |
-| **RES-1** — Duplicate on retry | Accept risk (Option D) | 0 |
+| ~~**RES-1** — Duplicate on retry~~ | ~~Accept risk (Option D)~~ **[Resolved]** — Hypothetical; same class as P2-T2 | 0 |
 | **RES-7** — No attachments in backup | Accept limitation (Option D) | 0 |
 | **PCDS-1** — id optional type | Accept optional (Option B) | 0 |
 | **PCDS-2** — dates optional type | Accept pattern (Option B) | 0 |
@@ -201,7 +201,7 @@ The following 11 issues were confirmed as correct to accept without code changes
 - **U1** — Org cipher error timing: timeout delay is inherent to error-detection-by-failure design
 - ~~**U4** — English folder name: cross-device/cross-platform consistency is the deciding factor~~ **[Superseded]** — Conflict folder removed; backup ciphers now retain original folder assignment
 - **VR-2** — Delete to soft delete: safety-first design for offline conflict scenarios
-- **RES-1** — Duplicate on create retry: extremely low probability, recoverable outcome
+- ~~**RES-1** — Duplicate on create retry: extremely low probability, recoverable outcome~~ **[Resolved]** — Hypothetical; same class as P2-T2
 - **RES-7** — Backup lacks attachments: attachment duplication is too complex for initial release
 - **RES-9** — Implicit cipherData contract: defensive guards in resolver are the correct safety net
 - **PCDS-1** — id optional type: Core Data `@NSManaged` constraint, not a design flaw

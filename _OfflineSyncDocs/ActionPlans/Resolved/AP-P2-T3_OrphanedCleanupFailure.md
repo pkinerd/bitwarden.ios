@@ -2,7 +2,7 @@
 
 > **Issue:** #52 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Resolved (Hypothetical — same class as P2-T2)
 > **Source:** OfflineSyncCodeReview_Phase2.md (Section 2.3, Test Gaps P2-T3)
 
 ## Problem Statement
@@ -163,7 +163,11 @@ In `deleteCipher`, there's an additional complication: `stateService.getActiveAc
 
 However, **Option C: Accept As-Is** is also reasonable given the extremely low likelihood of the scenario. If the team prefers minimal changes, this issue can be deferred without practical risk.
 
+## Resolution
+
+**Resolved as hypothetical (2026-02-20).** This issue is the same class as P2-T2: it requires Core Data `deletePendingChange` to fail after the server operation succeeds. As demonstrated in the P2-T2 analysis, `performAndSave` on Core Data's serial `backgroundContext` provides transactional guarantees — a simple delete of an in-memory managed object cannot realistically fail unless the Core Data store itself is catastrophically corrupted, which would break the entire app, not just offline sync. The action plan's own assessment confirms: "Core Data delete operations on properly-initialized contexts with valid predicates do not fail." The existing code is correct and the scenario is not actionable.
+
 ## Dependencies
 
-- **AP-R2-VR-6** (Issue #47): The `getActiveAccountId()` call in `deleteCipher` (line 666) has a related concern -- it's also inside the do block. If moved, it should be moved together with the `deletePendingChange` call.
-- No other dependencies.
+- **AP-39 (P2-T2)**: Parent issue, resolved for identical reasons.
+- **AP-R2-VR-6** (Issue #47): Also resolved as hypothetical (same microsecond-window class).

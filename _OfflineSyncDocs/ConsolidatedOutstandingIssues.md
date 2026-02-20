@@ -11,11 +11,11 @@
 | Category | Count |
 |----------|-------|
 | **Open — Requires Code Changes** | 3 |
-| **Open — Accepted (No Code Change Planned)** | 13 |
+| **Open — Accepted (No Code Change Planned)** | 12 |
 | **Partially Addressed** | 1 |
 | **Deferred (Future Enhancement)** | 5 |
-| **Review2 — Triaged (Action Plans Created)** | 33 |
-| **Resolved / Superseded** | 30 |
+| **Review2 — Triaged (Action Plans Created)** | 28 |
+| **Resolved / Superseded** | 36 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -94,13 +94,8 @@ These issues were identified in the second review pass. All have been triaged an
 | 43 | **R2-MAIN-7** | No maximum pending change age or count — unbounded accumulation possible during extended offline periods | Low | Low | AP-R2-MAIN-7 | Review2/00_Main |
 | 44 | **R2-RES-2** | Conflict resolution timestamp comparison uses client-side timestamps — device clock skew could select wrong "winner" | Low | Low | AP-R2-RES-2 | Review2/02_OfflineSyncResolver |
 | 45 | **R2-VR-1** | Error classification may be overly broad — catch-all block catches ANY unclassified error for offline fallback | Low | Low | AP-R2-VR-1 | Review2/03_VaultRepository |
-| 46 | **R2-VR-5** | JSONEncoder().encode in offline helpers could theoretically fail — edit saved but no pending change recorded | Low | Low | AP-R2-VR-5 | Review2/03_VaultRepository |
-| 47 | **R2-VR-6** | `getActiveAccountId()` in `handleOfflineDelete` could throw if user logged out between operation start and call | Low | Low | AP-R2-VR-6 | Review2/03_VaultRepository |
 | 48 | **R2-PCDS-1** | No Core Data schema versioning step — current entity addition works via lightweight migration but future attribute changes require explicit versioning | Medium | Medium | AP-R2-PCDS-1 | Review2/01_PendingCipherChangeData |
-| 49 | **R2-PCDS-4** | Upsert race condition — fetch-then-insert/update is not atomic; mitigated by uniqueness constraint | Low | Low | AP-R2-PCDS-4 | Review2/01_PendingCipherChangeData |
-| 50 | **R2-PCDS-5** | Core Data corruption risk — if persistent store corrupts, pending changes lost (inherent to Core Data) | Low | High | AP-R2-PCDS-5 | Review2/01_PendingCipherChangeData |
 | 51 | **S8.a** | When feature flag is disabled, existing pending changes remain orphaned in Core Data with no cleanup or notification | Low | Medium | AP-S8 | AP-S8 |
-| 52 | **P2-T3** | Orphaned pending change cleanup failure — `deletePendingChange` fail after server success causes successful operation to appear as failure to UI | Low | Low | AP-P2-T3 | OfflineSyncCodeReview_Phase2.md |
 
 ### 4d. UX Improvements
 
@@ -154,7 +149,6 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | 11 | **U1** | Org cipher error appears after full network timeout delay (30-60s) | Low | Inherent tradeoff of detecting offline by API failure. Narrow scenario. | AP-U1, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
 | 12 | **DI-1 / DI-2** | `HasPendingCipherChangeDataStore` and `HasOfflineSyncResolver` in `Services` typealias expose core-layer components to UI layer | Low | Consistent with existing project patterns. Enables future U3. | AP-DI1, ReviewSection_DIWiring.md, Review2/05_DIWiring |
 | 13 | **VR-2** | Permanent delete converted to soft delete when offline; cipher ends in trash | Low | Safety-first design for offline conflict scenarios. | AP-VR2, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
-| 14 | **RES-1** | Potential duplicate cipher on create retry after partial failure | Low | Extremely low probability. Consequence is duplicate, not data loss. | AP-RES1, OfflineSyncCodeReview.md, Review2/02_OfflineSyncResolver |
 | 15 | **RES-7** | Backup ciphers do not include attachments (set to nil) | Low | Attachment duplication too complex. Primary cipher attachments preserved. | AP-RES7, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
 | 16 | **RES-9** | Implicit `cipherData` non-nil contract for resolution methods | Low | Defensive `missingCipherData` guards exist. Contract maintained by 4 callers. | AP-RES9, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
 | 17 | **SS-2** | TOCTOU race condition between `remainingCount` check and `replaceCiphers` | Low | Microsecond window. Pending change record survives; next sync resolves. | AP-SS2, ReviewSection_SyncService.md, Review2/04_SyncService |
@@ -200,6 +194,12 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | TC-7 | Narrow error type coverage in offline fallback tests | Won't-fix — `unknownError` tests already prove generic catch path; additional error types add no branch coverage | N/A |
 | VI-1 | Offline-created cipher view failure (`data: nil`) | All 5 fixes implemented; `CipherView.withId()` replaces `Cipher.withTemporaryId()` | AP-VI1 (Resolved) |
 | P2-T2 | `resolveCreate` partial failure (duplicate cipher scenario) | Unrealistic — local storage failure implies catastrophic issues beyond offline sync scope; won't-fix | AP-39 (Resolved) |
+| P2-T3 | Orphaned pending change cleanup failure after server success | Hypothetical — same class as P2-T2; Core Data delete on serial context cannot realistically fail | AP-P2-T3 (Resolved) |
+| RES-1 | Potential duplicate cipher on create retry after partial failure | Hypothetical — same class as P2-T2; requires Core Data write failure after server success, which implies catastrophic storage issues | AP-RES1 (Resolved) |
+| R2-VR-5 | JSONEncoder().encode in offline helpers could theoretically fail | Hypothetical — encoding cannot fail for standard Codable types; same encoding used throughout app's cipher storage pipeline | AP-R2-VR-5 (Resolved) |
+| R2-VR-6 | `getActiveAccountId()` in `handleOfflineDelete` could throw on logout | Hypothetical — sub-millisecond window; state service returns stored state, not auth state; UI lifecycle prevents logout during active operation | AP-R2-VR-6 (Resolved) |
+| R2-PCDS-4 | Upsert race condition — fetch-then-insert/update not atomic | Hypothetical — prevented by serial backgroundContext, uniqueness constraint, and merge policy; same pattern used by all data stores | AP-R2-PCDS-4 (Resolved) |
+| R2-PCDS-5 | Core Data corruption risk — pending changes lost | Inherent platform limitation — applies to all Core Data entities equally; not specific to offline sync | AP-R2-PCDS-5 (Resolved) |
 
 ---
 

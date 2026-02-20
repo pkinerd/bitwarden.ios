@@ -365,7 +365,7 @@ The phase 2 commits add significant test coverage:
 |----|-----------|-----|----------|
 | ~~P2-T1~~ | ~~`VaultRepository`~~ | ~~`updateCipher` error type filtering not tested~~ | ~~Medium~~ **[Resolved]** — `test_updateCipher_serverError_rethrows` and `test_updateCipher_responseValidationError4xx_rethrows` now exist |
 | ~~P2-T2~~ | ~~`OfflineSyncResolver`~~ | ~~`resolveCreate` failure after `addCipherWithServer` succeeds but `deleteCipherWithLocalStorage` fails — duplicate cipher scenario~~ | ~~Low~~ **[Resolved]** — Unrealistic; local storage failure implies catastrophic issues beyond offline sync scope. Won't-fix. |
-| P2-T3 | `VaultRepository` | Orphaned pending change cleanup failure doesn't roll back the successful server operation | Low |
+| ~~P2-T3~~ | ~~`VaultRepository`~~ | ~~Orphaned pending change cleanup failure doesn't roll back the successful server operation~~ | ~~Low~~ **[Resolved]** — Hypothetical; same class as P2-T2. Core Data delete on serial context cannot realistically fail. |
 | P2-T4 | `ViewItemProcessor` | Fallback fetch doesn't re-establish subscription — no test for cipher update after fallback | Low |
 
 **Update on original review gaps:**
@@ -498,7 +498,7 @@ None identified. All changes use existing types and APIs. The `@testable import`
 |----|-----------|-------|
 | P2-CS1 | `CipherView+OfflineSync.swift` | Redundant MARK comment after removing `Cipher` extension |
 | ~~P2-T2~~ | ~~`OfflineSyncResolverTests`~~ | ~~`resolveCreate` partial failure scenario (server succeeds, local delete fails)~~ **[Resolved]** — Unrealistic; won't-fix |
-| P2-T3 | `VaultRepository` | Orphaned pending change cleanup error could mask successful server operation |
+| ~~P2-T3~~ | ~~`VaultRepository`~~ | ~~Orphaned pending change cleanup error could mask successful server operation~~ **[Resolved]** — Hypothetical; same class as P2-T2 |
 | P2-T4 | `ViewItemProcessor` | No test for state becoming stale after fallback (one-shot fetch, no subscription) |
 
 ### Superseded/Resolved Original Review Issues
@@ -551,4 +551,4 @@ The code quality remains high, following project architecture and style guidelin
 - Dead code removed (`organizationCipherOfflineEditNotSupported` enum case)
 - Organization ciphers excluded from offline fallback (re-throw original error)
 
-**Recommendation:** The phase 2 changes are ready for merge. The previously identified medium-priority gap (P2-T1 — `updateCipher` error type filter tests) has been resolved. CS-2 (fragile property copying) has been substantially mitigated. Only low-priority gaps remain (P2-T3 and P2-T4); P2-T2 was resolved as unrealistic (won't-fix).
+**Recommendation:** The phase 2 changes are ready for merge. The previously identified medium-priority gap (P2-T1 — `updateCipher` error type filter tests) has been resolved. CS-2 (fragile property copying) has been substantially mitigated. Only one low-priority gap remains (P2-T4 — fallback subscription); P2-T2 and P2-T3 were both resolved as hypothetical (won't-fix).

@@ -83,4 +83,4 @@ func upsertPendingChange(
 
 ## Dependencies
 
-- Related to Issue #49 (R2-PCDS-4): The race condition concern. The uniqueness constraint and serial queue mitigate this.
+- Related to Issue #49 (R2-PCDS-4): The race condition concern. **[R2-PCDS-4 Resolved]** — Hypothetical; prevented by serial backgroundContext, uniqueness constraint, and merge policy.
