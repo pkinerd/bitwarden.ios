@@ -1,6 +1,6 @@
 # Offline Sync — Consolidated Outstanding Issues
 
-> **Generated:** 2026-02-19 (updated 2026-02-20)
+> **Generated:** 2026-02-19 (updated 2026-02-20, Phase 2 testing improvements)
 > **Source:** All documents in `_OfflineSyncDocs/` including ActionPlans/, ActionPlans/Resolved/, ActionPlans/Superseded/, and Review2/
 > **Scope:** 53 documents reviewed across 13 parallel review passes + 2 gap analysis passes + action plan triage for all Review2 issues + implementation-phase fixes
 
@@ -15,8 +15,8 @@
 | **Open — Accepted (No Code Change Planned)** | 8 |
 | **Deferred (Future Enhancement)** | 4 |
 | **Review2 — Triaged (Action Plans Created)** | 43 |
-| **Resolved / Superseded** | 26 |
-| **Total Unique Issues** | 85 |
+| **Resolved / Superseded** | 34 |
+| **Total Unique Issues** | 93 |
 
 ---
 
@@ -203,6 +203,13 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | R2-TEST-1 | `GetCipherRequest` 404 validation (`validate(_:)` throwing `OfflineSyncError.cipherNotFound`) had no direct unit test | Created `GetCipherRequestTests.swift` with `test_method`, `test_path`, and `test_validate` covering 200/400/500 (no throw) and 404 (throws `.cipherNotFound`) | AP-35 (Resolved) |
 | R2-TEST-5 | Corrupt `cipherData` in pending change — no test for resolver handling malformed JSON | Added 3 tests: `create_corruptCipherData_skipsAndRetains`, `update_corruptCipherData_skipsAndRetains`, and `batch_corruptAndValid_validItemResolves` | AP-38 (Resolved) |
 | TC-2 | Missing negative assertions in happy-path tests — 4 tests pass through offline do/catch code without asserting upsert was NOT called | Added `XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)` to `test_addCipher`, `test_deleteCipher`, `test_updateCipher`, `test_softDeleteCipher` | N/A (Resolved) |
+| P2-TEST-T1 | No test for `missingCipherData` guard in resolver — create and update paths with nil `cipherData` untested | Added `test_processPendingChanges_create_nilCipherData_skipsAndRetains` and `test_processPendingChanges_update_nilCipherData_skipsAndRetains` to `OfflineSyncResolverTests` | N/A (Resolved) |
+| P2-TEST-T3 | `resolveCreate` temp-ID cleanup not asserted — `deleteCipherWithLocalStorage` call after server create not verified | Added `XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")` assertion to `test_processPendingChanges_create` | N/A (Resolved) |
+| P2-TEST-T4 | `changeType` computed property fallback for nil `changeTypeRaw` not tested | Added `test_changeType_nilChangeTypeRaw_defaultsToUpdate` to `PendingCipherChangeDataStoreTests` — manually sets `changeTypeRaw = nil` via Core Data context and verifies `.update` default | N/A (Resolved) |
+| P2-TEST-T5 | `changeType` computed property fallback for invalid `changeTypeRaw` not tested | Added `test_changeType_invalidChangeTypeRaw_defaultsToUpdate` to `PendingCipherChangeDataStoreTests` — sets `changeTypeRaw = "unknownType"` and verifies `.update` default | N/A (Resolved) |
+| P2-TEST-T6 | `fetchPendingChanges` sort order by `createdDate` not verified | Added `test_fetchPendingChanges_sortedByCreatedDate` to `PendingCipherChangeDataStoreTests` — inserts records with delay and verifies ascending sort | N/A (Resolved) |
+| P2-TEST-T7 | Nil `originalRevisionDate` conflict detection behavior untested — edge case where first offline edit predates revision date tracking | Added `test_processPendingChanges_update_nilOriginalRevisionDate_noConflict` to `OfflineSyncResolverTests` — verifies update proceeds without conflict when revision date is nil | N/A (Resolved) |
+| P2-TEST-RND | No round-trip test for all four `PendingCipherChangeType` enum cases through Core Data string-backed storage | Added `test_allChangeTypes_roundTripThroughCoreData` to `PendingCipherChangeDataStoreTests` — exercises `.update`, `.create`, `.softDelete`, `.hardDelete` persistence | N/A (Resolved) |
 
 ---
 
@@ -218,4 +225,4 @@ These issues have been reviewed and a deliberate decision was made to accept the
 ### Post-Release
 4. **U3** — Pending changes indicator (toast on offline save)
 5. **EXT-3** — Monitor SDK updates for property changes (ongoing)
-6. **Review2 test gaps** — Items 36-37, 40-42, 77 above (35 and 38 resolved; remaining have action plans: AP-36, AP-37, AP-40 through AP-42, AP-77)
+6. **Review2 test gaps** — Items 36-37, 40-42, 77 above (35 and 38 resolved; additional guard, fallback, sort, round-trip tests added in Phase 2; remaining have action plans: AP-36, AP-37, AP-40 through AP-42, AP-77)

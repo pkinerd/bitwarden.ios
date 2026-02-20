@@ -85,8 +85,8 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertTrue(cipherService.updateCipherWithServerCiphers.isEmpty)
     }
 
-    /// `processPendingChanges(userId:)` with a `.create` pending change calls `addCipherWithServer`
-    /// and then deletes the pending change record.
+    /// `processPendingChanges(userId:)` with a `.create` pending change calls `addCipherWithServer`,
+    /// deletes the old temp-ID record from local storage, and then deletes the pending change record.
     func test_processPendingChanges_create() async throws {
         let cipherData = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-1"))
         try await setupPendingChange(changeType: .create, cipherData: cipherData)
@@ -96,6 +96,9 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "cipher-1")
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+
+        // The old temp-ID record should be cleaned up from local storage.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")
     }
 
     /// `processPendingChanges(userId:)` with a `.update` pending change where the server
@@ -942,4 +945,61 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Only the valid item's pending record should be deleted.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
     }
-}
+
+    // MARK: Guard Clause Tests
+
+    /// `processPendingChanges(userId:)` with a `.create` pending change where `cipherData` is
+    /// nil throws `missingCipherData`, logs the error, and retains the pending record.
+    func test_processPendingChanges_create_nilCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(changeType: .create, cipherData: nil)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with an `.update` pending change where `cipherData` is
+    /// nil throws `missingCipherData`, does not fetch the server cipher, and retains the record.
+    func test_processPendingChanges_update_nilCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(
+            cipherId: "cipher-1",
+            changeType: .update,
+            cipherData: nil,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        XCTAssertTrue(cipherAPIService.getCipherCalledWith.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with an `.update` where `originalRevisionDate` is nil
+    /// does not detect a conflict even when the server cipher has a different revision date.
+    func test_processPendingChanges_update_nilOriginalRevisionDate_noConflict() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+        )
+        try await setupPendingChange(
+            cipherId: "cipher-1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: nil
+        )
+
+        // Server has a different revision date, but originalRevisionDate is nil.
+        let serverRevision = Date(year: 2024, month: 7, day: 15)
+        cipherAPIService.getCipherResult = .success(
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: serverRevision)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Should take the no-conflict path: updateCipherWithServer, no backup.
+        XCTAssertEqual(cipherService.updateCipherWithServerCiphers.count, 1)
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+} // swiftlint:disable:this file_length
