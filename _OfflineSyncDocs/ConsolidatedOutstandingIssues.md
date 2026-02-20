@@ -1,6 +1,6 @@
 # Offline Sync — Consolidated Outstanding Issues
 
-> **Generated:** 2026-02-19 (updated 2026-02-19 — action plan cross-reference pass)
+> **Generated:** 2026-02-19 (updated 2026-02-20)
 > **Source:** All documents in `_OfflineSyncDocs/` including ActionPlans/, ActionPlans/Resolved/, ActionPlans/Superseded/, and Review2/
 > **Scope:** 53 documents reviewed across 13 parallel review passes + 2 gap analysis passes + action plan triage for all Review2 issues
 
@@ -10,12 +10,12 @@
 
 | Category | Count |
 |----------|-------|
-| **Open — Requires Code Changes** | 5 |
+| **Open — Requires Code Changes** | 3 |
 | **Open — Accepted (No Code Change Planned)** | 12 |
-| **Partially Addressed** | 5 |
+| **Partially Addressed** | 2 |
 | **Deferred (Future Enhancement)** | 5 |
-| **Review2 — Triaged (Action Plans Created)** | 35 |
-| **Resolved / Superseded** | 23 |
+| **Review2 — Triaged (Action Plans Created)** | 34 |
+| **Resolved / Superseded** | 29 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -27,8 +27,6 @@ These issues have been identified across multiple review documents and have acti
 | # | Issue ID | Description | Severity | Complexity | Est. Effort | Related Documents | Notes |
 |---|----------|-------------|----------|------------|-------------|-------------------|-------|
 | 1 | **R3** | **No retry backoff for permanently failing resolution items.** A single permanently failing pending change blocks ALL syncing indefinitely via the early-abort pattern in `SyncService.swift:334-343`. No retry count, backoff, or expiry mechanism exists. | High | Medium | ~30-50 lines, 2-3 files, Core Data schema change | AP-R3, AP-00, OfflineSyncCodeReview.md, OfflineSyncChangelog.md, ReviewSection_SyncService.md, Review2/00_Main, Review2/02_OfflineSyncResolver | Most impactful remaining reliability issue. Recommended: Option D (`.failed` state) + Option A (retry count after 10 failures). Requires re-adding `timeProvider` dependency (removed in A3). |
-| 2 | **R4** | ~~**Silent sync abort — no logging when sync aborts due to remaining pending changes.**~~ **Resolved** — added `Logger.application.info()` log line when sync aborts with remaining pending changes. | Medium | Low | 1-2 lines, 1 file (SyncService.swift) | AP-R4, AP-00, OfflineSyncCodeReview.md, ReviewSection_SyncService.md, Review2/04_SyncService | Resolved. |
-| 3 | **S7** | ~~**VaultRepository-level `handleOfflineDelete` cipher-not-found test gap.**~~ **Resolved** — added `test_deleteCipher_offlineFallback_cipherNotFound_noOp` to VaultRepositoryTests. | Medium | Low | ~30-40 lines, 1 test file | AP-S7, AP-00, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md, Review2/08_TestCoverage | Resolved. |
 | 4 | **R1** | **No data format versioning for `cipherData` JSON.** If `CipherDetailsResponseModel` changes in a future app update, old pending records fail to decode permanently, blocking sync. | Medium | Low | ~15-20 lines, 2-3 files, Core Data schema change | AP-R1, AP-00, OfflineSyncCodeReview.md, ReviewSection_PendingCipherChangeDataStore.md, Review2/02_OfflineSyncResolver | Add `dataVersion: Int16` to Core Data entity. Deprioritize if R3 is implemented (R3 provides more general stuck-item solution). Bundle schema change with R3. |
 | 5 | **U2-B** | **No offline-specific error messages for unsupported operations.** Archive, unarchive, restore, and collection assignment show generic network errors when attempted offline. | Medium | Low | ~20-30 lines, 1 file (VaultRepository.swift) | AP-U2, AP-00, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md, Review2/00_Main, Review2/03_VaultRepository | Add `OfflineSyncError.operationNotSupportedOffline` and catch blocks in 4 methods. Low effort, could ship in initial release. |
 
@@ -41,8 +39,6 @@ These issues have been worked on but still have remaining gaps.
 | # | Issue ID | Description | What's Done | What Remains | Severity | Complexity | Related Documents |
 |---|----------|-------------|-------------|--------------|----------|------------|-------------------|
 | 6 | **EXT-3 / CS-2** | **SDK `CipherView` manual copy fragility.** `makeCopy` manually copies 28 properties; new SDK properties with defaults are silently dropped. | `makeCopy` consolidation, DocC `- Important:` callouts, Mirror-based property count guard tests (28 CipherView, 7 LoginView). | Underlying fragility remains inherent to external SDK types. Developers must still manually add properties to `makeCopy` when tests fail. 5 copy methods across 2 files affected. | High | Medium | AP-CS2, ReviewSection_SupportingExtensions.md, Review2/07_CipherViewExtensions |
-| 7 | **TC-7** | ~~**Narrow error type coverage in offline fallback tests.**~~ **Resolved (won't-fix)** — the denylist pattern means any error not explicitly caught triggers offline fallback. The existing `unknownError` tests (using `BitwardenTestError.example`) already prove this for a generic non-denylisted error. Adding tests for `URLError(.timedOut)`, `.networkConnectionLost`, or `DecodingError` would assert the same code path with different error constructors — no additional branch coverage. The denylist itself is tested by `serverError_rethrows`, `responseValidationError4xx_rethrows`, and `cipherAPIServiceError` tests. | Medium | Low | ReviewSection_TestChanges.md |
-| 8 | **VI-1** | ~~**Offline-created cipher view failure.** Root cause was `Cipher.withTemporaryId()` setting `data: nil`.~~ **Resolved** — all 5 fixes implemented. `CipherView.withId()` replaces `Cipher.withTemporaryId()`. UI fallback added. Temp-ID cleanup covered by existing `test_processPendingChanges_create`; dedicated tests for implementation details and impossible nil-ID state intentionally not added. | Medium | Low | AP-VI1 |
 | 9 | **T5 / RES-6** | **Manual `MockCipherAPIServiceForOfflineSync` fragility.** Mock uses 16 `fatalError()` stubs. | Mock extracted to dedicated file with maintenance comment. Compiler enforces protocol conformance. | `// sourcery: AutoMockable` annotation on `CipherAPIService` not added. Mock still requires manual updates on protocol changes. | Low | Low | AP-T5, ReviewSection_OfflineSyncResolver.md |
 | 10 | **TC-2** | **Missing negative assertions in happy-path tests.** Four existing happy-path tests pass through new do/catch code but never assert offline handling was NOT triggered. | N/A — no changes made. | Add `XCTAssertFalse(pendingCipherChangeDataStore.upsertCalled)` or similar to 4 existing happy-path tests. | Medium | Low | ReviewSection_TestChanges.md |
 
@@ -91,7 +87,6 @@ These issues were identified in the second review pass. All have been triaged an
 |---|----------|-------------|----------|------------|-------------|-------------------|
 | 30 | **P2-CS1** | Redundant MARK comment in `CipherView+OfflineSync.swift` after removing `Cipher` extension | Low | Low | AP-30 | OfflineSyncCodeReview_Phase2.md |
 | 31 | **R2-MAIN-20** | Error classification do/catch pattern repeated 4 times in VaultRepository (~15 lines each); could extract helper | Low | Low | AP-31 | Review2/00_Main, Review2/03_VaultRepository |
-| 32 | **R2-MAIN-21** | ~~`handleOfflineDelete` and `handleOfflineSoftDelete` share 80% of logic; could consolidate~~ **Resolved** — extracted `cleanUpOfflineCreatedCipherIfNeeded` helper | Low | Low | AP-32 | Review2/00_Main, Review2/03_VaultRepository |
 | 33 | **R2-EXT-3** | Three `/// - Important` comments about SDK fragility across files could reference a shared document | Low | Low | AP-33 | Review2/07_CipherViewExtensions |
 | 34 | **R2-EXT-4** | `@retroactive CipherWithArchive` conformance change rationale unclear | Low | Low | AP-34 | Review2/07_CipherViewExtensions |
 | 72 | **R2-SS-5** | SyncService simplification: two `pendingChangeCount` calls could be replaced by resolver returning boolean — saves one Core Data query | Low | Low | AP-72 | Review2/04_SyncService |
@@ -200,21 +195,24 @@ These issues were identified in the second review pass. All have been triaged an
 | DI-4 | Shared resolver instance thread safety | Actor conversion + state removed | Resolved |
 | R2-A2 | Unused `stateService` dependency in `DefaultOfflineSyncResolver` | Already removed; dependency does not exist in current code | AP-28 (Resolved) |
 | R2-DI-5 | DocC parameter block in `ServiceContainer.swift` init — alphabetical order | Already in correct alphabetical order in current code | AP-29 (Resolved) |
+| R4 | Silent sync abort — no logging | Added `Logger.application.info()` log line in SyncService | AP-R4 (Resolved) |
+| S7 | VaultRepository cipher-not-found test gap | Added `test_deleteCipher_offlineFallback_cipherNotFound_noOp` | AP-S7 (Resolved) |
+| R2-MAIN-21 | `handleOfflineDelete`/`handleOfflineSoftDelete` duplication | Extracted `cleanUpOfflineCreatedCipherIfNeeded` helper | AP-32 (Resolved) |
+| TC-7 | Narrow error type coverage in offline fallback tests | Won't-fix — `unknownError` tests already prove generic catch path; additional error types add no branch coverage | N/A |
+| VI-1 | Offline-created cipher view failure (`data: nil`) | All 5 fixes implemented; `CipherView.withId()` replaces `Cipher.withTemporaryId()` | AP-VI1 (Resolved) |
 
 ---
 
 ## Priority Recommendation
 
-### Immediate (Ship Blockers / Quick Wins)
-1. **R4** — Add sync abort log line (1-2 lines, zero risk)
-2. **S7** — Add VaultRepository cipher-not-found test (~30 lines)
-3. **U2-B** — Add offline-specific error messages (~20-30 lines)
+### Immediate (Quick Wins)
+1. **U2-B** — Add offline-specific error messages (~20-30 lines)
 
 ### Should Address (Pre-Release)
-4. **R3** — Retry backoff with failed state (~30-50 lines, Core Data schema change)
-5. **R1** — Data format versioning (bundle with R3 schema change)
+2. **R3** — Retry backoff with failed state (~30-50 lines, Core Data schema change)
+3. **R1** — Data format versioning (bundle with R3 schema change)
 
 ### Post-Release
-6. **U3** — Pending changes indicator (toast on offline save)
-7. **EXT-3** — Monitor SDK updates for property changes (ongoing)
-8. **Review2 test gaps** — Items 35-42, 77 above (all now have action plans: AP-35 through AP-42, AP-77)
+4. **U3** — Pending changes indicator (toast on offline save)
+5. **EXT-3** — Monitor SDK updates for property changes (ongoing)
+6. **Review2 test gaps** — Items 35-42, 77 above (all now have action plans: AP-35 through AP-42, AP-77)
