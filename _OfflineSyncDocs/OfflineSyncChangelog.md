@@ -1192,7 +1192,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | [U3](./ActionPlans/AP-U3_NoPendingChangesIndicator.md) | No pending changes UI indicator | Informational |
 | ~~[U4](./ActionPlans/AP-U4_EnglishOnlyConflictFolderName.md)~~ | ~~English-only conflict folder name~~ — **[Superseded]** Conflict folder removed | ~~Informational~~ N/A |
 | [VR-2](./ActionPlans/AP-VR2_DeleteConvertedToSoftDelete.md) | Permanent delete → soft delete conversion | Informational |
-| [RES-1](./ActionPlans/AP-RES1_DuplicateCipherOnCreateRetry.md) | Potential duplicate on create retry | Informational |
+| ~~[RES-1](./ActionPlans/Resolved/AP-RES1_DuplicateCipherOnCreateRetry.md)~~ | ~~Potential duplicate on create retry~~ **[Resolved]** — Hypothetical; same class as P2-T2 | ~~Informational~~ |
 | [RES-7](./ActionPlans/AP-RES7_BackupCiphersLackAttachments.md) | Backup ciphers lack attachments | Informational |
 | [RES-9](./ActionPlans/AP-RES9_ImplicitCipherDataContract.md) | Implicit cipherData contract for soft delete | Informational |
 | [PCDS-1](./ActionPlans/AP-PCDS1_IdOptionalRequiredMismatch.md) | id optional/required mismatch | Informational |

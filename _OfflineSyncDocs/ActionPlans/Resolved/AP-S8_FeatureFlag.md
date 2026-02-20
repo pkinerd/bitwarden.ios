@@ -175,7 +175,7 @@ Both default to `false` (server-controlled rollout). Tests explicitly set flag v
 
 > **Issue:** #51 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Medium
-> **Status:** Triaged
+> **Status:** Resolved (Design decision — orphaned pending changes are the intentional and safe result of the kill-switch design; two-flag architecture provides maximum operational flexibility)
 
 ### Problem Statement
 
@@ -286,6 +286,28 @@ The second scenario is the only realistic case, and it represents the deliberate
 ### Recommendation for S8.a
 
 **Option C: Accept As-Is**, with **Option B's logging** as a low-effort enhancement for observability. The orphaned records are intentional, harmless, and preserve user data. The only action worth taking is adding a log warning for telemetry purposes, which helps the team understand the impact when flags are disabled in production.
+
+### Resolution for S8.a
+
+**Resolved as design decision (2026-02-20).** The two-flag architecture provides maximum operational flexibility for handling the orphaned-changes scenario:
+
+| Flag Configuration | Behavior | Orphaned Changes |
+|---|---|---|
+| Both enabled | Full offline sync active | N/A — changes are created and resolved normally |
+| `offlineSyncEnableOfflineChanges` = `false`, resolution = `true` | No new offline saves; existing queue drains on next sync | Resolved automatically — this is the graceful wind-down path |
+| `offlineSyncEnableResolution` = `false` (either flag state for changes) | Full kill switch — no new saves, no resolution | Pending changes remain in Core Data, preserved for re-enablement |
+| Both disabled | Same as above | Same as above |
+
+The "graceful wind-down" path (row 2) directly addresses S8.a's concern: the team can stop new offline saves from accumulating while allowing existing pending changes to resolve. This was not possible with a single flag and represents the maximum flexibility design.
+
+For the full kill-switch scenario (row 3), orphaned records are:
+- **Intentional**: The safer default is preserving user data over deleting it
+- **Harmless**: ~1-5 KB per record, no performance impact
+- **Recoverable**: Re-enabling the flag processes them on next sync
+- **Bounded**: No new changes accumulate while flags are off
+- **Cleaned on logout**: `DataStore.deleteDataForUser` removes them
+
+The optional logging enhancement (Option B) remains a reasonable future improvement for production telemetry but is not required for correctness.
 
 ### Dependencies for S8.a
 

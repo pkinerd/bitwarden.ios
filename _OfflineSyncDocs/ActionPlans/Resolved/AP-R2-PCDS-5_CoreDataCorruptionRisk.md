@@ -2,7 +2,7 @@
 
 > **Issue:** #50 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** High
-> **Status:** Triaged
+> **Status:** Resolved (Inherent platform limitation — not an offline sync defect)
 > **Source:** Review2/01_PendingCipherChangeData_Review.md (Data Safety section)
 
 ## Problem Statement
@@ -117,6 +117,10 @@ The `PendingCipherChangeData` is included in the batch delete on user data clean
 If the team wants to improve Core Data resilience generally, **Option B** (store corruption detection and recovery) would benefit the entire app, not just offline sync. This should be evaluated as a separate project-wide initiative.
 
 For offline sync specifically, the best practical mitigation is already in place: the pending changes dataset is small and transient. Most pending changes are resolved within a single sync cycle (seconds to minutes after connectivity returns). The window of exposure (time during which pending changes exist and are at risk) is naturally minimized.
+
+## Resolution
+
+**Resolved as inherent platform limitation (2026-02-20).** The action plan's own assessment confirms: "This represents an inherent limitation of using Core Data (or any single-file local database), not a flaw in the offline sync implementation." Core Data SQLite corruption risk applies equally to ALL data in the store — `CipherData`, `FolderData`, `CollectionData`, etc. — and is not specific to or worsened by the offline sync feature. Offline sync adds a negligible number of records (typically 0-5) to the same store. iOS provides multiple layers of protection (APFS, WAL journaling, crash consistency). The proposed mitigations (backup files, separate stores) introduce significant complexity with their own failure modes, for an extremely unlikely scenario. This is categorically different from a code defect — it is the same platform reality every Core Data app faces.
 
 ## Dependencies
 
