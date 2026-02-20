@@ -917,6 +917,20 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
+    /// `deleteCipher()` silently returns when the offline fallback cannot find the cipher
+    /// locally (e.g., already deleted or never stored). No pending change is created.
+    func test_deleteCipher_offlineFallback_cipherNotFound_noOp() async throws {
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+        cipherService.fetchCipherResult = .success(nil)
+
+        try await subject.deleteCipher("123")
+
+        // Should NOT delete locally or queue a pending change.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
     /// `deleteCipher()` falls back to offline save when the server returns a 5xx
     /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
     func test_deleteCipher_offlineFallback_responseValidationError5xx() async throws {
