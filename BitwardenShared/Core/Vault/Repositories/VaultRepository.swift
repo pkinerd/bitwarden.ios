@@ -1064,12 +1064,6 @@ extension DefaultVaultRepository: VaultRepository {
             throw CipherAPIServiceError.updateMissingId
         }
 
-        // Persist locally
-        try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
-
-        let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
         // Check for existing pending change to determine password change count
         let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
             cipherId: cipherId,
@@ -1078,23 +1072,20 @@ extension DefaultVaultRepository: VaultRepository {
 
         var passwordChangeCount: Int16 = existing?.offlinePasswordChangeCount ?? 0
 
-        // Detect password change by comparing with the previous version
-        if let existingData = existing?.cipherData {
-            let existingModel = try JSONDecoder().decode(CipherDetailsResponseModel.self, from: existingData)
-            let existingCipher = Cipher(responseModel: existingModel)
-            let existingDecrypted = try await clientService.vault().ciphers().decrypt(cipher: existingCipher)
-            if existingDecrypted.login?.password != cipherView.login?.password {
+        // Detect password change by comparing with the previous version in local storage.
+        // This must happen before updateCipherWithLocalStorage overwrites the previous version.
+        if let localCipher = try await cipherService.fetchCipher(withId: cipherId) {
+            let localDecrypted = try await clientService.vault().ciphers().decrypt(cipher: localCipher)
+            if localDecrypted.login?.password != cipherView.login?.password {
                 passwordChangeCount += 1
             }
-        } else {
-            // First offline edit: check if password changed from the pre-offline version
-            if let localCipher = try await cipherService.fetchCipher(withId: cipherId) {
-                let localDecrypted = try await clientService.vault().ciphers().decrypt(cipher: localCipher)
-                if localDecrypted.login?.password != cipherView.login?.password {
-                    passwordChangeCount += 1
-                }
-            }
         }
+
+        // Persist the new version locally.
+        try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
+
+        let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
         let originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
 
@@ -1136,7 +1127,7 @@ extension DefaultVaultRepository: VaultRepository {
             return
         }
 
-        // Fetch the current cipher to preserve its data
+        // Fetch the current cipher for org check and revision date.
         guard let cipher = try await cipherService.fetchCipher(withId: cipherId) else { return }
 
         // Organization ciphers cannot be deleted offline
@@ -1147,14 +1138,13 @@ extension DefaultVaultRepository: VaultRepository {
         // Soft-delete locally
         try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
 
-        let cipherResponseModel = try CipherDetailsResponseModel(cipher: cipher)
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
+        // cipherData is nil for soft-delete pending changes because the resolver
+        // only needs the cipher ID to issue the server API call.
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
             changeType: .softDelete,
-            cipherData: cipherData,
+            cipherData: nil,
             originalRevisionDate: cipher.revisionDate,
             offlinePasswordChangeCount: 0
         )
@@ -1185,14 +1175,13 @@ extension DefaultVaultRepository: VaultRepository {
         // Persist the soft-deleted cipher locally so it appears in trash
         try await cipherService.updateCipherWithLocalStorage(encryptedCipher)
 
-        let cipherResponseModel = try CipherDetailsResponseModel(cipher: encryptedCipher)
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
+        // cipherData is nil for soft-delete pending changes because the resolver
+        // only needs the cipher ID to issue the server API call.
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
             changeType: .softDelete,
-            cipherData: cipherData,
+            cipherData: nil,
             originalRevisionDate: encryptedCipher.revisionDate,
             offlinePasswordChangeCount: 0
         )
