@@ -5,18 +5,18 @@ import Foundation
 
 /// The type of pending offline change to a cipher.
 ///
-enum PendingCipherChangeType: Int16 {
+enum PendingCipherChangeType: String {
     /// An update to an existing cipher.
-    case update = 0
+    case update
 
     /// A newly created cipher.
-    case create = 1
+    case create
 
     /// A soft delete of an existing cipher.
-    case softDelete = 2
+    case softDelete
 
     /// A hard (permanent) delete of an existing cipher.
-    case hardDelete = 3
+    case hardDelete
 }
 
 // MARK: - PendingCipherChangeData
@@ -39,8 +39,8 @@ class PendingCipherChangeData: NSManagedObject {
     /// The active user ID at the time of the offline edit.
     @NSManaged var userId: String?
 
-    /// The type of change, stored as an Int16 corresponding to `PendingCipherChangeType`.
-    @NSManaged var changeTypeRaw: Int16
+    /// The type of change, stored as a string corresponding to `PendingCipherChangeType`.
+    @NSManaged var changeTypeRaw: String
 
     /// The JSON-encoded encrypted `CipherDetailsResponseModel` snapshot of the cipher.
     @NSManaged var cipherData: Data?
@@ -55,7 +55,7 @@ class PendingCipherChangeData: NSManagedObject {
     @NSManaged var updatedDate: Date?
 
     /// The number of password changes made across offline edits for this cipher.
-    @NSManaged var offlinePasswordChangeCount: Int16
+    @NSManaged var offlinePasswordChangeCount: Int
 
     // MARK: Computed Properties
 
@@ -91,7 +91,7 @@ class PendingCipherChangeData: NSManagedObject {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int16 = 0
+        offlinePasswordChangeCount: Int = 0
     ) {
         self.init(context: context)
         self.id = id

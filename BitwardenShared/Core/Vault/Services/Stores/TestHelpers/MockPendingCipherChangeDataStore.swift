@@ -15,7 +15,7 @@ class MockPendingCipherChangeDataStore: PendingCipherChangeDataStore {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int16
+        offlinePasswordChangeCount: Int
     )]()
     var upsertPendingChangeResult: Result<Void, Error> = .success(())
 
@@ -43,7 +43,7 @@ class MockPendingCipherChangeDataStore: PendingCipherChangeDataStore {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int16
+        offlinePasswordChangeCount: Int
     ) async throws {
         upsertPendingChangeCalledWith.append((
             cipherId: cipherId,
