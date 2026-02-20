@@ -16,6 +16,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     var cipherAPIService: MockCipherAPIServiceForOfflineSync!
     var cipherService: MockCipherService!
     var clientService: MockClientService!
+    var dataStore: DataStore!
     var pendingCipherChangeDataStore: MockPendingCipherChangeDataStore!
     var subject: DefaultOfflineSyncResolver!
 
@@ -27,6 +28,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = MockCipherAPIServiceForOfflineSync()
         cipherService = MockCipherService()
         clientService = MockClientService()
+        dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         pendingCipherChangeDataStore = MockPendingCipherChangeDataStore()
 
         subject = DefaultOfflineSyncResolver(
@@ -43,13 +45,14 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService = nil
         cipherService = nil
         clientService = nil
+        dataStore = nil
         pendingCipherChangeDataStore = nil
         subject = nil
     }
 
     // MARK: Helpers
 
-    /// Creates a single pending change in an in-memory data store and configures the mock.
+    /// Creates a single pending change in the class-level data store and configures the mock.
     private func setupPendingChange(
         cipherId: String = "cipher-1",
         changeType: PendingCipherChangeType,
@@ -57,7 +60,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         originalRevisionDate: Date? = nil,
         offlinePasswordChangeCount: Int = 0
     ) async throws {
-        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: "1",
@@ -763,7 +765,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let softDeleteData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(id: "cipher-3", revisionDate: revisionDate)
         )
-        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1", userId: "1", changeType: .create,
             cipherData: createData, originalRevisionDate: nil, offlinePasswordChangeCount: 0
@@ -811,7 +812,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let updateData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(id: "cipher-2", revisionDate: revisionDate)
         )
-        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1", userId: "1", changeType: .create,
             cipherData: createData, originalRevisionDate: nil, offlinePasswordChangeCount: 0
@@ -846,7 +846,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Two create pending changes — both will fail.
         let createData1 = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-1"))
         let createData2 = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-2"))
-        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1", userId: "1", changeType: .create,
             cipherData: createData1, originalRevisionDate: nil, offlinePasswordChangeCount: 0
