@@ -917,6 +917,20 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
     }
 
+    /// `deleteCipher()` silently returns when the offline fallback cannot find the cipher
+    /// locally (e.g., already deleted or never stored). No pending change is created.
+    func test_deleteCipher_offlineFallback_cipherNotFound_noOp() async throws {
+        stateService.activeAccount = .fixture()
+        cipherService.deleteCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
+        cipherService.fetchCipherResult = .success(nil)
+
+        try await subject.deleteCipher("123")
+
+        // Should NOT delete locally or queue a pending change.
+        XCTAssertNil(cipherService.deleteCipherWithLocalStorageId)
+        XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
+    }
+
     /// `deleteCipher()` falls back to offline save when the server returns a 5xx
     /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
     func test_deleteCipher_offlineFallback_responseValidationError5xx() async throws {
@@ -1961,24 +1975,23 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     func test_updateCipher_offlineFallback_subsequentEdit_passwordChanged_incrementsCount() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
-        // Existing pending change with old password and count of 2.
-        let existingCipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(
-                id: "123",
-                login: .fixture(password: "old-pw")
-            )
-        )
+        // Existing pending change with count of 2.
         let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         let existingChange = PendingCipherChangeData(
             context: dataStore.persistentContainer.viewContext,
             cipherId: "123",
             userId: "1",
             changeType: .update,
-            cipherData: existingCipherData,
+            cipherData: nil,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
             offlinePasswordChangeCount: 2
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        // The previous version in local storage has "old-pw".
+        cipherService.fetchCipherResult = .success(
+            Cipher.fixture(id: "123", login: .fixture(password: "old-pw"))
+        )
 
         // The user is saving with a new password.
         let cipher = CipherView.fixture(id: "123", login: .fixture(password: "new-pw"))
@@ -1997,24 +2010,23 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     func test_updateCipher_offlineFallback_subsequentEdit_passwordUnchanged_preservesCount() async throws {
         cipherService.updateCipherWithServerResult = .failure(URLError(.notConnectedToInternet))
 
-        // Existing pending change with same password and count of 2.
-        let existingCipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(
-                id: "123",
-                login: .fixture(password: "same-pw")
-            )
-        )
+        // Existing pending change with count of 2.
         let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         let existingChange = PendingCipherChangeData(
             context: dataStore.persistentContainer.viewContext,
             cipherId: "123",
             userId: "1",
             changeType: .update,
-            cipherData: existingCipherData,
+            cipherData: nil,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
             offlinePasswordChangeCount: 2
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
+
+        // The previous version in local storage has "same-pw".
+        cipherService.fetchCipherResult = .success(
+            Cipher.fixture(id: "123", login: .fixture(password: "same-pw"))
+        )
 
         // The user is saving with the same password.
         let cipher = CipherView.fixture(id: "123", login: .fixture(password: "same-pw"))

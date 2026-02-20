@@ -27,6 +27,8 @@ The excluded operations (verified in `VaultRepository.swift`):
 
 **Note on archive feature flag:** The project has a `.archiveVaultItems` feature flag (`FeatureFlag.swift:9`) for the archive feature. If archive is itself behind a feature flag, adding offline support for it is premature until the archive feature is stable.
 
+**Note on scope:** Archive/unarchive/restore operations apply to **all vaults** (personal and organization), not just org ciphers. The archive UI is entirely gated behind the `.archiveVaultItems` feature flag — when the flag is disabled, no archive/unarchive buttons appear in the UI. Additionally, **archiving requires premium** (unarchiving does not). The UI surfaces in two places when the flag is enabled: the View Item toolbar menu and the vault list "More Options" context menu.
+
 ---
 
 ## Options

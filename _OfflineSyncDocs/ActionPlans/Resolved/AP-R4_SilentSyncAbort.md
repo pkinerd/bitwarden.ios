@@ -8,6 +8,7 @@
 | **Component** | `SyncService` |
 | **Severity** | Low |
 | **Type** | Observability |
+| **Status** | **Resolved** — Option A implemented |
 | **File** | `BitwardenShared/Core/Vault/Services/SyncService.swift` |
 
 ## Description
