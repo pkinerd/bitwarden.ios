@@ -48,7 +48,7 @@ These issues have been worked on but still have remaining gaps.
 | # | Issue ID | Description | Severity | Complexity | Dependencies | Related Documents |
 |---|----------|-------------|----------|------------|--------------|-------------------|
 | 23 | **U3** | No user-visible indicator for pending offline changes (badge, toast, banner) | Medium | High | DI-1 (data store UI exposure) | AP-U3, AP-00, OfflineSyncCodeReview.md, Review2/00_Main |
-| 24 | **U2-A** | Full offline support for archive/unarchive/restore operations | Low | High | Archive behind `.archiveVaultItems` feature flag | AP-U2, ReviewSection_VaultRepository.md |
+| 24 | **U2-A** | Full offline support for archive/unarchive/restore operations (applies to all vaults — personal and org; archive requires premium; UI gated behind `.archiveVaultItems` feature flag) | Low | High | Archive UI gated behind `.archiveVaultItems` feature flag; archive requires premium | AP-U2, ReviewSection_VaultRepository.md |
 | 25 | **VR2-B** | Add `PendingCipherChangeType.permanentDelete` for true offline permanent delete | Low | Medium | N/A | AP-VR2 |
 | 26 | **DI-1-B** | Create separate `CoreServices` typealias for core-layer-only dependencies | Low | High | Significant DI refactoring | AP-DI1 |
 | 27 | **R4-C** | Return `SyncResult` enum from `fetchSync` (foundation for U3) | Low | Medium | API change affecting all callers | AP-R4 |
