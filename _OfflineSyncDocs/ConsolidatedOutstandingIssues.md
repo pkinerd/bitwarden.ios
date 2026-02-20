@@ -43,29 +43,7 @@ These issues have been worked on but still have remaining gaps.
 
 ---
 
-## Section 3: Open Issues — Accepted As-Is (No Code Change Planned)
-
-These issues have been reviewed and a deliberate decision was made to accept the current behavior.
-
-| # | Issue ID | Description | Severity | Rationale | Related Documents |
-|---|----------|-------------|----------|-----------|-------------------|
-| 11 | **U1** | Org cipher error appears after full network timeout delay (30-60s) | Low | Inherent tradeoff of detecting offline by API failure. Narrow scenario. | AP-U1, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
-| 12 | **DI-1 / DI-2** | `HasPendingCipherChangeDataStore` and `HasOfflineSyncResolver` in `Services` typealias expose core-layer components to UI layer | Low | Consistent with existing project patterns. Enables future U3. | AP-DI1, ReviewSection_DIWiring.md, Review2/05_DIWiring |
-| 13 | **VR-2** | Permanent delete converted to soft delete when offline; cipher ends in trash | Low | Safety-first design for offline conflict scenarios. | AP-VR2, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
-| 14 | **RES-1** | Potential duplicate cipher on create retry after partial failure | Low | Extremely low probability. Consequence is duplicate, not data loss. | AP-RES1, OfflineSyncCodeReview.md, Review2/02_OfflineSyncResolver |
-| 15 | **RES-7** | Backup ciphers do not include attachments (set to nil) | Low | Attachment duplication too complex. Primary cipher attachments preserved. | AP-RES7, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
-| 16 | **RES-9** | Implicit `cipherData` non-nil contract for resolution methods | Low | Defensive `missingCipherData` guards exist. Contract maintained by 4 callers. | AP-RES9, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
-| 17 | **SS-2** | TOCTOU race condition between `remainingCount` check and `replaceCiphers` | Low | Microsecond window. Pending change record survives; next sync resolves. | AP-SS2, ReviewSection_SyncService.md, Review2/04_SyncService |
-| 18 | **PCDS-1** | `PendingCipherChangeData.id` optional in Swift but required in Core Data schema | Low | Core Data `@NSManaged` limitation, not a design flaw. | AP-PCDS1, ReviewSection_PendingCipherChangeDataStore.md |
-| 19 | **PCDS-2** | `createdDate`/`updatedDate` optional but always set in convenience init | Low | Nil fallback chain handles safely. | AP-PCDS2, ReviewSection_PendingCipherChangeDataStore.md |
-| 20 | **VR-3** | Password change detection only compares `login?.password`, not other sensitive fields | Low | By design — soft conflict threshold targets highest-risk field. | ReviewSection_VaultRepository.md |
-| 21 | **A4** | `GetCipherRequest.validate(_:)` coupled to `OfflineSyncError` semantics | Low | Acceptable coupling. | OfflineSyncCodeReview.md |
-| 22 | **SS-1** | Pre-sync resolution error propagation blocks all syncing on Core Data failure | Low | Correct fail-safe behavior. | ReviewSection_SyncService.md |
-| 23 | **T5 / RES-6** | Manual `MockCipherAPIServiceForOfflineSync` uses 16 `fatalError()` stubs for unimplemented protocol methods | Low | Compiler enforces conformance; `fatalError()` stubs are runtime-only risk. Adding `AutoMockable` to `CipherAPIService` is a broader project decision outside offline sync scope. | AP-T5, ReviewSection_OfflineSyncResolver.md |
-
----
-
-## Section 4: Deferred Issues (Future Enhancements)
+## Section 3: Deferred Issues (Future Enhancements)
 
 | # | Issue ID | Description | Severity | Complexity | Dependencies | Related Documents |
 |---|----------|-------------|----------|------------|--------------|-------------------|
@@ -77,11 +55,11 @@ These issues have been reviewed and a deliberate decision was made to accept the
 
 ---
 
-## Section 5: Review2 Issues — Triaged (Action Plans Created)
+## Section 4: Review2 Issues — Triaged (Action Plans Created)
 
 These issues were identified in the second review pass. All have been triaged and have corresponding action plans in `ActionPlans/`.
 
-### 5a. Code Quality / Cleanup
+### 4a. Code Quality / Cleanup
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
@@ -96,7 +74,7 @@ These issues were identified in the second review pass. All have been triaged an
 | 76 | **R2-VR-9** | VaultRepository simplification: use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON (~20 lines savings per handler) — would require different serialization approach | Low | Low | AP-76 | OfflineSyncCodeReview.md |
 | 84 | **R2-EXT-5** | Simplification: consider inlining `CipherView+OfflineSync` extension — `withId` and `update(name:)` are small and used in only 2 places; review recommends keeping current extension approach as cleaner | Low | Low | AP-84 | Review2/00_Main |
 
-### 5b. Test Coverage Gaps
+### 4b. Test Coverage Gaps
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
@@ -110,7 +88,7 @@ These issues were identified in the second review pass. All have been triaged an
 | 42 | **R2-TEST-4** | Very long cipher names in backup naming pattern not tested for edge cases | Low | Low | AP-42 | Review2/08_TestCoverage |
 | 77 | **PLAN-3** | Phase 5 integration tests (end-to-end offline→reconnect→resolve scenarios) were planned in OfflineSyncPlan.md but status is unknown — no evidence of implementation | Medium | Medium | AP-77 | OfflineSyncPlan.md |
 
-### 5c. Reliability / Edge Cases
+### 4c. Reliability / Edge Cases
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
@@ -125,7 +103,7 @@ These issues were identified in the second review pass. All have been triaged an
 | 51 | **S8.a** | When feature flag is disabled, existing pending changes remain orphaned in Core Data with no cleanup or notification | Low | Medium | AP-S8 | AP-S8 |
 | 52 | **P2-T3** | Orphaned pending change cleanup failure — `deletePendingChange` fail after server success causes successful operation to appear as failure to UI | Low | Low | AP-P2-T3 | OfflineSyncCodeReview_Phase2.md |
 
-### 5d. UX Improvements
+### 4d. UX Improvements
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
@@ -134,7 +112,7 @@ These issues were identified in the second review pass. All have been triaged an
 | 55 | **VR-4** | No user feedback on successful offline save — operation completes silently | Low | Medium | AP-55 | ReviewSection_VaultRepository.md |
 | 78 | **R2-MAIN-2** | No offline support for attachment operations — attachment upload/download requires server communication; distinct from org cipher exclusion (U2) | Low | High | AP-78 | Review2/00_Main |
 
-### 5e. Upstream / Process Concerns
+### 4e. Upstream / Process Concerns
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
@@ -145,7 +123,7 @@ These issues were identified in the second review pass. All have been triaged an
 | 79 | **R2-DI-6** | ServiceContainer includes two additional incidental typo fixes unrelated to offline sync (`DefultExportVaultService` → `DefaultExportVaultService`, `Exhange` → `Exchange`) | Low | Low | AP-79 | Review2/05_DIWiring |
 | 80 | **R2-UP-6** | `AuthCoordinator.swift` parameter rename (`attemptAutmaticBiometricUnlock` → `attemptAutomaticBiometricUnlock`) is a compile-affecting upstream change mixed into the offline sync diff | Low | Low | AP-80 | Review2/09_UpstreamChanges |
 
-### 5f. Minor / Informational
+### 4f. Minor / Informational
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
@@ -165,6 +143,28 @@ These issues were identified in the second review pass. All have been triaged an
 | 82 | **R2-CROSS-1** | If both R1 (data format versioning) and R3 (retry backoff) are implemented, Core Data schema changes should be bundled in a single migration step to minimize schema churn | Low | Low | AP-82 | AP-00_CrossReferenceMatrix.md |
 | 83 | **SEC-2.a** | SEC-2 (plaintext `offlinePasswordChangeCount`) resolution should be revisited if: full Core Data encryption at rest is pursued, security model mandates all metadata encryption, count becomes persistent, or security audit mandates field-level encryption | Low | Low | AP-83 | AP-SEC2 |
 | 85 | **R2-UI-4** | `buildViewItemState(from:)` in `ViewItemProcessor` is ~35 lines — could benefit from further decomposition; review rates as "within acceptable limits" | Low | Low | AP-85 | Review2/06_UILayer |
+
+---
+
+## Section 5: Open Issues — Accepted As-Is (No Code Change Planned)
+
+These issues have been reviewed and a deliberate decision was made to accept the current behavior.
+
+| # | Issue ID | Description | Severity | Rationale | Related Documents |
+|---|----------|-------------|----------|-----------|-------------------|
+| 11 | **U1** | Org cipher error appears after full network timeout delay (30-60s) | Low | Inherent tradeoff of detecting offline by API failure. Narrow scenario. | AP-U1, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
+| 12 | **DI-1 / DI-2** | `HasPendingCipherChangeDataStore` and `HasOfflineSyncResolver` in `Services` typealias expose core-layer components to UI layer | Low | Consistent with existing project patterns. Enables future U3. | AP-DI1, ReviewSection_DIWiring.md, Review2/05_DIWiring |
+| 13 | **VR-2** | Permanent delete converted to soft delete when offline; cipher ends in trash | Low | Safety-first design for offline conflict scenarios. | AP-VR2, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
+| 14 | **RES-1** | Potential duplicate cipher on create retry after partial failure | Low | Extremely low probability. Consequence is duplicate, not data loss. | AP-RES1, OfflineSyncCodeReview.md, Review2/02_OfflineSyncResolver |
+| 15 | **RES-7** | Backup ciphers do not include attachments (set to nil) | Low | Attachment duplication too complex. Primary cipher attachments preserved. | AP-RES7, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
+| 16 | **RES-9** | Implicit `cipherData` non-nil contract for resolution methods | Low | Defensive `missingCipherData` guards exist. Contract maintained by 4 callers. | AP-RES9, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
+| 17 | **SS-2** | TOCTOU race condition between `remainingCount` check and `replaceCiphers` | Low | Microsecond window. Pending change record survives; next sync resolves. | AP-SS2, ReviewSection_SyncService.md, Review2/04_SyncService |
+| 18 | **PCDS-1** | `PendingCipherChangeData.id` optional in Swift but required in Core Data schema | Low | Core Data `@NSManaged` limitation, not a design flaw. | AP-PCDS1, ReviewSection_PendingCipherChangeDataStore.md |
+| 19 | **PCDS-2** | `createdDate`/`updatedDate` optional but always set in convenience init | Low | Nil fallback chain handles safely. | AP-PCDS2, ReviewSection_PendingCipherChangeDataStore.md |
+| 20 | **VR-3** | Password change detection only compares `login?.password`, not other sensitive fields | Low | By design — soft conflict threshold targets highest-risk field. | ReviewSection_VaultRepository.md |
+| 21 | **A4** | `GetCipherRequest.validate(_:)` coupled to `OfflineSyncError` semantics | Low | Acceptable coupling. | OfflineSyncCodeReview.md |
+| 22 | **SS-1** | Pre-sync resolution error propagation blocks all syncing on Core Data failure | Low | Correct fail-safe behavior. | ReviewSection_SyncService.md |
+| 23 | **T5 / RES-6** | Manual `MockCipherAPIServiceForOfflineSync` uses 16 `fatalError()` stubs for unimplemented protocol methods | Low | Compiler enforces conformance; `fatalError()` stubs are runtime-only risk. Adding `AutoMockable` to `CipherAPIService` is a broader project decision outside offline sync scope. | AP-T5, ReviewSection_OfflineSyncResolver.md |
 
 ---
 
