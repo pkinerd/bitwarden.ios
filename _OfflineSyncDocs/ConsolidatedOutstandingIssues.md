@@ -91,7 +91,7 @@ These issues were identified in the second review pass. All have been triaged an
 |---|----------|-------------|----------|------------|-------------|-------------------|
 | 30 | **P2-CS1** | Redundant MARK comment in `CipherView+OfflineSync.swift` after removing `Cipher` extension | Low | Low | AP-30 | OfflineSyncCodeReview_Phase2.md |
 | 31 | **R2-MAIN-20** | Error classification do/catch pattern repeated 4 times in VaultRepository (~15 lines each); could extract helper | Low | Low | AP-31 | Review2/00_Main, Review2/03_VaultRepository |
-| 32 | **R2-MAIN-21** | `handleOfflineDelete` and `handleOfflineSoftDelete` share 80% of logic; could consolidate | Low | Low | AP-32 | Review2/00_Main, Review2/03_VaultRepository |
+| 32 | **R2-MAIN-21** | ~~`handleOfflineDelete` and `handleOfflineSoftDelete` share 80% of logic; could consolidate~~ **Resolved** — extracted `cleanUpOfflineCreatedCipherIfNeeded` helper | Low | Low | AP-32 | Review2/00_Main, Review2/03_VaultRepository |
 | 33 | **R2-EXT-3** | Three `/// - Important` comments about SDK fragility across files could reference a shared document | Low | Low | AP-33 | Review2/07_CipherViewExtensions |
 | 34 | **R2-EXT-4** | `@retroactive CipherWithArchive` conformance change rationale unclear | Low | Low | AP-34 | Review2/07_CipherViewExtensions |
 | 72 | **R2-SS-5** | SyncService simplification: two `pendingChangeCount` calls could be replaced by resolver returning boolean — saves one Core Data query | Low | Low | AP-72 | Review2/04_SyncService |
