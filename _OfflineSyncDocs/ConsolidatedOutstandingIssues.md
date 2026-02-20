@@ -11,11 +11,11 @@
 | Category | Count |
 |----------|-------|
 | **Open — Requires Code Changes** | 3 |
-| **Open — Accepted (No Code Change Planned)** | 13 |
+| **Open — Accepted (No Code Change Planned)** | 12 |
 | **Partially Addressed** | 1 |
-| **Deferred (Future Enhancement)** | 5 |
+| **Deferred (Future Enhancement)** | 4 |
 | **Review2 — Triaged (Action Plans Created)** | 34 |
-| **Resolved / Superseded** | 29 |
+| **Resolved / Superseded** | 31 |
 | **Total Unique Issues** | 85 |
 
 ---
@@ -49,7 +49,7 @@ These issues have been worked on but still have remaining gaps.
 |---|----------|-------------|----------|------------|--------------|-------------------|
 | 23 | **U3** | No user-visible indicator for pending offline changes (badge, toast, banner) | Medium | High | DI-1 (data store UI exposure) | AP-U3, AP-00, OfflineSyncCodeReview.md, Review2/00_Main |
 | 24 | **U2-A** | Full offline support for archive/unarchive/restore operations (applies to all vaults — personal and org; archive requires premium; UI gated behind `.archiveVaultItems` feature flag) | Low | High | Archive UI gated behind `.archiveVaultItems` feature flag; archive requires premium | AP-U2, ReviewSection_VaultRepository.md |
-| 25 | **VR2-B** | Add `PendingCipherChangeType.permanentDelete` for true offline permanent delete | Low | Medium | N/A | AP-VR2 |
+| 25 | ~~**VR2-B**~~ | ~~Add `PendingCipherChangeType.permanentDelete` for true offline permanent delete~~ | ~~Low~~ | ~~Medium~~ | **[Resolved]** `.hardDelete` (raw value 3) added to `PendingCipherChangeType`. See commit `34b6c24`. | AP-VR2 |
 | 26 | **DI-1-B** | Create separate `CoreServices` typealias for core-layer-only dependencies | Low | High | Significant DI refactoring | AP-DI1 |
 | 27 | **R4-C** | Return `SyncResult` enum from `fetchSync` (foundation for U3) | Low | Medium | API change affecting all callers | AP-R4 |
 
@@ -154,7 +154,7 @@ These issues have been reviewed and a deliberate decision was made to accept the
 |---|----------|-------------|----------|-----------|-------------------|
 | 11 | **U1** | Org cipher error appears after full network timeout delay (30-60s) | Low | Inherent tradeoff of detecting offline by API failure. Narrow scenario. | AP-U1, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
 | 12 | **DI-1 / DI-2** | `HasPendingCipherChangeDataStore` and `HasOfflineSyncResolver` in `Services` typealias expose core-layer components to UI layer | Low | Consistent with existing project patterns. Enables future U3. | AP-DI1, ReviewSection_DIWiring.md, Review2/05_DIWiring |
-| 13 | **VR-2** | Permanent delete converted to soft delete when offline; cipher ends in trash | Low | Safety-first design for offline conflict scenarios. | AP-VR2, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
+| 13 | ~~**VR-2**~~ | ~~Permanent delete converted to soft delete when offline; cipher ends in trash~~ | ~~Low~~ | **[Resolved]** `handleOfflineDelete` now queues `.hardDelete` pending change. Resolver calls permanent delete API when no conflict exists; restores server version on conflict. See commit `34b6c24`. | AP-VR2, OfflineSyncCodeReview.md, ReviewSection_VaultRepository.md |
 | 14 | **RES-1** | Potential duplicate cipher on create retry after partial failure | Low | Extremely low probability. Consequence is duplicate, not data loss. | AP-RES1, OfflineSyncCodeReview.md, Review2/02_OfflineSyncResolver |
 | 15 | **RES-7** | Backup ciphers do not include attachments (set to nil) | Low | Attachment duplication too complex. Primary cipher attachments preserved. | AP-RES7, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
 | 16 | **RES-9** | Implicit `cipherData` non-nil contract for resolution methods | Low | Defensive `missingCipherData` guards exist. Contract maintained by 4 callers. | AP-RES9, OfflineSyncCodeReview.md, ReviewSection_OfflineSyncResolver.md |
@@ -200,6 +200,8 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | R2-MAIN-21 | `handleOfflineDelete`/`handleOfflineSoftDelete` duplication | Extracted `cleanUpOfflineCreatedCipherIfNeeded` helper | AP-32 (Resolved) |
 | TC-7 | Narrow error type coverage in offline fallback tests | Won't-fix — `unknownError` tests already prove generic catch path; additional error types add no branch coverage | N/A |
 | VI-1 | Offline-created cipher view failure (`data: nil`) | All 5 fixes implemented; `CipherView.withId()` replaces `Cipher.withTemporaryId()` | AP-VI1 (Resolved) |
+| VR-2 | Permanent delete converted to soft delete when offline | `.hardDelete` change type added; resolver calls permanent delete API; conflict restores server version | `34b6c24` |
+| VR2-B | Add `PendingCipherChangeType.permanentDelete` for offline permanent delete | `.hardDelete` (raw value 3) added to `PendingCipherChangeType` | `34b6c24` |
 
 ---
 

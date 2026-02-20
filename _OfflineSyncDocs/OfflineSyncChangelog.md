@@ -95,7 +95,10 @@ This changeset implements **offline vault sync** — the ability for users to cr
 │   │   ├─ no conflict, <4 pw changes → push local               │
 │   │   ├─ no conflict, ≥4 pw changes → push local + backup srv  │
 │   │   └─ conflict → timestamp winner, backup loser             │
-│   └─ .softDelete → check conflict, backup if needed, delete    │
+│   ├─ .softDelete → no conflict: soft delete on server          │
+│   │                conflict: restore server version locally     │
+│   └─ .hardDelete → no conflict: permanent delete on server     │
+│                    conflict: restore server version locally     │
 │   Backup → retains original cipher's folder assignment         │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -127,7 +130,7 @@ A new `PendingCipherChangeData` entity was added to the Core Data model with the
 | `id` | String | Yes | — | Primary key for the pending change record |
 | `cipherId` | String | Yes | — | Cipher ID (temporary UUID for creates, server ID for updates/deletes) |
 | `userId` | String | Yes | — | Active user ID for multi-user isolation |
-| `changeTypeRaw` | Integer 16 | Yes | `0` | Enum: `0` = update, `1` = create, `2` = softDelete |
+| `changeTypeRaw` | Integer 16 | Yes | `0` | Enum: `0` = update, `1` = create, `2` = softDelete, `3` = hardDelete |
 | `cipherData` | Binary | No | — | JSON-encoded encrypted `CipherDetailsResponseModel` |
 | `originalRevisionDate` | Date | No | — | Server `revisionDate` at time of first offline edit |
 | `createdDate` | Date | No | — | Timestamp of first queued change |
@@ -169,10 +172,11 @@ enum PendingCipherChangeType: Int16 {
     case update = 0
     case create = 1
     case softDelete = 2
+    case hardDelete = 3
 }
 ```
 
-Three change types representing the operations a user can perform on vault items. `update` is `0` for backwards compatibility with the Core Data default value.
+Four change types representing the operations a user can perform on vault items. `update` is `0` for backwards compatibility with the Core Data default value. `hardDelete` distinguishes permanent delete intent from soft delete so the resolver can call the correct server API.
 
 #### NSManagedObject Subclass (line 27)
 
@@ -423,7 +427,7 @@ func deleteCipher(_ id: String) async throws {
 }
 ```
 
-**Design note:** `deleteCipher` queues a **`.softDelete`** pending change (rather than a permanent delete) and removes the CipherData record locally via `deleteCipherWithLocalStorage`. On sync, the resolver performs a soft delete on the server. This intentional conversion preserves the cipher in the server-side trash for conflict resolution. See [AP-VR2](./ActionPlans/AP-VR2_DeleteConvertedToSoftDelete.md).
+**Design note:** `deleteCipher` queues a **`.hardDelete`** pending change and removes the CipherData record locally via `deleteCipherWithLocalStorage`. On sync, the resolver performs a permanent delete on the server when no conflict is detected, or restores the server version locally if the cipher was modified on the server while offline. See [AP-VR2](./ActionPlans/Accepted/AP-VR2_DeleteConvertedToSoftDelete.md).
 
 ### 6b. New Offline Handlers
 
@@ -456,7 +460,7 @@ func deleteCipher(_ id: String) async throws {
 3. Fetches the cipher from local storage (to preserve its data for conflict resolution)
 4. Guards against organization ciphers (rethrows the `originalError` passed from `deleteCipher`)
 5. Removes the CipherData record locally via `cipherService.deleteCipherWithLocalStorage()`
-6. Queues a `.softDelete` pending change (server-side operation will be a soft delete on sync)
+6. Queues a `.hardDelete` pending change (server-side operation will be a permanent delete on sync when no conflict is detected)
 
 **Note:** The org cipher guard is inside this handler (not in the public method) because `deleteCipher` only takes an ID parameter — the cipher must be fetched to check `organizationId`. The `originalError` parameter allows the original network error to be rethrown for organization ciphers rather than silently swallowing it.
 
@@ -569,7 +573,8 @@ func processPendingChanges(userId: String) async throws {
 Routes to the appropriate resolver based on `changeType`:
 - `.create` → `resolveCreate()`
 - `.update` → `resolveUpdate()`
-- `.softDelete` → `resolveSoftDelete()`
+- `.softDelete` → `resolveDelete(permanent: false)`
+- `.hardDelete` → `resolveDelete(permanent: true)`
 
 #### `resolveCreate(pendingChange:userId:)` (line 151)
 
@@ -623,15 +628,20 @@ if localTimestamp > serverTimestamp {
 
 **Note:** Uses strict `>` comparison — if timestamps are equal, the server version wins (conservative choice).
 
-#### `resolveSoftDelete(pendingChange:cipherId:userId:)` (line 270)
+#### ~~`resolveSoftDelete(pendingChange:cipherId:userId:)`~~ → `resolveDelete(pendingChange:cipherId:userId:permanent:)` (line 271) **[Refactored]**
+
+**[Updated]** `resolveSoftDelete` has been refactored into a unified `resolveDelete(permanent:)` method that handles both `.softDelete` and `.hardDelete` pending changes. The `permanent` parameter determines whether the server API call is a soft delete or permanent delete.
 
 1. Fetches current server cipher via `cipherAPIService.getCipher(withId:)`
    - If 404 → cleans up local cipher record and pending change, then returns (user's delete intent already satisfied)
 2. Compares `originalRevisionDate` with server `revisionDate`
-3. If conflict exists: creates backup of the server version before deleting
-4. Decodes `cipherData` from the pending change to get the local cipher
-5. Calls `cipherService.softDeleteCipherWithServer(id:_:)` with the decoded local cipher
-6. Deletes pending change record
+3. If conflict exists: restores the server version to local storage via `updateCipherWithLocalStorage` and drops the pending delete (user can review and re-decide)
+4. If no conflict: calls the appropriate server delete API
+   - `permanent == true` → `cipherAPIService.deleteCipher(withID:)` (permanent delete)
+   - `permanent == false` → `cipherAPIService.softDeleteCipher(withID:)` (soft delete)
+5. Deletes pending change record
+
+**[Updated]** The conflict behavior has changed: instead of creating a backup of the server version and then completing the delete, the resolver now restores the server version locally and drops the pending delete. This prevents data loss when the server version was modified while offline — the user sees the updated cipher reappear and can decide whether to delete it again.
 
 #### `createBackupCipher(from:timestamp:userId:)` (line 325) **[Updated]**
 
@@ -862,7 +872,7 @@ Tests the offline fallback behavior in `VaultRepository` for all four CRUD opera
 | `test_addCipher_offlineFallback_responseValidationError5xx` | Create | 5xx errors trigger offline save |
 | `test_addCipher_serverError_rethrows` | Create | `ServerError` rethrown (server reachable, rejected request) |
 | `test_addCipher_responseValidationError4xx_rethrows` | Create | 4xx `ResponseValidationError` rethrown |
-| `test_deleteCipher_offlineFallback` | Delete | Local delete + `.softDelete` pending change |
+| `test_deleteCipher_offlineFallback` | Delete | Local delete + `.hardDelete` pending change |
 | `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Delete | Cleans up locally for never-synced cipher |
 | `test_deleteCipher_offlineFallback_unknownError` | Delete | Unknown errors trigger offline save |
 | `test_deleteCipher_offlineFallback_responseValidationError5xx` | Delete | 5xx errors trigger offline save |
@@ -910,7 +920,11 @@ Comprehensive tests for the conflict resolution engine. Includes a custom `MockC
 | `test_processPendingChanges_update_conflict_localNewer_preservesPasswordHistory` | Conflict (local wins): password history preserved in backup |
 | `test_processPendingChanges_update_conflict_serverNewer_preservesPasswordHistory` | Conflict (server wins): password history preserved in backup |
 | `test_processPendingChanges_update_softConflict_preservesPasswordHistory` | Soft conflict: password history preserved in backup |
-| `test_processPendingChanges_softDelete_conflict` | Soft delete conflict: backup server before deleting |
+| `test_processPendingChanges_softDelete_conflict` | Soft delete conflict: restores server version locally, drops pending delete |
+| `test_processPendingChanges_hardDelete_noConflict` | **[New]** Hard delete: no conflict → permanent delete on server |
+| `test_processPendingChanges_hardDelete_conflict` | **[New]** Hard delete conflict: restores server version locally, drops pending delete |
+| `test_processPendingChanges_hardDelete_cipherNotFound_cleansUp` | **[New]** Hard delete where server returns 404 — cleans up locally |
+| `test_processPendingChanges_hardDelete_apiFailure_pendingRecordRetained` | **[New]** Hard delete API failure: pending record retained for retry |
 | ~~`test_processPendingChanges_update_conflict_createsConflictFolder`~~ | ~~Verifies "Offline Sync Conflicts" folder creation~~ **[Removed]** — Conflict folder eliminated |
 | `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
 | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
@@ -1092,6 +1106,24 @@ Addressed [AP-CS2](./ActionPlans/AP-CS2_FragileSDKCopyMethods.md) by extracting 
 ### Commit `f906711`: Fix `attachmentDecryptionFailures` Type Mismatch
 
 The SDK changed `attachmentDecryptionFailures` from `[String]?` to `[AttachmentView]?`, but `makeCopy`'s parameter was not updated to match. Fixed the parameter type in `CipherView+OfflineSync.swift`.
+
+### Commit `34b6c24`: Add `.hardDelete` Pending Change Type; Refactor Delete Conflict Resolution
+
+Three related changes:
+
+1. **New `PendingCipherChangeType.hardDelete` (raw value 3):** Distinguishes permanent delete intent from soft delete in the pending changes queue. `handleOfflineDelete` now stores `.hardDelete` instead of `.softDelete`, so the resolver calls the correct server API (`deleteCipher` for permanent, `softDeleteCipher` for trash).
+
+2. **Unified `resolveDelete(permanent:)` method:** `resolveSoftDelete` has been refactored into a shared `resolveDelete(pendingChange:cipherId:userId:permanent:)` method. The `permanent` parameter controls which server API is called in the no-conflict path. This eliminates duplication between the soft delete and hard delete resolution paths.
+
+3. **New delete conflict behavior:** When a conflict is detected (server `revisionDate` differs from `originalRevisionDate`), the resolver now **restores the server version locally** via `updateCipherWithLocalStorage` and drops the pending delete. This replaces the previous behavior of creating a backup and completing the delete. The user sees the updated cipher reappear and can decide whether to delete it again. This applies to both `.softDelete` and `.hardDelete` pending changes.
+
+   **Rationale:** The previous approach (backup + delete) could result in data loss if the backup lacked attachments (RES-7) or if the user didn't notice the backup copy. Restoring the server version is safer — the user explicitly re-evaluates rather than having data silently moved to a backup.
+
+**Files changed:** 6 (PendingCipherChangeData, VaultRepository, OfflineSyncResolver, OfflineSyncResolverTests, VaultRepositoryTests, MockCipherAPIServiceForOfflineSync)
+
+**Tests:** Updated 3 existing assertions from `.softDelete` to `.hardDelete` in VaultRepositoryTests. Updated soft delete conflict test to assert restore behavior. Added 4 new hard delete tests: no-conflict, conflict, 404, and API failure. Updated `MockCipherAPIServiceForOfflineSync` to track `deleteCipher(withID:)` calls.
+
+This resolves [AP-VR2](./ActionPlans/Accepted/AP-VR2_DeleteConvertedToSoftDelete.md) Option B — permanent deletes are now honored on sync when no conflict exists.
 
 ---
 

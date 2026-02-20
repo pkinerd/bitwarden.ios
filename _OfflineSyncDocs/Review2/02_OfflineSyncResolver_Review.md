@@ -34,9 +34,10 @@ The `OfflineSyncResolver` is the core conflict resolution engine. It processes p
 processPendingChanges(userId:)
   ├── fetchPendingChanges(userId:)
   └── for each change:
-      ├── .create  → resolveCreate()
-      ├── .update  → resolveUpdate()
-      └── .softDelete → resolveSoftDelete()
+      ├── .create     → resolveCreate()
+      ├── .update     → resolveUpdate()
+      ├── .softDelete → resolveDelete(permanent: false)
+      └── .hardDelete → resolveDelete(permanent: true)
 ```
 
 ### resolveCreate
@@ -68,16 +69,17 @@ processPendingChanges(userId:)
 - **Concern — Conflict resolution timestamp comparison**: `resolveConflict` uses `localTimestamp > serverTimestamp` to determine which version "wins." The `localTimestamp` is derived from `pendingChange.updatedDate ?? pendingChange.createdDate ?? Date.distantPast`. This is a client-side timestamp, which may not be reliable (device clock could be wrong). However, this is a reasonable heuristic — the key point is that both versions are preserved as backups, so no data is lost regardless of which "wins."
 - **Good**: The soft conflict threshold (4 password changes) ensures that even without server-side changes, heavy offline editing triggers a backup for safety.
 
-### resolveSoftDelete
+### ~~resolveSoftDelete~~ → resolveDelete(permanent:) **[Refactored]**
 
 1. Fetches current server version
 2. If 404: Cipher already deleted on server — clean up local
-3. If conflict: Creates backup of server version before deleting
-4. Completes the soft delete on server
+3. If conflict: Restores server version locally, drops pending delete (user can review and re-decide)
+4. If no conflict: Calls the appropriate server delete API (`deleteCipher` for permanent, `softDeleteCipher` for soft)
 
 **Assessment**:
 - **Good**: Handles all edge cases (already deleted, conflict, no conflict)
-- **Good**: Creates backup before soft-deleting when there's a conflict, preserving server changes
+- **Good**: Conflict behavior changed from backup+delete to restore — safer for the user
+- **Good**: Unified method avoids duplication between soft and hard delete paths
 
 ### createBackupCipher
 
