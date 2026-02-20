@@ -1002,4 +1002,87 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
     }
+    // MARK: Backup Naming Tests
+
+    /// `createBackupCipher` produces a backup name following the pattern
+    /// `"<original name> - yyyy-MM-dd HH:mm:ss"` during conflict resolution.
+    func test_processPendingChanges_update_conflict_backupNameFormat() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        // Use a far-future server date so server wins, creating a backup of the local cipher.
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "cipher-1",
+                name: "My Secret Login",
+                revisionDate: originalRevisionDate
+            )
+        )
+        try await setupPendingChange(
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            name: "Server Version",
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Verify backup was created with the expected name format.
+        let encryptedCiphers = clientService.mockVault.clientCiphers.encryptedCiphers
+        let backupCipher = encryptedCiphers.first
+        XCTAssertNotNil(backupCipher)
+
+        let backupName = try XCTUnwrap(backupCipher?.name)
+        XCTAssertTrue(
+            backupName.hasPrefix("My Secret Login - "),
+            "Backup name should start with original name + separator, got: \(backupName)"
+        )
+        // Verify the timestamp suffix matches the expected date format.
+        let timestampSuffix = String(backupName.dropFirst("My Secret Login - ".count))
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        XCTAssertNotNil(
+            dateFormatter.date(from: timestampSuffix),
+            "Timestamp suffix '\(timestampSuffix)' should parse as yyyy-MM-dd HH:mm:ss"
+        )
+    }
+
+    /// `createBackupCipher` correctly handles an empty original cipher name,
+    /// producing a backup name of `" - yyyy-MM-dd HH:mm:ss"`.
+    func test_processPendingChanges_update_conflict_emptyNameBackup() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "cipher-1",
+                name: "",
+                revisionDate: originalRevisionDate
+            )
+        )
+        try await setupPendingChange(
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        let encryptedCiphers = clientService.mockVault.clientCiphers.encryptedCiphers
+        let backupName = try XCTUnwrap(encryptedCiphers.first?.name)
+        XCTAssertTrue(
+            backupName.hasPrefix(" - "),
+            "Empty name backup should start with ' - ', got: \(backupName)"
+        )
+    }
 } // swiftlint:disable:this file_length

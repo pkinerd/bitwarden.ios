@@ -2,7 +2,7 @@
 
 > **Issue:** #40 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Medium
-> **Status:** Triaged
+> **Status:** Accepted As-Is
 > **Source:** OfflineSyncCodeReview_Phase2.md (P2-T4)
 
 ## Problem Statement

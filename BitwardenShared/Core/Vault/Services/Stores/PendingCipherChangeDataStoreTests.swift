@@ -396,4 +396,44 @@ class PendingCipherChangeDataStoreTests: BitwardenTestCase {
             )
         }
     }
+
+    // MARK: deleteDataForUser Integration Tests
+
+    /// `deleteDataForUser(userId:)` removes all pending cipher changes for the specified user
+    /// and preserves pending changes belonging to other users.
+    func test_deleteDataForUser_deletesPendingCipherChanges() async throws {
+        try await subject.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .update,
+            cipherData: Data("cipher1".utf8),
+            originalRevisionDate: Date(year: 2024, month: 1, day: 1),
+            offlinePasswordChangeCount: 0
+        )
+        try await subject.upsertPendingChange(
+            cipherId: "cipher-2",
+            userId: "1",
+            changeType: .create,
+            cipherData: nil,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        try await subject.upsertPendingChange(
+            cipherId: "cipher-3",
+            userId: "2",
+            changeType: .softDelete,
+            cipherData: nil,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+
+        try await subject.deleteDataForUser(userId: "1")
+
+        let user1Changes = try await subject.fetchPendingChanges(userId: "1")
+        XCTAssertTrue(user1Changes.isEmpty)
+
+        let user2Changes = try await subject.fetchPendingChanges(userId: "2")
+        XCTAssertEqual(user2Changes.count, 1)
+        XCTAssertEqual(user2Changes.first?.cipherId, "cipher-3")
+    }
 }
