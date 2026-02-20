@@ -1,8 +1,10 @@
 # AP-39: resolveCreate Partial Failure -- Duplicate Cipher Scenario Test
 
+> **Status: [RESOLVED]** — Scenario is unrealistic. The `deleteCipherWithLocalStorage` failure required to trigger this path implies catastrophic local storage issues (Core Data store corruption, device-level I/O failure) where the entire app is broken, not just offline sync. Error handling cannot help if local storage is unwritable. The consequence (duplicate cipher) is non-catastrophic and involves no data loss. Accepted as won't-fix; same conclusion as RES-1 (#14).
+
 > **Issue:** #39 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Medium
-> **Status:** Triaged
+> **Status:** ~~Triaged~~ Resolved (won't-fix)
 > **Source:** OfflineSyncCodeReview_Phase2.md (P2-T2)
 
 ## Problem Statement

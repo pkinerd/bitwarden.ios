@@ -2,7 +2,7 @@
 
 > **Issue:** #46 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Resolved (Hypothetical — encoding cannot fail for these types)
 > **Source:** Review2/03_VaultRepository_Review.md (Reliability Concerns section)
 
 ## Problem Statement
@@ -97,6 +97,10 @@ Same pattern at:
 ## Recommendation
 
 **Option C: Accept As-Is.** The encoding cannot realistically fail for the types involved. If any action is taken, **Option A** (reorder to encode first) is a trivial improvement that makes the failure mode cleaner, but it addresses a scenario that will not occur in practice.
+
+## Resolution
+
+**Resolved as hypothetical (2026-02-20).** The action plan's own assessment confirms the encoding "cannot realistically fail given the types involved." `CipherDetailsResponseModel` is a standard `Codable` type with only strings, dates, integers, and nested Codable structs — no `Double.infinity` or other non-encodable values. The guard clauses prevent the only known throw condition (nil ID). The same encoding pattern is used throughout the app's cipher storage pipeline without issue. A `JSONEncoder` failure on valid in-memory data would require memory corruption, which would manifest as crashes throughout the app, not just in offline sync. This is the same class of impossibility as P2-T2.
 
 ## Dependencies
 

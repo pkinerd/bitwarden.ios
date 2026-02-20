@@ -87,7 +87,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | ~~**CS-2**~~ | RES-7 (attachment handling) | — **[Resolved]** Review comments added, property count guard tests added, copy methods consolidated into single `makeCopy` helper (28 properties). RES-7 attachment concern remains a known limitation. |
 | **R1** | — | R3 (both address stuck items), PCDS-1/PCDS-2 (schema changes) |
 | ~~**R2**~~ | — | ~~A3 (remove first for simpler migration)~~ **[A3 resolved]** — **[R2 Resolved]** Converted to `actor`; `conflictFolderId` state subsequently removed (conflict folder eliminated) |
-| **R3** | S8 (complementary), R1 (complementary), SS-2 (recovery), RES-1 (expire duplicates) | ~~S4 (test retry behavior)~~ **[S4 resolved]** — R3 tests would need new dedicated tests when implemented |
+| **R3** | S8 (complementary), R1 (complementary), SS-2 (recovery), ~~RES-1 (expire duplicates)~~ **[RES-1 resolved]** | ~~S4 (test retry behavior)~~ **[S4 resolved]** — R3 tests would need new dedicated tests when implemented |
 | **R4** | ~~T8 (distinguish abort vs error)~~ **[T8 resolved]** — R4 logging still independently valuable for production observability | R3 (log expired items), S8 (log flag state) |
 | **DI-1** | U3 (enables indicator) | — |
 | ~~**T6**~~ | — | ~~SEC-1 (classification change), EXT-1 (classification change)~~ **[Resolved]** — Extension and tests deleted |
@@ -96,7 +96,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **U3** | — | DI-1 (requires UI access), R3 (notify on expiry), R4 (abort notification) |
 | ~~**U4**~~ | — | — **[Superseded]** — Conflict folder removed; English-only name concern no longer applies |
 | **VR-2** | S7 (delete context) | U2 (consistency with other ops) |
-| **RES-1** | — | R3 (expire stuck creates) |
+| ~~**RES-1**~~ | — | ~~R3 (expire stuck creates)~~ **[Resolved]** — Hypothetical; same class as P2-T2; requires Core Data write failure after server success |
 | **RES-7** | — | ~~CS-2 (update method changes)~~ **[CS-2 resolved]** — `update(name:)` now uses consolidated `makeCopy` helper; attachment=nil behavior documented |
 | ~~**T5**~~ | ~~S3 (test quality), S4 (test quality)~~ | ~~CS-2 (same fragility class)~~ **[Both T5 and CS-2 Resolved]** — Maintenance comment added |
 | ~~**T7**~~ | — | ~~S6~~ **[Resolved]** — See [Resolved/AP-T7](Resolved/AP-T7_SubsequentOfflineEditTest.md) |

@@ -2,7 +2,7 @@
 
 > **Issue:** #47 from ConsolidatedOutstandingIssues.md
 > **Severity:** Low | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Resolved (Hypothetical — sub-millisecond window cannot be triggered)
 > **Source:** Review2/03_VaultRepository_Review.md (Reliability Concerns section)
 
 ## Problem Statement
@@ -110,6 +110,10 @@ This sequence is effectively impossible in practice because:
 ## Recommendation
 
 **Option C: Accept As-Is.** The scenario is not realistically possible. However, if any refactoring is done to the offline helpers for other reasons, **Option A** would be a clean improvement that makes all four helpers consistent in accepting `userId` as a parameter. It could be included as a minor cleanup during a larger change, but does not warrant a standalone change.
+
+## Resolution
+
+**Resolved as hypothetical (2026-02-20).** The action plan's own assessment confirms: "The scenario is not realistically possible." The time window between the catch and the handler is sub-millisecond. `stateService.getActiveAccountId()` returns stored state, not authentication state — even if the vault locks, the active account ID is still available. The only way this would fail is if the user's account was fully deleted from the device between the catch and the handler, which requires explicit UI interaction that cannot occur during an active async operation. No data is lost even in the failure case. This is the same class of hypothetical timing issue as P2-T2.
 
 ## Dependencies
 
