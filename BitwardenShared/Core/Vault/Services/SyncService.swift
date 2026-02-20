@@ -2,6 +2,7 @@ import BitwardenKit
 import BitwardenSdk
 import Combine
 import Foundation
+import OSLog
 
 // MARK: - SyncService
 
@@ -345,6 +346,9 @@ extension DefaultSyncService {
                 try await offlineSyncResolver.processPendingChanges(userId: userId)
                 let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
                 if remainingCount > 0 {
+                    Logger.application.info(
+                        "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
+                    )
                     return
                 }
             }
