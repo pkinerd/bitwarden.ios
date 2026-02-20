@@ -1129,12 +1129,12 @@ extension DefaultVaultRepository: VaultRepository {
         // Soft-delete locally
         try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
 
-        // cipherData is nil for soft-delete pending changes because the resolver
+        // cipherData is nil for delete pending changes because the resolver
         // only needs the cipher ID to issue the server API call.
         try await pendingCipherChangeDataStore.upsertPendingChange(
             cipherId: cipherId,
             userId: userId,
-            changeType: .softDelete,
+            changeType: .hardDelete,
             cipherData: nil,
             originalRevisionDate: cipher.revisionDate,
             offlinePasswordChangeCount: 0

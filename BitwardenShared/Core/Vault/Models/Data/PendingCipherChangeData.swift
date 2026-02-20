@@ -14,6 +14,9 @@ enum PendingCipherChangeType: Int16 {
 
     /// A soft delete of an existing cipher.
     case softDelete = 2
+
+    /// A hard (permanent) delete of an existing cipher.
+    case hardDelete = 3
 }
 
 // MARK: - PendingCipherChangeData

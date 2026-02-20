@@ -57,7 +57,22 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
         withID attachmentId: String,
         cipherId: String
     ) async throws -> DeleteAttachmentResponse { fatalError() }
-    func deleteCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
+    var deleteCipherError: Error?
+    var deleteCipherId: String?
+
+    func deleteCipher(withID id: String) async throws -> EmptyResponse {
+        deleteCipherId = id
+        if let deleteCipherError {
+            throw deleteCipherError
+        }
+        return try EmptyResponse(response: HTTPResponse(
+            url: URL(string: "https://example.com")!,
+            statusCode: 200,
+            headers: [:],
+            body: Data(),
+            requestID: UUID()
+        ))
+    }
     func downloadAttachment(
         withId id: String,
         cipherId: String

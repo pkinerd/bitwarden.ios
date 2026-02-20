@@ -491,8 +491,8 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     }
 
     /// `processPendingChanges(userId:)` with a `.softDelete` pending change where the
-    /// server revision date differs from the original (conflict) creates a backup of the
-    /// server version before completing the soft delete.
+    /// server revision date differs from the original (conflict) restores the server
+    /// version locally and drops the pending delete so the user can review and re-decide.
     func test_processPendingChanges_softDelete_conflict() async throws {
         let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
         let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
@@ -522,14 +522,174 @@ class OfflineSyncResolverTests: BitwardenTestCase {
 
         try await subject.processPendingChanges(userId: "1")
 
-        // Should create a backup of the server cipher before deleting.
-        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
+        // Should restore the server version locally.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.first?.id, "cipher-1")
 
-        // Should complete the soft delete via direct API call.
-        XCTAssertEqual(cipherAPIService.softDeleteCipherId, "cipher-1")
+        // Should NOT create a backup or call the soft delete API.
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+        XCTAssertNil(cipherAPIService.softDeleteCipherId)
 
         // Should delete the pending change record.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    // MARK: Tests - Hard Delete
+
+    /// `processPendingChanges(userId:)` with a `.hardDelete` change and no conflict
+    /// calls `cipherAPIService.deleteCipher(withID:)` (permanent) and deletes the pending change.
+    func test_processPendingChanges_hardDelete_noConflict() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .hardDelete,
+            cipherData: cipherData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher has the same revisionDate.
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Should call cipherAPIService.deleteCipher(withID:) (permanent delete).
+        XCTAssertEqual(cipherAPIService.deleteCipherId, "cipher-1")
+
+        // Should NOT call soft delete.
+        XCTAssertNil(cipherAPIService.softDeleteCipherId)
+
+        // Should delete the pending change record.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    /// `processPendingChanges(userId:)` with a `.hardDelete` pending change where the
+    /// server revision date differs from the original (conflict) restores the server
+    /// version locally and drops the pending delete so the user can review and re-decide.
+    func test_processPendingChanges_hardDelete_conflict() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            revisionDate: originalRevisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .hardDelete,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server cipher has a different revision date (triggers conflict).
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Should restore the server version locally.
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.count, 1)
+        XCTAssertEqual(cipherService.updateCipherWithLocalStorageCiphers.first?.id, "cipher-1")
+
+        // Should NOT create a backup or call any delete API.
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+        XCTAssertNil(cipherAPIService.deleteCipherId)
+        XCTAssertNil(cipherAPIService.softDeleteCipherId)
+
+        // Should delete the pending change record.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    /// `processPendingChanges(userId:)` with a `.hardDelete` pending change where the server
+    /// returns a 404 (cipher already deleted on server) cleans up the local record and
+    /// pending change without attempting the delete.
+    func test_processPendingChanges_hardDelete_cipherNotFound_cleansUp() async throws {
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .hardDelete,
+            cipherData: cipherData,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server returns 404 — cipher is already gone.
+        cipherAPIService.getCipherResult = .failure(OfflineSyncError.cipherNotFound)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Should clean up the local cipher record.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")
+
+        // Should NOT attempt to delete on the server.
+        XCTAssertNil(cipherAPIService.deleteCipherId)
+
+        // Should delete the pending change record.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    /// `processPendingChanges(userId:)` retains the pending record when a `.hardDelete`
+    /// resolution fails because `cipherAPIService.deleteCipher(withID:)` throws.
+    func test_processPendingChanges_hardDelete_apiFailure_pendingRecordRetained() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+        let cipherResponseModel = CipherDetailsResponseModel.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        )
+        let cipherData = try JSONEncoder().encode(cipherResponseModel)
+
+        let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
+        try await dataStore.upsertPendingChange(
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .hardDelete,
+            cipherData: cipherData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
+        )
+        let pendingChanges = try await dataStore.fetchPendingChanges(userId: "1")
+        pendingCipherChangeDataStore.fetchPendingChangesResult = pendingChanges
+
+        // Server fetch succeeds with the same revisionDate (no conflict).
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: revisionDate
+        ))
+
+        // Make the hard delete API call fail.
+        cipherAPIService.deleteCipherError = BitwardenTestError.example
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The pending record should NOT be deleted.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
     }
 
     // MARK: Tests - Cipher Not Found (404)
