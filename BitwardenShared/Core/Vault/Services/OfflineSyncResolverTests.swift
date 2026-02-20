@@ -540,18 +540,13 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     /// calls `cipherAPIService.deleteCipher(withID:)` (permanent) and deletes the pending change.
     func test_processPendingChanges_hardDelete_noConflict() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
-        let cipherResponseModel = CipherDetailsResponseModel.fixture(
-            id: "cipher-1",
-            revisionDate: revisionDate
-        )
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
         let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1",
             userId: "1",
             changeType: .hardDelete,
-            cipherData: cipherData,
+            cipherData: nil,
             originalRevisionDate: revisionDate,
             offlinePasswordChangeCount: 0
         )
@@ -582,18 +577,13 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_hardDelete_conflict() async throws {
         let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
         let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
-        let cipherResponseModel = CipherDetailsResponseModel.fixture(
-            id: "cipher-1",
-            revisionDate: originalRevisionDate
-        )
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
         let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1",
             userId: "1",
             changeType: .hardDelete,
-            cipherData: cipherData,
+            cipherData: nil,
             originalRevisionDate: originalRevisionDate,
             offlinePasswordChangeCount: 0
         )
@@ -625,15 +615,12 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     /// returns a 404 (cipher already deleted on server) cleans up the local record and
     /// pending change without attempting the delete.
     func test_processPendingChanges_hardDelete_cipherNotFound_cleansUp() async throws {
-        let cipherResponseModel = CipherDetailsResponseModel.fixture(id: "cipher-1")
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
-
         let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1",
             userId: "1",
             changeType: .hardDelete,
-            cipherData: cipherData,
+            cipherData: nil,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
             offlinePasswordChangeCount: 0
         )
@@ -659,18 +646,13 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     /// resolution fails because `cipherAPIService.deleteCipher(withID:)` throws.
     func test_processPendingChanges_hardDelete_apiFailure_pendingRecordRetained() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
-        let cipherResponseModel = CipherDetailsResponseModel.fixture(
-            id: "cipher-1",
-            revisionDate: revisionDate
-        )
-        let cipherData = try JSONEncoder().encode(cipherResponseModel)
 
         let dataStore = DataStore(errorReporter: MockErrorReporter(), storeType: .memory)
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1",
             userId: "1",
             changeType: .hardDelete,
-            cipherData: cipherData,
+            cipherData: nil,
             originalRevisionDate: revisionDate,
             offlinePasswordChangeCount: 0
         )

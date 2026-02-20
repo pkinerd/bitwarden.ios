@@ -1126,7 +1126,7 @@ extension DefaultVaultRepository: VaultRepository {
             throw originalError
         }
 
-        // Soft-delete locally
+        // Delete locally
         try await cipherService.deleteCipherWithLocalStorage(id: cipherId)
 
         // cipherData is nil for delete pending changes because the resolver
