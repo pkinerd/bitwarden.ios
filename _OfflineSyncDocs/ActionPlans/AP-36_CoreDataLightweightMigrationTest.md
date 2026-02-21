@@ -2,7 +2,7 @@
 
 > **Issue:** #36 from ConsolidatedOutstandingIssues.md
 > **Severity:** Medium | **Complexity:** Medium
-> **Status:** Triaged
+> **Status:** Accepted As-Is
 > **Source:** Review2/08_TestCoverage_Review.md
 
 ## Problem Statement

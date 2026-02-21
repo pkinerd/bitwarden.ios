@@ -85,8 +85,8 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertTrue(cipherService.updateCipherWithServerCiphers.isEmpty)
     }
 
-    /// `processPendingChanges(userId:)` with a `.create` pending change calls `addCipherWithServer`
-    /// and then deletes the pending change record.
+    /// `processPendingChanges(userId:)` with a `.create` pending change calls `addCipherWithServer`,
+    /// deletes the old temp-ID record from local storage, and then deletes the pending change record.
     func test_processPendingChanges_create() async throws {
         let cipherData = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-1"))
         try await setupPendingChange(changeType: .create, cipherData: cipherData)
@@ -96,6 +96,9 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
         XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "cipher-1")
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+
+        // The old temp-ID record should be cleaned up from local storage.
+        XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")
     }
 
     /// `processPendingChanges(userId:)` with a `.update` pending change where the server
@@ -868,4 +871,218 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // No pending records should be deleted since both failed.
         XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
     }
-}
+
+    // MARK: Corrupt cipherData Tests
+
+    /// `processPendingChanges(userId:)` with a `.create` pending change containing corrupt
+    /// (non-JSON) `cipherData` logs the error, does not crash, and retains the pending record.
+    func test_processPendingChanges_create_corruptCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(
+            changeType: .create,
+            cipherData: Data("not-valid-json".utf8)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The cipher should NOT have been sent to the server.
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+
+        // The pending record should be retained for retry (not deleted).
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with an `.update` pending change containing corrupt
+    /// (non-JSON) `cipherData` logs the error, does not crash, and retains the pending record.
+    func test_processPendingChanges_update_corruptCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(
+            cipherId: "cipher-1",
+            changeType: .update,
+            cipherData: Data("not-valid-json".utf8),
+            originalRevisionDate: Date(year: 2026, month: 1, day: 1)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // The server cipher fetch should NOT have been attempted (decode fails first).
+        XCTAssertTrue(cipherAPIService.getCipherCalledWith.isEmpty)
+
+        // The pending record should be retained for retry.
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with a batch containing one corrupt and one valid
+    /// pending change resolves the valid item and skips the corrupt one.
+    func test_processPendingChanges_batch_corruptAndValid_validItemResolves() async throws {
+        // First item: corrupt cipherData (will fail to decode).
+        try await dataStore.upsertPendingChange(
+            cipherId: "corrupt-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: Data("{invalid".utf8),
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+
+        // Second item: valid cipherData (will succeed).
+        let validData = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "valid-1"))
+        try await dataStore.upsertPendingChange(
+            cipherId: "valid-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: validData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
+        )
+        pendingCipherChangeDataStore.fetchPendingChangesResult =
+            try await dataStore.fetchPendingChanges(userId: "1")
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Only the valid item should have been sent to the server.
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.count, 1)
+        XCTAssertEqual(cipherService.addCipherWithServerCiphers.first?.id, "valid-1")
+
+        // Only the valid item's pending record should be deleted.
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+
+    // MARK: Guard Clause Tests
+
+    /// `processPendingChanges(userId:)` with a `.create` pending change where `cipherData` is
+    /// nil throws `missingCipherData`, logs the error, and retains the pending record.
+    func test_processPendingChanges_create_nilCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(changeType: .create, cipherData: nil)
+
+        try await subject.processPendingChanges(userId: "1")
+
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with an `.update` pending change where `cipherData` is
+    /// nil throws `missingCipherData`, does not fetch the server cipher, and retains the record.
+    func test_processPendingChanges_update_nilCipherData_skipsAndRetains() async throws {
+        try await setupPendingChange(
+            cipherId: "cipher-1",
+            changeType: .update,
+            cipherData: nil,
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        XCTAssertTrue(cipherAPIService.getCipherCalledWith.isEmpty)
+        XCTAssertTrue(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.isEmpty)
+    }
+
+    /// `processPendingChanges(userId:)` with an `.update` where `originalRevisionDate` is nil
+    /// does not detect a conflict even when the server cipher has a different revision date.
+    func test_processPendingChanges_update_nilOriginalRevisionDate_noConflict() async throws {
+        let revisionDate = Date(year: 2024, month: 6, day: 1)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+        )
+        try await setupPendingChange(
+            cipherId: "cipher-1",
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: nil
+        )
+
+        // Server has a different revision date, but originalRevisionDate is nil.
+        let serverRevision = Date(year: 2024, month: 7, day: 15)
+        cipherAPIService.getCipherResult = .success(
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: serverRevision)
+        )
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Should take the no-conflict path: updateCipherWithServer, no backup.
+        XCTAssertEqual(cipherService.updateCipherWithServerCiphers.count, 1)
+        XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
+        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
+    }
+    // MARK: Backup Naming Tests
+
+    /// `createBackupCipher` produces a backup name following the pattern
+    /// `"<original name> - yyyy-MM-dd HH:mm:ss"` during conflict resolution.
+    func test_processPendingChanges_update_conflict_backupNameFormat() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        // Use a far-future server date so server wins, creating a backup of the local cipher.
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "cipher-1",
+                name: "My Secret Login",
+                revisionDate: originalRevisionDate
+            )
+        )
+        try await setupPendingChange(
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            name: "Server Version",
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        // Verify backup was created with the expected name format.
+        let encryptedCiphers = clientService.mockVault.clientCiphers.encryptedCiphers
+        let backupCipher = encryptedCiphers.first
+        XCTAssertNotNil(backupCipher)
+
+        let backupName = try XCTUnwrap(backupCipher?.name)
+        XCTAssertTrue(
+            backupName.hasPrefix("My Secret Login - "),
+            "Backup name should start with original name + separator, got: \(backupName)"
+        )
+        // Verify the timestamp suffix matches the expected date format.
+        let timestampSuffix = String(backupName.dropFirst("My Secret Login - ".count))
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        XCTAssertNotNil(
+            dateFormatter.date(from: timestampSuffix),
+            "Timestamp suffix '\(timestampSuffix)' should parse as yyyy-MM-dd HH:mm:ss"
+        )
+    }
+
+    /// `createBackupCipher` correctly handles an empty original cipher name,
+    /// producing a backup name of `" - yyyy-MM-dd HH:mm:ss"`.
+    func test_processPendingChanges_update_conflict_emptyNameBackup() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "cipher-1",
+                name: "",
+                revisionDate: originalRevisionDate
+            )
+        )
+        try await setupPendingChange(
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        let encryptedCiphers = clientService.mockVault.clientCiphers.encryptedCiphers
+        let backupName = try XCTUnwrap(encryptedCiphers.first?.name)
+        XCTAssertTrue(
+            backupName.hasPrefix(" - "),
+            "Empty name backup should start with ' - ', got: \(backupName)"
+        )
+    }
+} // swiftlint:disable:this file_length

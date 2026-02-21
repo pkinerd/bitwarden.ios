@@ -2,7 +2,7 @@
 
 > **Issue:** #77 from ConsolidatedOutstandingIssues.md
 > **Severity:** Medium | **Complexity:** Medium
-> **Status:** Triaged
+> **Status:** Deferred
 > **Source:** OfflineSyncPlan.md
 
 ## Problem Statement

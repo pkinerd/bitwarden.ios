@@ -2,7 +2,7 @@
 
 > **Issue:** #41 from ConsolidatedOutstandingIssues.md
 > **Severity:** Medium | **Complexity:** Low
-> **Status:** Triaged
+> **Status:** Accepted As-Is
 > **Source:** ReviewSection_TestChanges.md (TC-6 / Deep Dive 6)
 
 ## Problem Statement

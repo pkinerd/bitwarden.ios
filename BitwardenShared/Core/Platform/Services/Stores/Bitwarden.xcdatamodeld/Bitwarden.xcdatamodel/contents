@@ -46,7 +46,7 @@
         <attribute name="id" attributeType="String"/>
         <attribute name="cipherId" attributeType="String"/>
         <attribute name="userId" attributeType="String"/>
-        <attribute name="changeTypeRaw" attributeType="String" defaultValueString="update"/>
+        <attribute name="changeTypeRaw" optional="YES" attributeType="String"/>
         <attribute name="cipherData" optional="YES" attributeType="Binary"/>
         <attribute name="originalRevisionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="createdDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
