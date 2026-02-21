@@ -106,21 +106,29 @@ useful for tracking decisions or recording issues that were already resolved.
    to 4 digits. If `--closed` was specified, set `status: closed` and add
    `closed: <YYYY-MM-DD>` (today's date) to the frontmatter.
 
-5. Update `/tmp/claude-issues/state.json` — increment `next_id`.
+5. Read then update `/tmp/claude-issues/state.json` — increment `next_id`.
 
-6. Update `/tmp/claude-issues/INDEX.md` — add a new row to the table. If the
-   table contains the "*No issues yet.*" placeholder, remove it first. If
-   `--closed`, the status column should show `closed`.
+6. Read then update `/tmp/claude-issues/INDEX.md` — add a new row to the
+   table. If the table contains the "*No issues yet.*" placeholder, remove it
+   first. If `--closed`, the status column should show `closed`.
+
+   **Note:** The Write tool requires a prior Read of the file. Always read
+   existing worktree files (state.json, INDEX.md, issue files) before writing
+   to them.
 
 7. Commit and push to the session-scoped branch:
    ```bash
    cd /tmp/claude-issues
    git add -A
-   git commit -m "Create issue #<id>: <title>"
-   git push origin HEAD:claude/issues-<suffix>
+   git -c commit.gpgsign=false commit -m "Create issue #<id>: <title>"
+   git push origin HEAD:refs/heads/claude/issues-<suffix>
    ```
    Where `<suffix>` is the session suffix determined in Step 1. A GitHub Action
    will automatically merge this into `claude/issues`.
+
+   **Note:** The worktree uses a detached HEAD, so `commit.gpgsign=false` is
+   needed to avoid signing failures, and the push destination must use the full
+   refname (`refs/heads/...`) for git to resolve it correctly.
 
 8. Clean up:
    ```bash
@@ -134,8 +142,8 @@ useful for tracking decisions or recording issues that were already resolved.
 
 1. Set up a temporary worktree (same as create step 3).
 2. Ask the user what to change (title, status, labels, priority, description).
-3. Edit the issue file in the worktree.
-4. Update INDEX.md if title, status, labels, or priority changed.
+3. Read then edit the issue file in the worktree.
+4. Read then update INDEX.md if title, status, labels, or priority changed.
 5. Commit: `Update issue #<id>: <description of change>`
 6. Push and clean up (same as create steps 7-8).
 
@@ -143,7 +151,7 @@ useful for tracking decisions or recording issues that were already resolved.
 
 1. Set up a temporary worktree (same as create step 3).
 2. Ask the user for the comment text if not already provided.
-3. Append the comment to the `## Comments` section of the issue file:
+3. Read the issue file, then append the comment to the `## Comments` section:
    ```markdown
    ### <author> — <YYYY-MM-DD>
 
@@ -157,10 +165,10 @@ useful for tracking decisions or recording issues that were already resolved.
 #### Close Issue
 
 1. Set up a temporary worktree (same as create step 3).
-2. Update the issue file:
+2. Read then update the issue file:
    - Change `status: open` (or `status: in-progress`) to `status: closed`
    - Add `closed: <YYYY-MM-DD>` to the frontmatter
-3. Update the status column in INDEX.md.
+3. Read then update the status column in INDEX.md.
 4. Commit: `Close issue #<id>: <title>`
 5. Push and clean up (same as create steps 7-8).
 6. Confirm closure to the user.
@@ -168,12 +176,12 @@ useful for tracking decisions or recording issues that were already resolved.
 #### Reopen Issue
 
 1. Set up a temporary worktree (same as create step 3).
-2. Verify the issue currently has `status: closed`. If it is already open or
-   in-progress, inform the user and skip.
+2. Read the issue file and verify it currently has `status: closed`. If it is
+   already open or in-progress, inform the user and skip.
 3. Update the issue file:
    - Change `status: closed` to `status: open`
    - Remove the `closed: <date>` line from the frontmatter
-4. Update the status column in INDEX.md.
+4. Read then update the status column in INDEX.md.
 5. Commit: `Reopen issue #<id>: <title>`
 6. Push and clean up (same as create steps 7-8).
 7. Confirm reopening to the user.
@@ -240,8 +248,9 @@ search.
 1. Ask the user for the document content if not already provided (they may
    provide it inline or reference content from the current session).
 2. Set up a temporary worktree (same as create step 3).
-3. Write the file to `/tmp/claude-issues/docs/<name>`. If `<name>` doesn't
-   include an extension, default to `.md`.
+3. If the file already exists, read it first. Then write the file to
+   `/tmp/claude-issues/docs/<name>`. If `<name>` doesn't include an extension,
+   default to `.md`.
 4. Commit: `Add doc: <name>` (or `Update doc: <name>` if the file already
    exists).
 5. Push and clean up (same as create steps 7-8).
