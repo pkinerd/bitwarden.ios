@@ -18,7 +18,7 @@
 
 ### Overview
 
-`VaultRepository` is the central repository for vault operations. The offline sync changes modify four existing methods (`addCipher`, `updateCipher`, `deleteCipher`, `softDeleteCipher`) to catch network errors and fall back to offline storage, and add four new private helper methods (`handleOfflineAdd`, `handleOfflineUpdate`, `handleOfflineDelete`, `handleOfflineSoftDelete`).
+`VaultRepository` is the central repository for vault operations. The offline sync changes modify four existing methods (`addCipher`, `updateCipher`, `deleteCipher`, `softDeleteCipher`) to catch network errors and fall back to offline storage, and add four new private helper methods (`handleOfflineAdd`, `handleOfflineUpdate`, `handleOfflineDelete`, `handleOfflineSoftDelete`) plus one shared helper (`cleanUpOfflineCreatedCipherIfNeeded`).
 
 A new dependency `pendingCipherChangeDataStore: PendingCipherChangeDataStore` is added to the repository.
 
@@ -151,17 +151,13 @@ Parameters: encryptedCipher: Cipher, userId: String
 Parameters: cipherView: CipherView, encryptedCipher: Cipher, userId: String
 
 1. Guard let cipherId = encryptedCipher.id
-2. Persist locally via cipherService.updateCipherWithLocalStorage(encryptedCipher)
-3. Convert to CipherDetailsResponseModel → JSON-encode
-4. Fetch existing pending change for this cipher/user
-5. Get current passwordChangeCount from existing record (or 0)
-6. Password change detection:
-   a. If existing pending record has cipherData:
-      → Decode → Cipher → decrypt → compare passwords
-      → If different: increment count
-   b. Else (first offline edit):
-      → Fetch cipher from local storage → decrypt → compare passwords
-      → If different: increment count
+2. Fetch existing pending change for this cipher/user
+3. Get current passwordChangeCount from existing record (or 0)
+4. Password change detection (before persisting new version):
+   → Fetch current cipher from local storage → decrypt → compare login?.password
+   → If different: increment count
+5. Persist locally via cipherService.updateCipherWithLocalStorage(encryptedCipher)
+6. Convert to CipherDetailsResponseModel → JSON-encode
 7. originalRevisionDate = existing?.originalRevisionDate ?? encryptedCipher.revisionDate
 8. [New] Determine changeType: if existing pending record has changeType == .create, preserve .create; otherwise use .update
 9. Upsert pending change: changeType = determined type, with updated data and counts
@@ -171,12 +167,9 @@ Parameters: cipherView: CipherView, encryptedCipher: Cipher, userId: String
 
 **Password Change Detection Logic (lines 1075-1082):**
 
-This is the most complex part of the offline handling. It needs to determine if the current edit changed the password from the previous version. There are two cases:
+This detects whether the current edit changed the password from the previous version. The logic always fetches the current cipher from local storage (`cipherService.fetchCipher(withId:)`), decrypts it, and compares `login?.password` with the new `cipherView.login?.password`. This comparison must happen **before** `updateCipherWithLocalStorage` overwrites the previous version. If the passwords differ, `passwordChangeCount` is incremented (starting from the existing pending record's count, or 0 if no prior pending record exists).
 
-- **Subsequent offline edit (existing pending record):** Decodes the previous pending cipher data, decrypts it, and compares `login?.password` with the new `cipherView.login?.password`.
-- **First offline edit (no existing pending record):** Fetches the current cipher from local storage, decrypts it, and compares.
-
-Both comparisons happen entirely in-memory. The decrypted values are not persisted.
+The comparison happens entirely in-memory. The decrypted values are not persisted.
 
 **Note on `originalRevisionDate`:** When this is the first offline edit, `originalRevisionDate` is set to `encryptedCipher.revisionDate` (the cipher's revision date at the time of the edit). For subsequent edits, the existing pending record's `originalRevisionDate` is preserved (via the fallback to `existing?.originalRevisionDate`). However, the upsert call still passes the value, and the `PendingCipherChangeDataStore.upsertPendingChange` implementation ignores it for updates (it preserves the existing value). This is a belt-and-suspenders approach.
 
@@ -268,7 +261,7 @@ This creates an inconsistency: add, update, delete, and soft-delete work offline
 | Guideline | Status | Details |
 |-----------|--------|---------|
 | MARK comments | **Pass** | `// MARK: Offline Helpers` groups the new private methods |
-| DocC documentation | **Pass** | All four private helper methods have DocC with parameter docs |
+| DocC documentation | **Pass** | All five private helper methods (including `cleanUpOfflineCreatedCipherIfNeeded`) have DocC with parameter docs |
 | Guard clauses for early returns | **Pass** | Used in `handleOfflineAdd` (cipherId guard), `handleOfflineDelete` (nil guard, org guard) |
 | American English | **Pass** | "organization" used consistently |
 | Error handling pattern | **Pass** | **[Updated]** Denylist catch pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save. The encrypt step occurs outside the do-catch, so SDK errors propagate normally. |

@@ -547,7 +547,7 @@ Declared as an `actor` (not a `class`) for thread safety.
 
 #### Constants
 
-- `softConflictPasswordChangeThreshold: Int16 = 4` (line 60) — number of password changes that triggers a precautionary backup even without a server conflict
+- `softConflictPasswordChangeThreshold: Int64 = 4` (line 60) — number of password changes that triggers a precautionary backup even without a server conflict **[Corrected 2026-02-21]** Originally documented as `Int16`; final type is `Int64` to match the `offlinePasswordChangeCount` property type.
 
 ~~#### Cached State~~
 
@@ -1285,7 +1285,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | `Core/Platform/Services/Stores/DataStore.swift` | +1 | 0 | User data cleanup |
 | `Core/Platform/Services/TestHelpers/ServiceContainer+Mocks.swift` | +4 | 0 | Mock defaults |
 | `Core/Vault/Repositories/VaultRepository.swift` | +213 | −10 | Offline fallback handlers |
-| `Core/Vault/Repositories/VaultRepositoryTests.swift` | +590 | 0 | Offline fallback tests (32 test methods; initial +132, expanded across Phase 2 commits) |
+| `Core/Vault/Repositories/VaultRepositoryTests.swift` | +590 | 0 | Offline fallback tests (41 test methods **[Corrected 2026-02-21]**; initial +132, expanded across Phase 2 commits including feature flag and resolution flag tests) |
 | `Core/Vault/Services/SyncService.swift` | +27 | −1 | Pre-sync resolution |
-| `Core/Vault/Services/SyncServiceTests.swift` | +81 | 0 | Pre-sync tests (5 test methods; initial +66, expanded by T8 resolution) |
+| `Core/Vault/Services/SyncServiceTests.swift` | +81 | 0 | Pre-sync tests (7 test methods **[Corrected 2026-02-21]**; initial +66, expanded by T8 resolution and feature flag tests) |
 | `Bitwarden.xcdatamodel/contents` | +17 | 0 | Core Data entity |
