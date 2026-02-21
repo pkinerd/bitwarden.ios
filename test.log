@@ -1,0 +1,204 @@
+﻿2026-02-21T23:11:16.2416760Z Current runner version: '2.331.0'
+2026-02-21T23:11:16.2442710Z ##[group]Runner Image Provisioner
+2026-02-21T23:11:16.2443330Z Hosted Compute Agent
+2026-02-21T23:11:16.2443690Z Version: 20260213.493
+2026-02-21T23:11:16.2444100Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-02-21T23:11:16.2444550Z Build Date: 2026-02-13T00:28:41Z
+2026-02-21T23:11:16.2444980Z Worker ID: {3d2ce007-15c5-4f0b-be51-022b7a5c236e}
+2026-02-21T23:11:16.2445420Z Azure Region: westus
+2026-02-21T23:11:16.2445770Z ##[endgroup]
+2026-02-21T23:11:16.2448660Z ##[group]Operating System
+2026-02-21T23:11:16.2449180Z macOS
+2026-02-21T23:11:16.2449480Z 26.3
+2026-02-21T23:11:16.2449770Z 25D125
+2026-02-21T23:11:16.2450060Z ##[endgroup]
+2026-02-21T23:11:16.2450370Z ##[group]Runner Image
+2026-02-21T23:11:16.2450710Z Image: macos-26-arm64
+2026-02-21T23:11:16.2451040Z Version: 20260218.0219.1
+2026-02-21T23:11:16.2451960Z Included Software: https://github.com/actions/runner-images/blob/macos-26-arm64/20260218.0219/images/macos/macos-26-arm64-Readme.md
+2026-02-21T23:11:16.2452960Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-26-arm64%2F20260218.0219
+2026-02-21T23:11:16.2453570Z ##[endgroup]
+2026-02-21T23:11:16.2454250Z ##[group]GITHUB_TOKEN Permissions
+2026-02-21T23:11:16.2455770Z Contents: read
+2026-02-21T23:11:16.2456090Z Metadata: read
+2026-02-21T23:11:16.2456440Z ##[endgroup]
+2026-02-21T23:11:16.2457990Z Secret source: Actions
+2026-02-21T23:11:16.2459310Z Prepare workflow directory
+2026-02-21T23:11:16.3006510Z Prepare all required actions
+2026-02-21T23:11:16.3035630Z Getting action download info
+2026-02-21T23:11:16.6855460Z Download action repository 'bitwarden/ios@main' (SHA:f576389388e671cfa9ead91fe6375f90cf1e3f97)
+2026-02-21T23:11:26.8607140Z Download action repository 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' (SHA:08c6903cd8c0fde910a37f88322edcfb5dd907a8)
+2026-02-21T23:11:26.9521130Z Download action repository 'maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd' (SHA:60606e260d2fc5762a71e64e74b2174e8ea3c8bd)
+2026-02-21T23:11:28.1493090Z Download action repository 'ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb' (SHA:44511735964dcb71245e7e55f72539531f7bc0eb)
+2026-02-21T23:11:29.5971830Z Download action repository 'actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809' (SHA:0400d5f644dc74513175e3cd8d07132dd4860809)
+2026-02-21T23:11:29.6940380Z Download action repository 'actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4' (SHA:330a01c490aca151604b8cf639adc76d48f6c5d4)
+2026-02-21T23:11:29.8098540Z Download action repository 'appetizeio/github-action-appetize@v1.0.5' (SHA:ad90cd939d77bd5234ee5354ef7780e0bf4b7eaa)
+2026-02-21T23:11:31.5845260Z Complete job name: Test
+2026-02-21T23:11:31.6203050Z ##[group]Run bitwarden/ios/.github/actions/log-inputs@main
+2026-02-21T23:11:31.6203590Z with:
+2026-02-21T23:11:31.6203710Z   inputs: {}
+2026-02-21T23:11:31.6203930Z env:
+2026-02-21T23:11:31.6204060Z   MINT_LINK_PATH: .mint/bin
+2026-02-21T23:11:31.6204220Z   MINT_PATH: .mint/lib
+2026-02-21T23:11:31.6204410Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-21T23:11:31.6204630Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-21T23:11:31.6204910Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-21T23:11:31.6205120Z   _SIMULATOR_NAME: 
+2026-02-21T23:11:31.6205250Z   _SIMULATOR_VERSION: 
+2026-02-21T23:11:31.6205380Z   _XCODE_VERSION: 
+2026-02-21T23:11:31.6205500Z   _COMPILER_FLAGS: 
+2026-02-21T23:11:31.6205830Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22266179482/attempts/1
+2026-02-21T23:11:31.6206170Z ##[endgroup]
+2026-02-21T23:11:31.6276660Z ##[group]Run {
+2026-02-21T23:11:31.6276860Z [36;1m{[0m
+2026-02-21T23:11:31.6277070Z [36;1m  echo "<details><summary>Job Inputs</summary>"[0m
+2026-02-21T23:11:31.6277290Z [36;1m  echo ""[0m
+2026-02-21T23:11:31.6277420Z [36;1m  echo '```json'[0m
+2026-02-21T23:11:31.6277570Z [36;1m  echo "$INPUTS"[0m
+2026-02-21T23:11:31.6277720Z [36;1m  echo '```'[0m
+2026-02-21T23:11:31.6278240Z [36;1m  echo "</details>"[0m
+2026-02-21T23:11:31.6278420Z [36;1m} >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-21T23:11:31.6319900Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-02-21T23:11:31.6320140Z env:
+2026-02-21T23:11:31.6320270Z   MINT_LINK_PATH: .mint/bin
+2026-02-21T23:11:31.6320420Z   MINT_PATH: .mint/lib
+2026-02-21T23:11:31.6320580Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-21T23:11:31.6320800Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-21T23:11:31.6321050Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-21T23:11:31.6321260Z   _SIMULATOR_NAME: 
+2026-02-21T23:11:31.6321450Z   _SIMULATOR_VERSION: 
+2026-02-21T23:11:31.6321590Z   _XCODE_VERSION: 
+2026-02-21T23:11:31.6321720Z   _COMPILER_FLAGS: 
+2026-02-21T23:11:31.6322060Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22266179482/attempts/1
+2026-02-21T23:11:31.6322390Z   INPUTS: {}
+2026-02-21T23:11:31.6322510Z ##[endgroup]
+2026-02-21T23:11:31.6814330Z ##[group]Run actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+2026-02-21T23:11:31.6814720Z with:
+2026-02-21T23:11:31.6814850Z   persist-credentials: false
+2026-02-21T23:11:31.6815030Z   repository: pkinerd/bitwarden.ios
+2026-02-21T23:11:31.6815360Z   token: ***
+2026-02-21T23:11:31.6815490Z   ssh-strict: true
+2026-02-21T23:11:31.6815620Z   ssh-user: git
+2026-02-21T23:11:31.6815770Z   clean: true
+2026-02-21T23:11:31.6815920Z   sparse-checkout-cone-mode: true
+2026-02-21T23:11:31.6816090Z   fetch-depth: 1
+2026-02-21T23:11:31.6816230Z   fetch-tags: false
+2026-02-21T23:11:31.6816390Z   show-progress: true
+2026-02-21T23:11:31.6816570Z   lfs: false
+2026-02-21T23:11:31.6816700Z   submodules: false
+2026-02-21T23:11:31.6816870Z   set-safe-directory: true
+2026-02-21T23:11:31.6817110Z env:
+2026-02-21T23:11:31.6817250Z   MINT_LINK_PATH: .mint/bin
+2026-02-21T23:11:31.6817410Z   MINT_PATH: .mint/lib
+2026-02-21T23:11:31.6817600Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-21T23:11:31.6817910Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-21T23:11:31.6818180Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-21T23:11:31.6818410Z   _SIMULATOR_NAME: 
+2026-02-21T23:11:31.6818570Z   _SIMULATOR_VERSION: 
+2026-02-21T23:11:31.6818740Z   _XCODE_VERSION: 
+2026-02-21T23:11:31.6818880Z   _COMPILER_FLAGS: 
+2026-02-21T23:11:31.6819200Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22266179482/attempts/1
+2026-02-21T23:11:31.6819560Z ##[endgroup]
+2026-02-21T23:11:32.0795210Z Syncing repository: pkinerd/bitwarden.ios
+2026-02-21T23:11:32.0796250Z ##[group]Getting Git version info
+2026-02-21T23:11:32.0796560Z Working directory is '/Users/runner/work/bitwarden.ios/bitwarden.ios'
+2026-02-21T23:11:32.0797000Z [command]/opt/homebrew/bin/git version
+2026-02-21T23:11:32.1016300Z git version 2.53.0
+2026-02-21T23:11:32.1026730Z ##[endgroup]
+2026-02-21T23:11:32.1037270Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/81bfa63e-bb30-48b1-84ad-692028914861/.gitconfig'
+2026-02-21T23:11:32.1041000Z Temporarily overriding HOME='/Users/runner/work/_temp/81bfa63e-bb30-48b1-84ad-692028914861' before making global git config changes
+2026-02-21T23:11:32.1041790Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-21T23:11:32.1044930Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-21T23:11:32.1168890Z Deleting the contents of '/Users/runner/work/bitwarden.ios/bitwarden.ios'
+2026-02-21T23:11:32.1169850Z ##[group]Initializing the repository
+2026-02-21T23:11:32.1170360Z [command]/opt/homebrew/bin/git init /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-21T23:11:32.1426220Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-02-21T23:11:32.1535090Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-02-21T23:11:32.1636840Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-02-21T23:11:32.1759000Z hint: call:
+2026-02-21T23:11:32.1813500Z hint:
+2026-02-21T23:11:32.1907920Z hint: 	git config --global init.defaultBranch <name>
+2026-02-21T23:11:32.1973110Z hint:
+2026-02-21T23:11:32.1976780Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-02-21T23:11:32.1977380Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-02-21T23:11:32.1977790Z hint:
+2026-02-21T23:11:32.1978070Z hint: 	git branch -m <name>
+2026-02-21T23:11:32.1979580Z hint:
+2026-02-21T23:11:32.1982310Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-02-21T23:11:32.1990350Z Initialized empty Git repository in /Users/runner/work/bitwarden.ios/bitwarden.ios/.git/
+2026-02-21T23:11:32.1991670Z [command]/opt/homebrew/bin/git remote add origin https://github.com/pkinerd/bitwarden.ios
+2026-02-21T23:11:32.1992670Z ##[endgroup]
+2026-02-21T23:11:32.1993080Z ##[group]Disabling automatic garbage collection
+2026-02-21T23:11:32.1994030Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-02-21T23:11:32.1994950Z ##[endgroup]
+2026-02-21T23:11:32.1995300Z ##[group]Setting up auth
+2026-02-21T23:11:32.1995710Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-21T23:11:32.1996970Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-21T23:11:32.3191200Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-21T23:11:32.3356360Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-21T23:11:32.4336590Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-02-21T23:11:32.4349360Z ##[endgroup]
+2026-02-21T23:11:32.4349860Z ##[group]Fetching the repository
+2026-02-21T23:11:32.4355030Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +1ffe2bcddb3ca5fec629c15e7cb2c261924de79d:refs/remotes/origin/dev
+2026-02-21T23:11:37.3539280Z ##[error]The operation was canceled.
+2026-02-21T23:11:37.3674460Z ##[group]Run xcresultparser -o cli "$_TESTS_RESULT_BUNDLE_PATH"
+2026-02-21T23:11:37.3674880Z [36;1mxcresultparser -o cli "$_TESTS_RESULT_BUNDLE_PATH"[0m
+2026-02-21T23:11:37.3675190Z [36;1mecho "# Test Summary" >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-21T23:11:37.3675580Z [36;1mxcresultparser -f -o txt "$_TESTS_RESULT_BUNDLE_PATH" | grep "Number of" >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-21T23:11:37.3728150Z shell: /bin/bash -e {0}
+2026-02-21T23:11:37.3728400Z env:
+2026-02-21T23:11:37.3728540Z   MINT_LINK_PATH: .mint/bin
+2026-02-21T23:11:37.3728710Z   MINT_PATH: .mint/lib
+2026-02-21T23:11:37.3728880Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-21T23:11:37.3729190Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-21T23:11:37.3729480Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-21T23:11:37.3729770Z   _SIMULATOR_NAME: 
+2026-02-21T23:11:37.3729920Z   _SIMULATOR_VERSION: 
+2026-02-21T23:11:37.3730140Z   _XCODE_VERSION: 
+2026-02-21T23:11:37.3730410Z   _COMPILER_FLAGS: 
+2026-02-21T23:11:37.3730760Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22266179482/attempts/1
+2026-02-21T23:11:37.3731100Z ##[endgroup]
+2026-02-21T23:11:37.4161660Z /Users/runner/work/_temp/064865d3-7766-4411-860b-8467161b4aaf.sh: line 1: xcresultparser: command not found
+2026-02-21T23:11:37.4164860Z ##[error]Process completed with exit code 127.
+2026-02-21T23:11:37.4233550Z ##[group]Run actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+2026-02-21T23:11:37.4234000Z with:
+2026-02-21T23:11:37.4234210Z   name: test-reports
+2026-02-21T23:11:37.4234430Z   compression-level: 9
+2026-02-21T23:11:37.4235440Z   path: build/coverage.xml
+build/bwpm-tests.xcresult
+build/bwpm-build.xcresult
+
+2026-02-21T23:11:37.4235820Z   if-no-files-found: warn
+2026-02-21T23:11:37.4236010Z   overwrite: false
+2026-02-21T23:11:37.4236220Z   include-hidden-files: false
+2026-02-21T23:11:37.4236410Z env:
+2026-02-21T23:11:37.4236580Z   MINT_LINK_PATH: .mint/bin
+2026-02-21T23:11:37.4236820Z   MINT_PATH: .mint/lib
+2026-02-21T23:11:37.4237030Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-21T23:11:37.4237270Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-21T23:11:37.4237590Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-21T23:11:37.4237880Z   _SIMULATOR_NAME: 
+2026-02-21T23:11:37.4238050Z   _SIMULATOR_VERSION: 
+2026-02-21T23:11:37.4238310Z   _XCODE_VERSION: 
+2026-02-21T23:11:37.4238480Z   _COMPILER_FLAGS: 
+2026-02-21T23:11:37.4238840Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22266179482/attempts/1
+2026-02-21T23:11:37.4239300Z ##[endgroup]
+2026-02-21T23:11:37.8536530Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-02-21T23:11:37.8539380Z The least common ancestor is /Users/runner/work/bitwarden.ios/bitwarden.ios/build. This will be the root directory of the artifact
+2026-02-21T23:11:37.8550410Z ##[warning]No files were found with the provided path: build/coverage.xml
+build/bwpm-tests.xcresult
+build/bwpm-build.xcresult. No artifacts will be uploaded.
+2026-02-21T23:11:37.8797810Z Post job cleanup.
+2026-02-21T23:11:37.9769960Z [command]/opt/homebrew/bin/git version
+2026-02-21T23:11:37.9839010Z git version 2.53.0
+2026-02-21T23:11:37.9857900Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/6fce7a86-b0c1-4f23-905a-a212d6e63eca/.gitconfig'
+2026-02-21T23:11:37.9914950Z Temporarily overriding HOME='/Users/runner/work/_temp/6fce7a86-b0c1-4f23-905a-a212d6e63eca' before making global git config changes
+2026-02-21T23:11:37.9923470Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-21T23:11:37.9967350Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-21T23:11:38.0007530Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-21T23:11:38.0066140Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-21T23:11:38.0820340Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-21T23:11:38.0876320Z http.https://github.com/.extraheader
+2026-02-21T23:11:38.0883600Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-02-21T23:11:38.0954780Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-21T23:11:38.1854490Z Cleaning up orphan processes
