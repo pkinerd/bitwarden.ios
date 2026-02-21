@@ -341,6 +341,37 @@ To copy an entire directory tree of documentation:
   `status: closed` and `closed: <date>` in the frontmatter. This is common
   when migrating from a document that tracks both open and resolved items.
 
+### Sequential Operations — Waiting for Sync
+
+Pushes go to a session-scoped branch (`claude/issues-<suffix>`), and a GitHub
+Action merges them back into `claude/issues`. If you perform a second operation
+that touches potentially conflicting files (e.g., INDEX.md, state.json, or the
+same issue file), you **must wait for the sync** before setting up a new
+worktree. Otherwise the worktree will be based on stale state and your second
+push may overwrite or conflict with the first.
+
+**How to wait:**
+
+1. After pushing, poll `origin/claude/issues` until your previous changes appear:
+   ```bash
+   # Re-fetch and check for your last commit message or expected state
+   git fetch origin claude/issues
+   git show origin/claude/issues:state.json   # verify next_id reflects your push
+   ```
+2. Poll every ~15 seconds, up to ~2 minutes. The sync action typically completes
+   within 30 seconds.
+3. Once the changes are visible on `origin/claude/issues`, proceed with the next
+   operation normally (set up worktree from the now-updated branch).
+
+**When you can skip the wait:**
+
+- If the second operation touches entirely different files with no overlap
+  (e.g., adding a doc after creating an issue that didn't change docs), there is
+  no conflict risk and you can proceed immediately.
+- If you are doing multiple operations in the same worktree session (before
+  cleaning up), they naturally build on each other — the wait is only needed
+  between separate worktree sessions.
+
 ### Error Handling
 
 - If `git fetch origin claude/issues` fails, the branch may not exist yet.
