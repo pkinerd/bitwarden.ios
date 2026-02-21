@@ -52,12 +52,12 @@ Here is a concrete example showing the expected output (replace values with the 
 
 ---
 
-**PR URL** (copyable):
+**PR URL** — copy and combine these two lines (host + path):
 ```
-PR URL:
-https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1
+github.com
+/example-org/example-repo/compare/main...feature-branch?expand=1
 ```
-[Open PR on GitHub](https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1)
+**Clickable link:** [Open PR on GitHub](https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1)
 
 **Title** (copyable):
 ```
@@ -82,9 +82,9 @@ Add offline sync resolver
 ---
 
 IMPORTANT formatting rules:
-- The PR URL MUST be a plain `github.com` URL — never a localhost or proxy URL
-- The PR URL code fence MUST have a `PR URL:` label on the first line, with the actual URL on the second line. This prevents the renderer from auto-linking a bare URL and wrapping it in angle brackets
-- NEVER wrap URLs in angle brackets like `<https://...>`
-- Below the code fence, include a clickable markdown link using the real `github.com` URL
+- The PR URL MUST use `github.com` — never a localhost or proxy URL
+- To prevent the renderer from auto-linking and wrapping in angle brackets, split the URL across two lines inside the code fence: line 1 is `github.com`, line 2 is the path starting with `/`. The user will prepend `https://` and combine them
+- NEVER output a full `https://...` URL inside a code fence — the renderer will add angle brackets
+- Below the code fence, include a clickable markdown link with the full URL (this is the convenient click target)
 - The description must be fenced with four backticks (````) so that markdown inside it (with triple backticks) is preserved literally and copyable
 - Do NOT use placeholder syntax with angle brackets — always output the actual computed values
