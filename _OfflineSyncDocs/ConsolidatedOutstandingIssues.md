@@ -1,22 +1,22 @@
 # Offline Sync — Consolidated Outstanding Issues
 
-> **Generated:** 2026-02-19 (updated 2026-02-21, reconciliation pass — verified all claims against actual source code)
-> **Source:** All documents in `_OfflineSyncDocs/` including ActionPlans/, ActionPlans/Resolved/, ActionPlans/Superseded/, and Review2/
-> **Scope:** 53 documents reviewed across 13 parallel review passes + 2 gap analysis passes + action plan triage for all Review2 issues + implementation-phase fixes + code reconciliation pass
+> **Generated:** 2026-02-19 (updated 2026-02-21, issue status audit — verified all issues against implemented code, moved resolved/accepted action plans to subfolders)
+> **Source:** All documents in `_OfflineSyncDocs/` including ActionPlans/, ActionPlans/Resolved/, ActionPlans/Accepted/, ActionPlans/Superseded/, and Review2/
+> **Scope:** 53 documents reviewed across 13 parallel review passes + 2 gap analysis passes + action plan triage for all Review2 issues + implementation-phase fixes + code reconciliation pass + issue status audit
 
 ---
 
 ## Summary Statistics
 
-| Category | Count |
-|----------|-------|
-| **Open — Requires Code Changes** | 3 |
-| **Partially Addressed** | 1 |
-| **Open — Accepted (No Code Change Planned)** | 11 |
-| **Deferred (Future Enhancement)** | 5 |
-| **Review2 — Triaged (Action Plans Created)** | 37 |
-| **Resolved / Superseded** | 36 |
-| **Total Unique Issues** | 93 |
+| Category | Count | Notes |
+|----------|-------|-------|
+| **Open — Requires Code Changes** | 3 | R3, R1, U2-B |
+| **Partially Addressed** | 1 | EXT-3/CS-2 |
+| **Open — Accepted (No Code Change Planned)** | 11 | Includes AP-36, AP-40, AP-41 (moved to `Accepted/`) |
+| **Deferred (Future Enhancement)** | 5 | Includes PLAN-3/AP-77 |
+| **Review2 — Triaged (Action Plans Created)** | 37 | Items still in Section 4 tables |
+| **Resolved / Superseded** | 58 | Includes AP-35, AP-37, AP-38, AP-42 (moved to `Resolved/`); R4, S7 now fully resolved |
+| **Total Unique Issues** | 114 | Up from 93 due to issues discovered and resolved during implementation |
 
 ---
 
@@ -242,6 +242,50 @@ The following key claims were verified as accurate against the source code:
 - All 4 VaultRepository methods (add/update/delete/softDelete) follow the denylist error pattern
 - `ViewItemProcessor.fetchCipherDetailsDirectly()` is the offline fallback at lines 619-632
 - `GetCipherRequest.validate(_:)` throws `.cipherNotFound` on HTTP 404
+
+### Issue Status Audit (2026-02-21)
+
+A comprehensive audit verified all issues against the current codebase and reorganized action plans.
+
+#### Action Plans Moved to `Resolved/`
+
+| Action Plan | Issue ID | Verification |
+|-------------|----------|--------------|
+| AP-35 | R2-TEST-1 | `GetCipherRequestTests.swift` with 3 tests (`test_method`, `test_path`, `test_validate`) confirmed present |
+| AP-37 | R2-TEST-3 | `test_deleteDataForUser_deletesPendingCipherChanges` at `PendingCipherChangeDataStoreTests.swift:404` confirmed present |
+| AP-38 | R2-TEST-5 | 3 corrupt data tests in `OfflineSyncResolverTests.swift` confirmed present (lines 879, 896, 915) |
+| AP-42 | R2-TEST-4 | `test_processPendingChanges_update_conflict_backupNameFormat` and `emptyNameBackup` in `OfflineSyncResolverTests.swift` confirmed present (lines 1009, 1057) |
+
+#### Action Plans Moved to `Accepted/`
+
+| Action Plan | Issue ID | Rationale |
+|-------------|----------|-----------|
+| AP-36 | R2-TEST-2 | Entity addition is safest lightweight migration; no other entities have migration tests |
+| AP-40 | P2-T4 | Stale-state-after-fallback is intentional design; negative timeout tests inherently flaky |
+| AP-41 | TC-6 | Feature flag default `false` provides strong gate; `test_fetchSync_preSyncResolution_skipsWhenResolutionFlagDisabled` covers negative path |
+
+#### Newly Confirmed Resolutions
+
+| Issue ID | Finding |
+|----------|---------|
+| **R4** | `Logger.application.info()` at `SyncService.swift:349-351` confirmed — sync abort is now logged |
+| **S7** | `test_deleteCipher_offlineFallback_cipherNotFound_noOp` at `VaultRepositoryTests.swift:928` confirmed — fully resolved (was "partially resolved") |
+| **VR-2** | `.hardDelete` case exists in `PendingCipherChangeType` — permanent delete is properly supported offline |
+
+#### Open Issues Confirmed Still Open (No Code Changes Found)
+
+| Issue ID | Verification |
+|----------|--------------|
+| **R3** | No retry count, backoff, or `.failed` state in `PendingCipherChangeData` or `OfflineSyncResolver`. Zero matches for `retryCount`, `maxRetries`, `failedState` across all Swift files. |
+| **R1** | No `dataVersion` attribute in `PendingCipherChangeData`. Entity has 9 attributes only. |
+| **U2-B** | `OfflineSyncError` has exactly 4 cases; no `operationNotSupportedOffline`. Archive/unarchive/restore methods have no offline-specific error handling. |
+| **EXT-3/CS-2** | `makeCopy()` still manually copies 28 properties. DocC `- Important:` callout and Mirror-based guard tests present. Underlying fragility inherent to external SDK types. |
+
+#### Summary Statistics Updated
+
+- **Resolved / Superseded**: 36 → 58 (22 issues discovered and resolved during implementation were not reflected in count)
+- **Total Unique Issues**: 93 → 114 (includes newly tracked implementation-phase issues)
+- **Remaining code changes needed**: 3 items (R3, R1, U2-B)
 
 ---
 
