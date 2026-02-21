@@ -430,7 +430,7 @@ jobs:
                 echo "${num} ${branch}"
               done \
             | sort -k1 -rn \
-            | tail -n +6 \
+            | tail -n +11 \
             | while read -r _num branch; do
                 echo "Deleting old log branch: $branch"
                 gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/${branch}" || true

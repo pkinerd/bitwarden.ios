@@ -98,7 +98,7 @@ Build logs from the `Build, Test & Package Simulator` workflow are pushed to ded
 
 Pattern: `build-logs/<run_number>-<run_id>-<timestamp>-<pass|fail>`
 
-Only the 5 most recent branches are kept; older ones are automatically cleaned up. List available branches:
+Only the 10 most recent branches are kept; older ones are automatically cleaned up. List available branches:
 
 ```bash
 git ls-remote --heads origin 'refs/heads/build-logs/*'
