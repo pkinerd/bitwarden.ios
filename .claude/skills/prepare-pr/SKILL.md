@@ -1,7 +1,8 @@
 ---
 name: prepare-pr
-description: Generates copyable PR fields (URL, title, description) for creating a pull request from the current branch to a specified target branch. Use when preparing a pull request, drafting PR content, or when the user says /prepare-pr.
+description: Generates copyable PR fields (URL, title, description) for creating a pull request from the current branch to a specified target branch. Use when preparing a pull request, drafting PR content, or when the user says /prepare-pr. Accepts an optional target branch argument (e.g. /prepare-pr dev).
 user_invocable: true
+argument: Optional target branch name (e.g. "dev", "main"). If omitted, the user will be prompted.
 ---
 
 # Prepare PR
@@ -12,7 +13,9 @@ Generate pull request information for the current branch and present it as copya
 
 ### Step 1: Determine the target branch and repository
 
-1. Ask the user which branch the PR should target (e.g. `main`, `dev`, etc.) using `AskUserQuestion`.
+1. Check if the user provided a target branch as an argument (e.g. `/prepare-pr dev`).
+   - If an argument was provided, use it as the target branch — do NOT prompt.
+   - If no argument was provided, ask the user which branch the PR should target (e.g. `main`, `dev`, etc.) using `AskUserQuestion`.
 2. Run `git remote get-url origin` to get the repository URL.
 3. Convert the remote URL to a GitHub HTTPS URL:
    - SSH format `git@github.com:org/repo.git` → `https://github.com/org/repo`
