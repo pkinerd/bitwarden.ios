@@ -9,20 +9,17 @@ description: Polls for CI build log branches matching changes from the current s
 
 After pushing code changes, use this process to monitor for CI build results and analyze them when available.
 
-### Step 1: Identify the Commit and Branch
+### Step 1: Identify the Branch
 
-Determine the commit SHA and branch name:
+Note the current branch name for matching later:
 
 ```bash
-git rev-parse HEAD
 git branch --show-current
 ```
 
-**Both are needed.** For `pull_request` CI events, GitHub records a merge commit SHA (not the branch HEAD), so matching on branch name is essential.
-
 ### Step 2: Snapshot Existing Branches
 
-Before waiting, record the current build-log branches so you can detect new ones:
+Record the current build-log branches so you can detect new ones:
 
 ```bash
 git ls-remote --heads origin 'refs/heads/build-logs/*'
@@ -48,15 +45,7 @@ iOS CI builds typically take **15-30 minutes**. Use a repeating check pattern:
 
 5. **Give up after ~45 minutes** of checking (roughly 45 cycles).
 
-**Why this approach:** Long-running background scripts (like the poll-build-logs.sh script) can be killed by the Claude Code web platform. Short-lived background tasks (sleep + single check) are more reliable because each completes within the platform's timeout window.
-
-#### Alternative: Use the polling script locally
-
-The `Scripts/poll-build-logs.sh` script works well in local/terminal Claude Code sessions where background processes are not killed:
-
-```bash
-./Scripts/poll-build-logs.sh <commit_sha> --branch <branch_name>
-```
+**Why short-lived background tasks:** The Claude Code web platform kills long-running background processes (~8-10 min). A 60-second sleep+check completes well within this limit.
 
 ### Step 4: Fetch and Analyze the Build Log
 
@@ -67,7 +56,7 @@ git fetch origin build-logs/<new-branch>
 git show origin/build-logs/<new-branch>:build-summary.md
 ```
 
-**Verify it matches** your branch by checking the `Branch` or `PR` field in build-summary.md.
+**Verify it matches** your branch by checking the `Branch` or `PR` field in build-summary.md. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit).
 
 #### On success (pass)
 
@@ -98,20 +87,18 @@ User: Push my changes and let me know if the build passes.
 
 Claude:
 1. Commits and pushes to the PR branch
-2. Records: SHA=abc1234, BRANCH=claude/my-feature, latest run=150
+2. Records: BRANCH=claude/my-feature, latest run=150
 3. Launches: sleep 60 && git ls-remote ... (background)
 4. [1 minute later, checks output — no new branches]
 5. Repeats sleep 60 && git ls-remote ... cycles
 6. [~20 minutes later — new branch: build-logs/151-...-pass!]
-9. Fetches build-summary.md, confirms Branch matches
-10. Reports: "CI build passed on branch claude/my-feature.
-    Build log: build-logs/151-123456-20260221T150000Z-pass"
+7. Fetches build-summary.md, confirms Branch matches
+8. Reports: "CI build passed on branch claude/my-feature.
+   Build log: build-logs/151-123456-20260221T150000Z-pass"
 ```
 
 ## Important Notes
 
-- `git ls-remote` only fetches ref names — very lightweight and safe to run frequently.
-- For web sessions, prefer the **sleep + check pattern** over long-running scripts, as the platform may kill long background processes.
-- For local/terminal sessions, the `Scripts/poll-build-logs.sh` script with `--branch` works reliably.
+- `git ls-remote` only fetches ref names — very lightweight, safe to run every minute.
 - Only the 10 most recent build-log branches are retained by CI, so poll promptly after pushing.
-- The build-summary.md `Branch` field is only present for `pull_request` events (not `push` events to dev/main).
+- The `Branch` field in build-summary.md is only present for `pull_request` events (not `push` events to dev/main).

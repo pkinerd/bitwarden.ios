@@ -142,8 +142,6 @@ Example: `git show origin/build-logs/<branch>:test.log | grep '✖︎\|error:'`
 
 After pushing code, use the `poll-build-logs` skill to monitor for CI results. iOS builds take ~15-30 minutes.
 
-**Web sessions:** Use repeated short background tasks (the platform kills long-running scripts):
-
 ```bash
 # Snapshot current branches, note the highest run number
 git ls-remote --heads origin 'refs/heads/build-logs/*'
@@ -152,15 +150,7 @@ git ls-remote --heads origin 'refs/heads/build-logs/*'
 sleep 60 && git ls-remote --heads origin 'refs/heads/build-logs/*'
 ```
 
-When a new branch appears, fetch `build-summary.md` and verify the `Branch` field matches yours. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit).
-
-**Local/terminal sessions:** Use the polling script directly:
-
-```bash
-./Scripts/poll-build-logs.sh <commit_sha> --branch <branch_name>
-```
-
-The script accepts `--branch`, `--delay`, `--interval`, and `--timeout` flags. See `poll-build-logs` skill for full details.
+When a new branch appears, fetch `build-summary.md` and verify the `Branch` field matches yours. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit). See `poll-build-logs` skill for full details.
 
 ## Communication & Decision-Making
 
