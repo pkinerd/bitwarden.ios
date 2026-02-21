@@ -113,7 +113,7 @@ _All 6 issues in this section have been accepted as-is or resolved. Changes are 
 
 ### 4f. Minor / Informational
 
-_All 15 issues in this section have been accepted as-is or resolved. All are low-severity informational items consistent with existing project patterns._
+_All 14 issues in this section have been accepted as-is or resolved. All are low-severity informational items consistent with existing project patterns._
 
 | # | Issue ID | Description | Disposition | Action Plan |
 |---|----------|-------------|-------------|-------------|
@@ -124,7 +124,6 @@ _All 15 issues in this section have been accepted as-is or resolved. All are low
 | 65 | TC-4 | `isVaultLocked` caching — pre-existing pattern, very low risk | Accepted | `Accepted/AP-65` |
 | 66 | R2-UI-3 | `specificPeopleUnavailable` — upstream change, properly implemented | Accepted | `Accepted/AP-66` |
 | 67 | PCDS-3/4 | Fetch-then-update — safe with serial queue + uniqueness constraint | Accepted | `Accepted/AP-67` |
-| 68 | RES-vaultLocked | `.vaultLocked` error case removed (dead code) | **Resolved** | `Resolved/AP-68` |
 | 69 | R2-UP-2 | `CipherPermissionsModel` typo fix — already applied | Resolved | `Resolved/AP-69` |
 | 70 | PLAN-1 | Denylist future SDK errors — data preservation bias correct | Accepted | `Accepted/AP-70` |
 | 71 | PLAN-2 | Sync resolution delay — foreground sync covers common case | Accepted | `Accepted/AP-71` |
@@ -217,6 +216,7 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | P2-TEST-RND | No round-trip test for all four `PendingCipherChangeType` enum cases through Core Data string-backed storage | Added `test_allChangeTypes_roundTripThroughCoreData` to `PendingCipherChangeDataStoreTests` — exercises `.update`, `.create`, `.softDelete`, `.hardDelete` persistence | N/A (Resolved) |
 | R2-TEST-3 | `PendingCipherChangeData.deleteByUserIdRequest` addition to batch delete not explicitly tested | Added `test_deleteDataForUser_deletesPendingCipherChanges` to `PendingCipherChangeDataStoreTests` — verifies `DataStore.deleteDataForUser(userId:)` removes pending changes for target user while preserving other users' data | AP-37 (Resolved) |
 | R2-TEST-4 | Very long cipher names in backup naming pattern not tested for edge cases | Added `test_processPendingChanges_update_conflict_backupNameFormat` and `test_processPendingChanges_update_conflict_emptyNameBackup` to `OfflineSyncResolverTests` — verifies backup name format pattern and empty-name edge case | AP-42 (Resolved) |
+| RES-vaultLocked | `.vaultLocked` error case defined but never thrown — dead code | Removed `.vaultLocked` case from `OfflineSyncError` enum and associated test | AP-68 (Resolved) |
 
 ---
 
