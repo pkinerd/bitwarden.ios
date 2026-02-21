@@ -90,6 +90,54 @@ See `.swiftlint.yml` for the full rule configuration including custom rules.
 - Undocumented public APIs
 - Tight coupling between targets
 
+## Build Logs (CI)
+
+Build logs from the `Build, Test & Package Simulator` workflow are pushed to dedicated branches after each run. When the user reports a build error, compile failure, or test failure, **immediately fetch the logs** rather than asking the user for details.
+
+### Branch naming
+
+Pattern: `build-logs/<run_number>-<run_id>-<timestamp>-<pass|fail>`
+
+Only the 10 most recent branches are kept; older ones are automatically cleaned up. List available branches:
+
+```bash
+git ls-remote --heads origin 'refs/heads/build-logs/*'
+```
+
+### Log files
+
+| File | Contents |
+|------|----------|
+| `build-summary.md` | Build metadata: run number, commit, PR info, result, artifact list, coverage |
+| `jobs.json` | Job details from the GitHub Actions API |
+| `test.log` | Console output from the Test job (build + test) |
+| `<job-name>.log` | Per-job console logs (e.g. `process-test-reports.log`) |
+
+### Reading logs
+
+Use `git fetch` + `git show` (do **not** use `WebFetch` with GitHub URLs):
+
+```bash
+git fetch origin build-logs/<branch-name>
+git show origin/build-logs/<branch-name>:test.log
+git show origin/build-logs/<branch-name>:build-summary.md
+```
+
+### Grepping test.log
+
+- Passing tests: `✓` (tick symbol)
+- Failing tests: `✖︎` (cross symbol)
+- Compiler/build errors: `error:` (with colon)
+
+Example: `git show origin/build-logs/<branch>:test.log | grep '✖︎\|error:'`
+
+### When user reports a build error
+
+1. `git ls-remote --heads origin 'refs/heads/build-logs/*'` — find the most recent (or `fail`) branch
+2. `git fetch` + `git show` the `test.log`, grep for `✖︎` or `error:` to find failures
+3. `git show` the `build-summary.md` for context (commit, PR, branch)
+4. Diagnose and fix
+
 ## Communication & Decision-Making
 
 Always clarify ambiguous requirements before implementing. Use specific questions:

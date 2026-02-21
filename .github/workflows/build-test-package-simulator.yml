@@ -263,6 +263,7 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04
     permissions:
+      contents: read
       issues: write
       pull-requests: write
     if: success()
@@ -303,3 +304,145 @@ jobs:
             message=$'> [!WARNING]\n> @'$RUN_ACTOR' Uploading code coverage report failed. Please check the "Upload to codecov.io" step of [Process Test Reports job]('$_GITHUB_ACTION_RUN_URL') for more details.'
             gh pr comment --repo "$GITHUB_REPOSITORY" "$PR_NUMBER" --body "$message"
           fi
+
+  push-build-logs:
+    name: Push Build Logs
+    needs: test
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Determine build status
+        id: status
+        run: |
+          if [ "${{ needs.test.result }}" = "success" ]; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set branch name
+        id: branch
+        run: |
+          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          BRANCH="build-logs/${{ github.run_number }}-${{ github.run_id }}-${TIMESTAMP}-${{ steps.status.outputs.result }}"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: test-reports
+          path: test-reports
+        continue-on-error: true
+
+      - name: Generate log summary
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          ACTOR: ${{ github.triggering_actor }}
+          RESULT: ${{ steps.status.outputs.result }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          mkdir -p logs
+          {
+            echo "# Build Log"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| **Run** | #${RUN_NUMBER} (attempt ${RUN_ATTEMPT}) |"
+            echo "| **Run ID** | ${RUN_ID} |"
+            echo "| **Result** | ${RESULT} |"
+            echo "| **Commit** | ${SHA} |"
+            echo "| **Ref** | ${REF} |"
+            echo "| **Event** | ${EVENT_NAME} |"
+            echo "| **Actor** | ${ACTOR} |"
+            if [ -n "$PR_NUMBER" ]; then
+              echo "| **PR** | #${PR_NUMBER}: ${PR_TITLE} |"
+              echo "| **Branch** | ${HEAD_REF} |"
+            fi
+            echo ""
+            if [ -d "test-reports" ]; then
+              echo "## Artifacts"
+              echo '```'
+              # Summarise .xcresult bundles (binary) as a single line with file count
+              find test-reports -type f | sort | awk '
+                /\.xcresult\// {
+                  bundle = $0; sub(/\/[^/]*$/, "", bundle)
+                  counts[bundle]++
+                  next
+                }
+                { print }
+                END {
+                  for (b in counts) print b "/ (" counts[b] " files)"
+                }
+              '
+              echo '```'
+            fi
+            if [ -f "test-reports/coverage.xml" ]; then
+              echo ""
+              echo "## Coverage"
+              echo '```xml'
+              head -50 test-reports/coverage.xml
+              echo '```'
+            fi
+          } > logs/build-summary.md
+
+      - name: Fetch build and test logs via API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch job details
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" \
+            > logs/jobs.json 2>/dev/null || true
+
+          # Download logs for completed jobs only (in-progress jobs return 404)
+          if [ -f logs/jobs.json ]; then
+            jq -r '.jobs[] | select(.status == "completed") | "\(.id) \(.name)"' logs/jobs.json 2>/dev/null \
+              | while read -r job_id job_name; do
+                  safe_name=$(echo "$job_name" | tr ' /' '-_' | tr '[:upper:]' '[:lower:]')
+                  gh api "repos/${{ github.repository }}/actions/jobs/${job_id}/logs" \
+                    > "logs/${safe_name}.log" 2>/dev/null || true
+                done
+          fi
+
+      - name: Push logs to branch
+        run: |
+          git init -b logs
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "${{ steps.branch.outputs.name }}"
+          cp -r logs/* .
+          rm -rf logs test-reports
+          git add -A
+          git commit -m "Build logs for run #${{ github.run_number }} (${{ steps.status.outputs.result }})"
+          git push -u "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            "${{ steps.branch.outputs.name }}"
+
+      - name: Clean up old log branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # List all build-logs/ branches, extract run number for sorting,
+          # keep the 5 most recent, delete the rest.
+          gh api "repos/${{ github.repository }}/git/matching-refs/heads/build-logs/" \
+            --jq '.[].ref' \
+            | sed 's|refs/heads/||' \
+            | while read -r branch; do
+                # Extract run number (first segment after "build-logs/")
+                num=$(echo "$branch" | sed 's|build-logs/||' | cut -d'-' -f1)
+                echo "${num} ${branch}"
+              done \
+            | sort -k1 -rn \
+            | tail -n +11 \
+            | while read -r _num branch; do
+                echo "Deleting old log branch: $branch"
+                gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/${branch}" || true
+              done
