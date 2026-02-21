@@ -34,9 +34,9 @@ Note the highest run number (e.g., `build-logs/150-...`).
 
 iOS CI builds typically take **15-30 minutes**. Use a repeating check pattern:
 
-1. **Wait 5 minutes** using a background sleep to keep the session alive:
+1. **Wait 1 minute** using a background sleep to keep the session alive:
    ```bash
-   sleep 300 && git ls-remote --heads origin 'refs/heads/build-logs/*'
+   sleep 60 && git ls-remote --heads origin 'refs/heads/build-logs/*'
    ```
    Run this with `run_in_background: true`.
 
@@ -46,7 +46,7 @@ iOS CI builds typically take **15-30 minutes**. Use a repeating check pattern:
 
 4. If a new branch appeared, proceed to Step 4.
 
-5. **Give up after ~45 minutes** of checking (roughly 9 cycles).
+5. **Give up after ~45 minutes** of checking (roughly 45 cycles).
 
 **Why this approach:** Long-running background scripts (like the poll-build-logs.sh script) can be killed by the Claude Code web platform. Short-lived background tasks (sleep + single check) are more reliable because each completes within the platform's timeout window.
 
@@ -99,12 +99,10 @@ User: Push my changes and let me know if the build passes.
 Claude:
 1. Commits and pushes to the PR branch
 2. Records: SHA=abc1234, BRANCH=claude/my-feature, latest run=150
-3. Launches: sleep 300 && git ls-remote ... (background)
-4. [5 minutes later, checks output — no new branches]
-5. Launches another sleep 300 && git ls-remote ... (background)
-6. [5 more minutes — still nothing]
-7. Launches another sleep 300 && git ls-remote ... (background)
-8. [5 more minutes — new branch: build-logs/151-...-pass!]
+3. Launches: sleep 60 && git ls-remote ... (background)
+4. [1 minute later, checks output — no new branches]
+5. Repeats sleep 60 && git ls-remote ... cycles
+6. [~20 minutes later — new branch: build-logs/151-...-pass!]
 9. Fetches build-summary.md, confirms Branch matches
 10. Reports: "CI build passed on branch claude/my-feature.
     Build log: build-logs/151-123456-20260221T150000Z-pass"
