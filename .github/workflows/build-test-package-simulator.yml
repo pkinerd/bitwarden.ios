@@ -372,7 +372,18 @@ jobs:
             if [ -d "test-reports" ]; then
               echo "## Artifacts"
               echo '```'
-              find test-reports -type f | sort
+              # Summarise .xcresult bundles (binary) as a single line with file count
+              find test-reports -type f | sort | awk '
+                /\.xcresult\// {
+                  bundle = $0; sub(/\/[^/]*$/, "", bundle)
+                  counts[bundle]++
+                  next
+                }
+                { print }
+                END {
+                  for (b in counts) print b "/ (" counts[b] " files)"
+                }
+              '
               echo '```'
             fi
             if [ -f "test-reports/coverage.xml" ]; then
