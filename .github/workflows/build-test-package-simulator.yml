@@ -404,7 +404,7 @@ jobs:
 
       - name: Push logs to branch
         run: |
-          git init
+          git init -b logs
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "${{ steps.branch.outputs.name }}"

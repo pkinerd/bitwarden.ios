@@ -92,61 +92,43 @@ See `.swiftlint.yml` for the full rule configuration including custom rules.
 
 ## Build Logs (CI)
 
-Build logs from the `Build, Test & Package Simulator` workflow are pushed to dedicated branches after each run. When the user reports a build error, compile failure, or test failure, **you should immediately fetch the logs** rather than asking the user for details.
+Build logs from the `Build, Test & Package Simulator` workflow are pushed to dedicated branches after each run. When the user reports a build error, compile failure, or test failure, **immediately fetch the logs** rather than asking the user for details.
 
-### How to discover available build log branches
+### Branch naming
 
-List remote branches matching the `build-logs/` prefix:
+Pattern: `build-logs/<run_number>-<run_id>-<timestamp>-<pass|fail>`
+
+Only the 5 most recent branches are kept; older ones are automatically cleaned up. List available branches:
 
 ```bash
 git ls-remote --heads origin 'refs/heads/build-logs/*'
 ```
 
-Branch names follow the pattern: `build-logs/<run_number>-<run_id>-<timestamp>-<pass|fail>`
-
-- `run_number` is the human-readable build number (e.g. 138) shown in the GitHub Actions UI
-- `run_id` is the API identifier for the workflow run
-- `pass`/`fail` indicates the test job result
-
-Only the 5 most recent branches are kept; older ones are automatically cleaned up.
-
-### How to read the logs
-
-Each log branch contains these files at its root:
+### Log files
 
 | File | Contents |
 |------|----------|
-| `build-summary.md` | Build metadata: run number, commit, PR info, result, artifact list, coverage header |
-| `jobs.json` | Full job details from the GitHub Actions API |
-| `test.log` | Raw console output from the Test job (build + test output) |
-| `push-build-logs.log` | Console output from the log-push job itself |
+| `build-summary.md` | Build metadata: run number, commit, PR info, result, artifact list, coverage |
+| `jobs.json` | Job details from the GitHub Actions API |
+| `test.log` | Console output from the Test job (build + test) |
+| `<job-name>.log` | Per-job console logs (e.g. `process-test-reports.log`) |
 
-Fetch the branch and read files using `git` (works reliably in all environments):
+### Reading logs
+
+Use `git fetch` + `git show` (do **not** use `WebFetch` with GitHub URLs):
 
 ```bash
-# Fetch the specific build-log branch
 git fetch origin build-logs/<branch-name>
-
-# Read files from the fetched branch without checking it out
 git show origin/build-logs/<branch-name>:test.log
 git show origin/build-logs/<branch-name>:build-summary.md
 ```
 
-For example, to read the test log from build #138:
+### When user reports a build error
 
-```bash
-git fetch origin build-logs/138-22244913185-20260221T050510Z-pass
-git show origin/build-logs/138-22244913185-20260221T050510Z-pass:test.log
-```
-
-**Note:** Do NOT use `WebFetch` with `api.github.com` or `raw.githubusercontent.com` — these URLs may be blocked in the Claude Code web environment. Always use `git` commands instead.
-
-### Typical workflow when user reports a build error
-
-1. Run `git ls-remote --heads origin 'refs/heads/build-logs/*'` to find the most recent `fail` branch (or the latest branch)
-2. `git fetch` that branch, then `git show` the `test.log` to find compiler errors, test failures, or warnings
-3. `git show` the `build-summary.md` for context (commit SHA, PR, branch)
-4. Diagnose and fix the issue based on the log content
+1. `git ls-remote --heads origin 'refs/heads/build-logs/*'` — find the most recent (or `fail`) branch
+2. `git fetch` + `git show` the `test.log` for compiler errors, test failures, or warnings
+3. `git show` the `build-summary.md` for context (commit, PR, branch)
+4. Diagnose and fix
 
 ## Communication & Decision-Making
 
