@@ -138,6 +138,20 @@ Example: `git show origin/build-logs/<branch>:test.log | grep '✖︎\|error:'`
 3. `git show` the `build-summary.md` for context (commit, PR, branch)
 4. Diagnose and fix
 
+### Polling for build logs (web sessions)
+
+After pushing code, use the `poll-build-logs` skill to monitor for CI results. iOS builds take ~15-30 minutes.
+
+```bash
+# Snapshot current branches, note the highest run number
+git ls-remote --heads origin 'refs/heads/build-logs/*'
+
+# Then repeat every ~3 min (run_in_background: true):
+sleep 180 && git ls-remote --heads origin 'refs/heads/build-logs/*'
+```
+
+When a new branch appears, fetch `build-summary.md` and verify the `Branch` field matches yours. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit). See `poll-build-logs` skill for full details.
+
 ## Issue Tracking
 
 Issues are managed on the orphan branch `claude/issues`. This branch has its own
