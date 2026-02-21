@@ -138,6 +138,23 @@ Example: `git show origin/build-logs/<branch>:test.log | grep '✖︎\|error:'`
 3. `git show` the `build-summary.md` for context (commit, PR, branch)
 4. Diagnose and fix
 
+### Polling for build logs (web sessions)
+
+After pushing code, use the `poll-build-logs` skill to automatically monitor for CI results. This runs `Scripts/poll-build-logs.sh` as a **background task**, which keeps the web session alive while CI runs.
+
+```bash
+# Start polling (run with run_in_background: true)
+./Scripts/poll-build-logs.sh <commit_sha> --interval 60 --delay 180 --timeout 2700
+```
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `--delay` | 180s | Initial wait before first poll |
+| `--interval` | 60s | Seconds between `git ls-remote` checks |
+| `--timeout` | 2700s (45 min) | Maximum wait before giving up |
+
+The script snapshots existing build-log branches at start, then polls for new ones matching the commit SHA. On match, it fetches and displays `build-summary.md` and (for failures) error lines from `test.log`.
+
 ## Communication & Decision-Making
 
 Always clarify ambiguous requirements before implementing. Use specific questions:
