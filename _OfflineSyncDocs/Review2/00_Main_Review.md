@@ -1,3 +1,10 @@
+> **Reconciliation Note (2026-02-21):** This document has been corrected to reflect the actual
+> codebase. Key corrections: (1) `HasPendingCipherChangeDataStore` does not exist in `Services.swift`
+> and was never in the `Services` typealias — only `HasOfflineSyncResolver` is. All related references,
+> concerns (DI1), and recommendations have been updated. (2) `OfflineSyncResolver` has 4 dependencies,
+> not 5 — `stateService` was already removed. (3) Attribute types corrected: `changeTypeRaw` is
+> `String?` (not `Int16`), `offlinePasswordChangeCount` is `Int64` (not `Int16`).
+
 # Offline Sync Feature — Comprehensive Code Review (Review 2)
 
 **Date**: 2026-02-18
@@ -188,9 +195,9 @@ See detailed section reviews for per-component analysis:
 The following metadata is stored unencrypted (same as existing `CipherData` entity):
 - `cipherId` (UUID)
 - `userId` (UUID)
-- `changeTypeRaw` (enum integer)
+- `changeTypeRaw` (String? — string-backed enum via `PendingCipherChangeType`)
 - `originalRevisionDate`, `createdDate`, `updatedDate` (timestamps)
-- `offlinePasswordChangeCount` (counter)
+- `offlinePasswordChangeCount` (Int64 counter)
 
 This is consistent with the security model of the existing cipher storage.
 
@@ -295,7 +302,6 @@ OfflineSyncResolver ──→ CipherAPIService (existing)
 OfflineSyncResolver ──→ CipherService (existing)
 OfflineSyncResolver ──→ ClientService (existing)
 OfflineSyncResolver ──→ PendingCipherChangeDataStore (new)
-OfflineSyncResolver ──→ StateService (existing, potentially unused)
 GetCipherRequest ──→ OfflineSyncError (new coupling)
 ```
 
@@ -304,7 +310,7 @@ GetCipherRequest ──→ OfflineSyncError (new coupling)
 - **All new dependencies are within the Vault domain** or cross to Platform services, which is the existing pattern.
 - **No problematic cross-domain coupling** — the offline sync changes don't create dependencies between Auth/Autofill/Tools/Platform domains.
 - **Minor concern**: `GetCipherRequest` (an API request model) now throws `OfflineSyncError.cipherNotFound` on 404. This couples a network-layer type to an offline-sync-specific error. A more general error (e.g., `CipherAPIServiceError.notFound`) would be better decoupled. However, the `GetCipherRequest` is currently only used by the offline sync resolver.
-- **Minor concern**: `HasPendingCipherChangeDataStore` in the `Services` typealias exposes the data store to the UI layer unnecessarily (see [05: DI Wiring](05_DIWiring_Review.md)).
+- **Good**: `PendingCipherChangeDataStore` is NOT in the `Services` typealias — it is correctly injected only through core-layer initializers (see [05: DI Wiring](05_DIWiring_Review.md)).
 
 ---
 
@@ -344,9 +350,9 @@ See [08: Test Coverage Analysis](08_TestCoverage_Review.md) for detailed coverag
 
 2. **Consolidate `handleOfflineDelete` and `handleOfflineSoftDelete`**: These methods share 80% of their logic. A shared helper with a parameter for the local operation type could save ~30 lines.
 
-3. **Remove unused `stateService` from `OfflineSyncResolver`**: The resolver injects `StateService` but doesn't use it in any resolution method. Removing it would simplify the initializer.
+3. ~~**Remove unused `stateService` from `OfflineSyncResolver`**~~ — **Already done**: `stateService` has been removed from the resolver's initializer. The resolver now has 4 dependencies.
 
-4. **Remove `HasPendingCipherChangeDataStore` from `Services` typealias**: The data store is only used in the core layer. Removing it from the UI-exposed typealias would be more architecturally correct and would simplify the `ServiceContainer.withMocks()` helper.
+4. ~~**Remove `HasPendingCipherChangeDataStore` from `Services` typealias**~~ — **Moot**: The data store was never in the `Services` typealias. It is already correctly scoped to core-layer initializer injection only.
 
 ### Architectural Simplifications
 
@@ -370,7 +376,7 @@ These are organized by priority:
 | R4 | Silent sync abort | User has no visibility when sync is paused due to pending changes |
 | ~~S8~~ | ~~No feature flag~~ | ~~Cannot disable offline mode if issues found in production~~ — **[Resolved]** Two server-controlled flags added |
 | RES1 | Duplicate on create retry | If create succeeds but cleanup fails, retry creates duplicate |
-| DI1 | DataStore in Services typealias | `PendingCipherChangeDataStore` exposed to UI layer unnecessarily |
+| ~~DI1~~ | ~~DataStore in Services typealias~~ | ~~`PendingCipherChangeDataStore` exposed to UI layer unnecessarily~~ — **Moot**: Never in the typealias |
 
 ### Low Priority
 

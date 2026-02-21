@@ -1,3 +1,8 @@
+> **Reconciliation Note (2026-02-21):** This document has been corrected to reflect the actual
+> codebase. Attribute types in the data model table were incorrect: `changeTypeRaw` is `String?`
+> (not `Int16`) — it stores a string-backed enum via `PendingCipherChangeType`. `offlinePasswordChangeCount`
+> is `Int64` (not `Int16`). The `Int16` description in observation #3 has been corrected accordingly.
+
 # Review: PendingCipherChangeData & PendingCipherChangeDataStore
 
 ## Files Reviewed
@@ -38,12 +43,12 @@ The entity has these attributes:
 | `id` | String | Record ID (UUID) |
 | `cipherId` | String | Cipher ID |
 | `userId` | String | User ID |
-| `changeTypeRaw` | Int16 | Enum backing: 0=update, 1=create, 2=softDelete |
+| `changeTypeRaw` | String (optional) | String-backed enum via `PendingCipherChangeType` (e.g., "update", "create", "softDelete") |
 | `cipherData` | Binary (optional) | JSON-encoded encrypted cipher snapshot |
 | `originalRevisionDate` | Date (optional) | Baseline for conflict detection |
 | `createdDate` | Date (optional) | When queued |
 | `updatedDate` | Date (optional) | Last updated |
-| `offlinePasswordChangeCount` | Int16 | Password change counter |
+| `offlinePasswordChangeCount` | Integer 64 | Password change counter (default 0) |
 
 **Observations**:
 
@@ -51,7 +56,7 @@ The entity has these attributes:
 
 2. **`createdDate` and `updatedDate` are optional in schema** — These are set in the convenience initializer to `Date()` but the schema marks them as optional. This is fine for Core Data but means they could theoretically be nil if an object is created through a different code path. The code handles this defensively (e.g., `pendingChange.updatedDate ?? pendingChange.createdDate ?? Date.distantPast`).
 
-3. **`offlinePasswordChangeCount` uses `Int16`** — Adequate range (max 32,767) for a password change counter. The threshold is 4, so Int16 is more than sufficient.
+3. **`offlinePasswordChangeCount` uses `Int64`** — More than adequate range for a password change counter. The threshold is 4, so even `Int16` would have been sufficient, but `Int64` aligns with Core Data's `Integer 64` attribute type and the Swift `@NSManaged` property declaration.
 
 ## Security Assessment
 
@@ -61,7 +66,7 @@ The entity has these attributes:
 - **Metadata stored in plaintext**: The following fields are stored as plaintext metadata:
   - `cipherId` — The cipher's UUID. This is also stored plaintext in the existing `CipherData` entity, so this is consistent.
   - `userId` — Also stored plaintext in existing entities.
-  - `changeTypeRaw` — Reveals the type of operation (create/update/delete). This is minor metadata.
+  - `changeTypeRaw` — A string revealing the type of operation (e.g., "create", "update", "softDelete"). This is minor metadata.
   - `originalRevisionDate`, `createdDate`, `updatedDate` — Timestamps revealing when offline edits occurred. This is comparable to the `revisionDate` stored in `CipherData`.
   - `offlinePasswordChangeCount` — Reveals the number of password changes. This is a minor information leak but does not reveal the actual passwords. **[Explored — Will Not Implement encryption]** See [AP-SEC2](../ActionPlans/Resolved/AP-SEC2_PasswordChangeCountEncryption.md).
 

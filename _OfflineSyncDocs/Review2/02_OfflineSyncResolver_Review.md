@@ -1,3 +1,8 @@
+> **Reconciliation Note (2026-02-21):** This document has been corrected to reflect the actual
+> codebase. `stateService` has been removed from `DefaultOfflineSyncResolver` — the resolver now
+> has 4 dependencies, not 5. All references to `stateService` as a dependency have been updated.
+> The simplification opportunity to remove it is now marked as already done.
+
 # Review: OfflineSyncResolver
 
 ## Files Reviewed
@@ -135,14 +140,13 @@ This is the most critical component for data safety. Assessment:
 
 ## Cross-Component Dependencies
 
-The resolver depends on:
+The resolver depends on 4 services:
 - `CipherAPIService` — for fetching server state (`getCipher`)
 - `CipherService` — for local storage operations and server upload
 - `ClientService` — for SDK encryption/decryption
 - `PendingCipherChangeDataStore` — for managing pending changes
-- `StateService` — not directly used in the current implementation (injected but not referenced in resolution methods)
 
-**Assessment**: These dependencies are all within the Vault domain or Platform services. No cross-domain coupling is introduced. The `StateService` dependency appears unused and could be removed from the resolver's initializer to reduce coupling. However, it may be reserved for future use.
+**Assessment**: These dependencies are all within the Vault domain or Platform services. No cross-domain coupling is introduced. The dependency set is minimal and well-scoped — each dependency serves a clear purpose in the resolution flow.
 
 ## Test Coverage
 
@@ -160,7 +164,7 @@ The `OfflineSyncResolverTests.swift` file (933 lines) covers:
 
 ## Simplification Opportunities
 
-1. **Remove unused `stateService` dependency**: If it's not used in the resolver, it should be removed from the initializer.
+1. ~~**Remove unused `stateService` dependency**~~ — **Already done**: `stateService` has been removed from the resolver. The initializer now takes only 4 parameters.
 2. **Consider making `softConflictPasswordChangeThreshold` configurable**: Currently hardcoded to 4 as a `static let`. If this needs tuning based on user feedback, it would need a code change.
 3. **The `resolveConflict` method could be simplified**: The local-newer and server-newer branches have symmetric structure (backup loser, apply winner). This could be abstracted but the current explicit form is more readable.
 

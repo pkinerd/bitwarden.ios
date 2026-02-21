@@ -7,8 +7,8 @@
 | File | Type | Lines Changed |
 |------|------|---------------|
 | `BitwardenShared/Core/Platform/Services/Services.swift` | Has* protocol (modified) | +8 lines |
-| `BitwardenShared/Core/Platform/Services/ServiceContainer.swift` | DI container (modified) | +30 lines |
-| `BitwardenShared/Core/Platform/Services/TestHelpers/ServiceContainer+Mocks.swift` | Test helper (modified) | +6 lines |
+| `BitwardenShared/Core/Platform/Services/ServiceContainer.swift` | DI container (modified) | +20 lines |
+| `BitwardenShared/Core/Platform/Services/TestHelpers/ServiceContainer+Mocks.swift` | Test helper (modified) | +3 lines |
 | `BitwardenShared/Core/Platform/Services/Stores/DataStore.swift` | Data store (modified) | +1 line |
 | `BitwardenShared/UI/Platform/Application/AppProcessor.swift` | UI layer (modified) | ~~+1 line (whitespace)~~ Net zero (reverted) |
 
@@ -171,9 +171,9 @@ It is not a stored property on `ServiceContainer`, not in the `Services` typeali
 
 ### Issue DI-2: `HasOfflineSyncResolver` in `Services` Typealias (Low)
 
-Similarly, `HasOfflineSyncResolver` is added to the `Services` typealias. The resolver is currently used only by `DefaultSyncService`, which receives it via init injection. The `Services` typealias exposure is broader than needed.
+`HasOfflineSyncResolver` is added to the `Services` typealias. The resolver is currently used only by `DefaultSyncService`, which receives it via init injection. The `Services` typealias exposure is broader than needed.
 
-**Assessment:** Same as DI-1 — follows existing precedent and enables future UI-layer usage if needed.
+**Assessment (updated 2026-02-21):** This is the only new `Has*` protocol added to the `Services` typealias for the offline sync feature (DI-1 was struck — `HasPendingCipherChangeDataStore` does not exist). The concern is smaller than originally stated: only the resolver is exposed to the UI layer, not the data store. Follows existing precedent and enables future UI-layer usage if needed.
 
 ### ~~Issue DI-3~~ [Resolved]
 

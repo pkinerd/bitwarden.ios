@@ -1,5 +1,7 @@
 # Action Plan: U3 (VR-4) — No User-Visible Indicator for Pending Offline Changes
 
+> **Reconciliation Note (2026-02-21):** This document references DI-1 and states that `HasPendingCipherChangeDataStore` is exposed in the `Services` typealias, implying that implementing U3 could leverage this existing exposure. This is **incorrect**. Code verification confirms that `HasPendingCipherChangeDataStore` is **NOT** in the `Services` typealias in `Services.swift`. Only `HasOfflineSyncResolver` is present (line 40). The `pendingCipherChangeDataStore` is injected directly via initializer parameters. Therefore, implementing U3 would **require** adding `HasPendingCipherChangeDataStore` to the `Services` typealias (or creating a new observable mechanism) -- it cannot leverage existing exposure because no such exposure exists. Inline corrections marked below.
+
 ## Issue Summary
 
 | Field | Value |
@@ -117,7 +119,7 @@ Track this as a future enhancement and ship the initial feature without a pendin
 
 - **R3 (SS-5)**: Retry backoff — if pending changes expire/are deleted after max retries, the user should be notified (ties into this indicator).
 - **R4 (SS-3)**: Silent sync abort — the abort could trigger a notification instead of being silent.
-- **DI-1**: DataStore exposed to UI layer — if a UI indicator is built, `HasPendingCipherChangeDataStore` in the `Services` typealias is actually needed.
+- **DI-1**: DataStore exposed to UI layer — if a UI indicator is built, `HasPendingCipherChangeDataStore` in the `Services` typealias is actually needed. **[CORRECTION (2026-02-21): `HasPendingCipherChangeDataStore` is NOT currently in the `Services` typealias. Implementing U3 would REQUIRE adding it to `Services` (or creating a new observable mechanism), not just leveraging existing exposure.]**
 - **S8**: Feature flag — **[Resolved]** the indicator should respect the feature flag state (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`). Both default to `false` (server-controlled rollout).
 
 ## Updated Review Findings
@@ -130,6 +132,6 @@ The review confirms the original assessment. After reviewing the implementation:
 
 3. **Toast infrastructure assessment**: The project uses toast notifications in various places. If an existing toast/notification system exists, Option B (toast on offline save) could be implemented by emitting a notification from the VaultRepository offline handlers. This would require the active coordinator/processor to subscribe to the notification.
 
-4. **DI-1 interaction**: The DI-1 action plan noted that `HasPendingCipherChangeDataStore` is exposed in the `Services` typealias. If U3 is implemented, this exposure is actually needed for UI-layer access to pending change counts.
+4. **DI-1 interaction**: ~~The DI-1 action plan noted that `HasPendingCipherChangeDataStore` is exposed in the `Services` typealias. If U3 is implemented, this exposure is actually needed for UI-layer access to pending change counts.~~ **[CORRECTION (2026-02-21): `HasPendingCipherChangeDataStore` is NOT in the `Services` typealias. It uses direct initializer injection. If U3 is implemented, `HasPendingCipherChangeDataStore` would need to be explicitly added to the `Services` typealias (or an alternative observable mechanism created) to provide UI-layer access to pending change counts. This represents additional implementation work beyond what was originally assessed.]**
 
 **Updated conclusion** (2026-02-18): Original recommendation (Option D for initial release, Option B as first enhancement) confirmed. No work has been done on any of the options. This is a UX feature that goes beyond the current offline sync scope. The core feature can ship without it. However, it should be prioritized for the first follow-up release. Priority: Informational for initial release.

@@ -11,7 +11,7 @@
 | File | Type | Lines |
 |------|------|-------|
 | `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 349 |
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 933 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 1088 |
 | `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | Mock | 13 |
 
 ---
