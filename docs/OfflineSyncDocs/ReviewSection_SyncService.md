@@ -1,0 +1,186 @@
+# Detailed Review: SyncService Offline Integration
+
+> **Reconciliation note (2026-02-21):** Line numbers verified against current `SyncService.swift`.
+> Code block and flow diagram updated to reflect the feature flag gate
+> (`.offlineSyncEnableResolution`, line 342) and the `Logger.application.info()` abort
+> message (lines 349-351). SS-3 marked resolved. `isVaultLocked` caching reference
+> corrected. All line references refreshed.
+
+## Files Covered
+
+| File | Type | Lines Changed |
+|------|------|---------------|
+| `BitwardenShared/Core/Vault/Services/SyncService.swift` | Service (modified) | +32 lines |
+| `BitwardenShared/Core/Vault/Services/SyncServiceTests.swift` | Tests (modified) | +81 lines |
+
+---
+
+## End-to-End Walkthrough
+
+### 1. New Dependencies Added to `DefaultSyncService`
+
+| Dependency | Type | Purpose |
+|------------|------|---------|
+| `offlineSyncResolver: OfflineSyncResolver` | Protocol-typed | Resolves pending changes before sync |
+| `pendingCipherChangeDataStore: PendingCipherChangeDataStore` | Protocol-typed | Queries pending change count |
+
+Both are injected via the initializer and documented with DocC parameter docs.
+
+### 2. Pre-Sync Resolution Logic in `fetchSync()`
+
+The core change is a block inserted at the top of `fetchSync(forceSync:isPeriodic:)` (line 326), just after obtaining the `userId` (line 328), before the `needsSync()` check (line 357). The block is gated by the `.offlineSyncEnableResolution` feature flag (line 342) and the vault-lock state (line 341).
+
+**[Updated]** A pre-count check was re-added as an optimization so the common case (no pending changes) skips the resolver entirely. The resolver is only called when pending changes actually exist. Both pre-count and post-resolution count checks use `pendingCipherChangeDataStore.pendingChangeCount(userId:)`.
+
+```swift
+// Resolve any pending offline changes before syncing. If pending changes     // line 330
+// remain after resolution, abort to prevent replaceCiphers from overwriting
+// local offline edits. Resolution is skipped when the vault is locked since
+// the SDK crypto context is needed for conflict resolution.
+//
+// The enableOfflineSyncResolution flag controls whether this entire block
+// runs. When disabled, resolution is skipped and replaceCiphers proceeds
+// normally — pending change records stay in the database for future
+// resolution when the flag is re-enabled. The offlineSync flag (which gates
+// new offline saves in VaultRepository) is also implicitly disabled when
+// resolution is off, so no new pending changes accumulate.
+let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId) // line 341
+if await configService.getFeatureFlag(.offlineSyncEnableResolution),   // line 342
+   !isVaultLocked {
+    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId) // line 344
+    if pendingCount > 0 {
+        try await offlineSyncResolver.processPendingChanges(userId: userId)       // line 346
+        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId) // line 347
+        if remainingCount > 0 {                                                   // line 348
+            Logger.application.info(                                              // line 349
+                "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
+            )                                                                     // line 351
+            return                                                                // line 352
+        }                                                                         // line 353
+    }
+}
+```
+
+**Flow diagram: [Updated]**
+
+```
+fetchSync() called                                        (line 326)
+│
+├── Get userId from active account                        (line 327-328)
+│
+├── Cache isVaultLocked (reused later at line 371)        (line 341)
+│
+├── Check feature flag: .offlineSyncEnableResolution      (line 342)
+│   └── If disabled → skip entire resolution block
+│
+├── Check vault lock state                                (line 343)
+│   └── If locked → skip resolution (can't decrypt/resolve)
+│
+├── Pre-count check: pendingChangeCount(userId:)          (line 344)
+│   └── If 0 → skip resolution entirely (optimization)
+│
+├── Attempt resolution: processPendingChanges(userId:)    (line 346)
+│
+├── Post-resolution count check: pendingChangeCount       (line 347)
+│   ├── If 0 → continue to normal sync (all resolved)
+│   └── If > 0 → log info message + ABORT SYNC           (lines 348-353)
+│
+├── needsSync check                                       (line 357)
+│
+└── Continue to normal sync: API call → replace data
+```
+
+**Critical Safety Property:** If any pending changes remain after resolution (e.g., the server is still unreachable, or resolution failed for some items), the sync is **aborted entirely** with a `Logger.application.info()` message (lines 349-351). This prevents `replaceCiphers()` (called later in `fetchSync` at line 387) from overwriting locally-stored offline edits with the server's version. Without this guard, a background sync could silently discard the user's offline changes.
+
+### 3. Minor Optimization: Reuse `isVaultLocked`
+
+The `isVaultLocked` value is computed once at line 341 (`let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)`) and reused later at line 371 where the original code called `await vaultTimeoutService.isLocked(userId: userId)` a second time. Caching the result eliminates a redundant async call.
+
+### 4. Whitespace-Only Change
+
+A blank line is added before `try await checkVaultTimeoutPolicy()` (line 395). This is cosmetic only.
+
+---
+
+## Test Coverage
+
+### New Tests Added
+
+| Test | Scenario | Verification |
+|------|----------|-------------|
+| `test_fetchSync_preSyncResolution_triggersPendingChanges` | Pending changes exist → resolve → 0 remaining | Resolver called, sync proceeds (1 API request) |
+| `test_fetchSync_preSyncResolution_skipsWhenVaultLocked` | Vault locked (pending changes not checked) | Resolver NOT called, sync proceeds normally |
+| `test_fetchSync_preSyncResolution_noPendingChanges` | 0 pending changes | Pre-count check returns 0, resolver NOT called (optimization), sync proceeds normally |
+| `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain` | Pending changes → resolve → some remaining | Resolver called, sync ABORTED (0 API requests) |
+| `test_fetchSync_preSyncResolution_resolverThrows_syncFails` | Pending changes exist → resolver throws hard error (e.g., Core Data failure) | Resolver called, error propagates, sync ABORTED (0 API requests), ciphers not replaced |
+
+**[Updated]** A pre-count check was re-added as an optimization. The sync flow now calls `pendingChangeCount` twice: once before resolution (to skip the resolver when no pending changes exist) and once after resolution (to determine whether to abort). The `pendingChangeCountResults` sequential-return pattern in `MockPendingCipherChangeDataStore` supports this two-call flow.
+
+---
+
+## Compliance Assessment
+
+### Architecture Compliance
+
+| Guideline | Status | Details |
+|-----------|--------|---------|
+| Service layer responsibility | **Pass** | `SyncService` orchestrates the sync workflow; resolution logic is delegated to `OfflineSyncResolver` |
+| No business logic leakage | **Pass** | Conflict resolution is not in `SyncService`; it only checks count and triggers resolver |
+| Protocol-based DI | **Pass** | Both new dependencies injected as protocols |
+
+### Code Style Compliance
+
+| Guideline | Status | Details |
+|-----------|--------|---------|
+| DocC parameter docs | **Pass** | Both new init parameters documented |
+| Comments explain "why" | **Pass** | Comment block explains the abort rationale |
+| Guard/early-return pattern | **Pass** | Uses early `return` to abort sync on remaining changes |
+
+### Security Compliance
+
+| Principle | Status | Details |
+|-----------|--------|---------|
+| Vault lock guard | **Pass** | Resolution skipped when vault is locked (no crypto context available) |
+| Data loss prevention | **Pass** | Sync aborted when pending changes remain |
+
+---
+
+## Issues and Observations
+
+### Issue SS-1: Pre-Sync Resolution Error Propagation (Medium)
+
+The `try await offlineSyncResolver.processPendingChanges(userId: userId)` call uses `try`. If the resolver throws an error (e.g., a programming error in the resolver, not a per-item resolution failure), the error propagates up through `fetchSync` and the entire sync fails.
+
+However, `DefaultOfflineSyncResolver.processPendingChanges` internally catches per-item errors and logs them. It would only throw if `pendingCipherChangeDataStore.fetchPendingChanges` fails (Core Data error) or an unexpected error occurs. So in practice, the `try` is correct — if we can't even read the pending changes, the sync should fail rather than potentially overwrite data.
+
+### Issue SS-2: Race Condition Between Count Check and Sync (Low)
+
+There's a theoretical time-of-check-time-of-use (TOCTOU) gap between checking `remainingCount` and proceeding to the sync API call. If a new offline change is queued between these two points (e.g., by another async task), the sync could proceed and overwrite it.
+
+**Mitigation:** In practice, `fetchSync` is called from a serial context (the sync workflow), and user operations that queue pending changes go through `VaultRepository` methods which are separate async flows. The risk is very low.
+
+### Issue SS-3: Abort Sync is Silent (Low) -- RESOLVED
+
+~~When the sync is aborted due to remaining pending changes, the method returns silently (`return`). There's no logging, no error, and no notification to the caller.~~
+
+**Resolved (2026-02-21):** A `Logger.application.info()` call was added at lines 349-351:
+
+```swift
+Logger.application.info(
+    "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
+)
+```
+
+The abort is no longer silent; the remaining-count value is included in the log message to aid debugging in production.
+
+### Issue SS-4: Full Pre-Sync Resolution On Every Sync Attempt (Low)
+
+Every `fetchSync` call attempts full offline resolution before proceeding. If the resolver fails for some changes (e.g., server returns 500 for a specific cipher), these will be retried on every subsequent sync attempt, which may be frequent (triggered by connectivity changes, app foregrounding, etc.).
+
+**Assessment:** This is acceptable behavior. The resolver's per-item error handling (catch-and-continue) means failed items don't block resolution of other items. The retry overhead is minimal (count check + failed API calls for the remaining items).
+
+### Observation SS-5: No Retry Backoff for Failed Resolution Items
+
+Failed resolution items are retried on the next sync with no backoff. If a specific cipher consistently fails to resolve (e.g., server returns 404 because it was deleted via another device), the resolver will attempt it every sync indefinitely.
+
+**Possible improvement:** Add a retry count or timestamp to `PendingCipherChangeData` and skip/expire items that have failed too many times or are too old. This would prevent perpetual retry loops. However, for the initial implementation, the current approach is simpler and the impact is limited to extra API calls.
