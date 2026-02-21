@@ -1,10 +1,12 @@
 # Detailed Review: Dependency Injection & Wiring
 
+> **Reconciliation Note (2026-02-21):** This document was corrected after verifying against the actual source code. The original review incorrectly stated that a `HasPendingCipherChangeDataStore` protocol exists in `Services.swift` and is part of the `Services` typealias. In reality, **no such protocol exists anywhere in `Services.swift`**. Only `HasOfflineSyncResolver` was added to the `Services` typealias (at line 40). The `pendingCipherChangeDataStore` dependency is passed directly via initializer injection to `DefaultVaultRepository`, `DefaultSyncService`, and `DefaultOfflineSyncResolver` — it is not exposed through a `Has*` protocol and is not a stored property on `ServiceContainer`. The `ServiceContainer+Mocks.swift` `withMocks()` factory similarly does NOT include a `pendingCipherChangeDataStore` parameter — only `offlineSyncResolver` is present. All sections below have been updated to reflect these corrections. Issue DI-1 has been narrowed accordingly.
+
 ## Files Covered
 
 | File | Type | Lines Changed |
 |------|------|---------------|
-| `BitwardenShared/Core/Platform/Services/Services.swift` | Has* protocols (modified) | +18 lines |
+| `BitwardenShared/Core/Platform/Services/Services.swift` | Has* protocol (modified) | +8 lines |
 | `BitwardenShared/Core/Platform/Services/ServiceContainer.swift` | DI container (modified) | +30 lines |
 | `BitwardenShared/Core/Platform/Services/TestHelpers/ServiceContainer+Mocks.swift` | Test helper (modified) | +6 lines |
 | `BitwardenShared/Core/Platform/Services/Stores/DataStore.swift` | Data store (modified) | +1 line |
@@ -16,40 +18,38 @@
 
 ### 1. Services.swift — Has* Protocol Composition
 
-Two new `Has*` protocols are added to the `Services` typealias composition:
+One new `Has*` protocol is added to the `Services` typealias composition:
 
 ```swift
 /// Protocol for an object that provides an `OfflineSyncResolver`.
 protocol HasOfflineSyncResolver {
+    /// The service used to resolve pending offline cipher changes against server state.
     var offlineSyncResolver: OfflineSyncResolver { get }
-}
-
-/// Protocol for an object that provides a `PendingCipherChangeDataStore`.
-protocol HasPendingCipherChangeDataStore {
-    var pendingCipherChangeDataStore: PendingCipherChangeDataStore { get }
 }
 ```
 
-These are added to the `Services` typealias in alphabetical order:
-- `& HasOfflineSyncResolver` (between `HasNotificationService` and `HasOrganizationAPIService`)
-- `& HasPendingCipherChangeDataStore` (between `HasPendingAppIntentActionMediator` and `HasPolicyService`)
+This is defined at `Services.swift:265-268` and added to the `Services` typealias in alphabetical order:
+- `& HasOfflineSyncResolver` (at line 40, between `HasNotificationService` and `HasOrganizationAPIService`)
+
+**Correction (2026-02-21):** The original review stated that a `HasPendingCipherChangeDataStore` protocol was also added to the `Services` typealias. This is incorrect — no such protocol exists anywhere in `Services.swift`. The `pendingCipherChangeDataStore` dependency is passed directly via initializer injection to the objects that need it (`DefaultVaultRepository`, `DefaultSyncService`, `DefaultOfflineSyncResolver`) rather than being exposed through a `Has*` protocol.
 
 ~~**Note:** A blank line was introduced in the `Services` typealias between `& HasConfigService` and `& HasDeviceAPIService`.~~ **[Resolved]** The stray blank line was removed in commit `a52d379`.
 
 ### 2. ServiceContainer.swift — Container Registration
 
-The `ServiceContainer` class gains two new stored properties:
+The `ServiceContainer` class gains one new stored property:
 
 ```swift
 let offlineSyncResolver: OfflineSyncResolver
-let pendingCipherChangeDataStore: PendingCipherChangeDataStore
 ```
 
-These are added:
-- In the properties section, in alphabetical order
-- In the initializer parameter list, in alphabetical order
-- In the initializer body, with corresponding assignments
-- In the DocC parameter docs for the initializer
+This is added:
+- In the properties section, in alphabetical order (after `notificationService`)
+- In the main initializer parameter list, in alphabetical order
+- In the main initializer body, with the corresponding assignment
+- In the DocC parameter docs for the main initializer
+
+**Correction (2026-02-21):** `pendingCipherChangeDataStore` is NOT a stored property on `ServiceContainer`. It does not appear in the main `init` parameter list, body, or DocC block. Instead, it is only used within the convenience initializer (`init(appContext:application:errorReporter:nfcReaderService:)`) where it is passed directly to `DefaultOfflineSyncResolver`, `DefaultSyncService`, and `DefaultVaultRepository` via their initializers.
 
 ### 3. ServiceContainer.swift — Object Graph Wiring
 
@@ -101,14 +101,15 @@ DataStore (PendingCipherChangeDataStore)
 
 ### 4. ServiceContainer+Mocks.swift — Test Helper
 
-The `ServiceContainer.withMocks()` factory gains two new parameters with mock defaults:
+The `ServiceContainer.withMocks()` factory gains one new parameter with a mock default:
 
 ```swift
 offlineSyncResolver: OfflineSyncResolver = MockOfflineSyncResolver(),
-pendingCipherChangeDataStore: PendingCipherChangeDataStore = MockPendingCipherChangeDataStore(),
 ```
 
-These are added in the parameter list and forwarded to the `ServiceContainer` initializer.
+This is added in the parameter list and forwarded to the `ServiceContainer` initializer.
+
+**Correction (2026-02-21):** The original review stated that `pendingCipherChangeDataStore` was also a parameter in `withMocks()`. This is incorrect — since `pendingCipherChangeDataStore` is not a stored property on `ServiceContainer` and is not in the main `init`, it does not appear in `withMocks()` either. Only `offlineSyncResolver` is present (at line 48 of `ServiceContainer+Mocks.swift`).
 
 ### 5. DataStore.swift — User Data Cleanup
 
@@ -132,20 +133,20 @@ This ensures that when a user logs out or their account is deleted, all pending 
 
 | Guideline | Status | Details |
 |-----------|--------|---------|
-| Has* protocol composition pattern | **Pass** | `HasOfflineSyncResolver`, `HasPendingCipherChangeDataStore` follow naming convention |
-| Protocol-typed properties in container | **Pass** | `let offlineSyncResolver: OfflineSyncResolver` (protocol, not concrete type) |
-| Alphabetical ordering in Services typealias | **Pass** | New protocols inserted in correct alphabetical position |
-| ServiceContainer.withMocks updated | **Pass** | Mock defaults provided for all new dependencies |
+| Has* protocol composition pattern | **Pass** | `HasOfflineSyncResolver` follows naming convention. ~~`HasPendingCipherChangeDataStore`~~ does not exist — `pendingCipherChangeDataStore` is passed via direct init injection instead. |
+| Protocol-typed properties in container | **Pass** | `let offlineSyncResolver: OfflineSyncResolver` (protocol, not concrete type). `pendingCipherChangeDataStore` is not a container property. |
+| Alphabetical ordering in Services typealias | **Pass** | `HasOfflineSyncResolver` inserted in correct alphabetical position (line 40) |
+| ServiceContainer.withMocks updated | **Pass** | Mock default provided for `offlineSyncResolver`. `pendingCipherChangeDataStore` not applicable (not a container property). |
 | User data cleanup | **Pass** | `PendingCipherChangeData` included in batch delete |
 
 ### Code Style Compliance
 
 | Guideline | Status | Details |
 |-----------|--------|---------|
-| DocC on Has* protocols | **Pass** | Both have summary documentation and property-level documentation |
-| DocC on container properties | **Pass** | Stored properties documented |
-| DocC on init parameters | **Pass** | Both new parameters in init DocC |
-| Alphabetical ordering | **Pass** | Stored properties, init parameters, assignments, and DocC parameter documentation are all in correct alphabetical order |
+| DocC on Has* protocols | **Pass** | `HasOfflineSyncResolver` has summary and property-level documentation. ~~`HasPendingCipherChangeDataStore`~~ does not exist. |
+| DocC on container properties | **Pass** | `offlineSyncResolver` stored property documented. `pendingCipherChangeDataStore` is not a container property. |
+| DocC on init parameters | **Pass** | `offlineSyncResolver` parameter documented in init DocC |
+| Alphabetical ordering | **Pass** | Stored properties, init parameters, assignments, and DocC parameter documentation are in correct alphabetical order |
 
 ### Security Compliance
 
@@ -158,21 +159,15 @@ This ensures that when a user logs out or their account is deleted, all pending 
 
 ## Issues and Observations
 
-### Issue DI-1: `HasPendingCipherChangeDataStore` in `Services` Typealias Exposes Data Store to UI Layer (Low)
+### ~~Issue DI-1: `HasPendingCipherChangeDataStore` in `Services` Typealias Exposes Data Store to UI Layer~~ [Corrected — Not Applicable]
 
-The `HasPendingCipherChangeDataStore` protocol is added to the top-level `Services` typealias. Per the architecture guidelines, the `Services` typealias defines dependencies that may be used in the UI layer. `PendingCipherChangeDataStore` is a data store — the architecture docs state:
+**Correction (2026-02-21):** The original review stated that a `HasPendingCipherChangeDataStore` protocol was added to the `Services` typealias, raising a concern about exposing a data store to the UI layer. After verifying against the actual source code, **no `HasPendingCipherChangeDataStore` protocol exists anywhere in `Services.swift`**. The `pendingCipherChangeDataStore` dependency is passed directly via initializer injection to the three objects that need it:
 
-> "A store may only need to be accessed by services or repositories in the core layer and wouldn't need to be exposed to the UI layer in the `Services` typealias."
+- `DefaultOfflineSyncResolver` (core layer) — receives `dataStore` via init
+- `DefaultSyncService` (core layer) — receives `dataStore` via init
+- `DefaultVaultRepository` (core layer) — receives `dataStore` via init
 
-**Current usage:** `PendingCipherChangeDataStore` is used by:
-- `DefaultVaultRepository` (core layer)
-- `DefaultSyncService` (core layer)
-- `DefaultOfflineSyncResolver` (core layer)
-- None of these use it from the `Services` typealias — all receive it via direct init injection
-
-Adding it to the `Services` typealias makes it accessible to any UI-layer component (coordinators, processors), which is broader exposure than necessary. However, it also needs to be on the `ServiceContainer` for it to be injectable, and `ServiceContainer` conforms to `Services`.
-
-**Assessment:** This follows existing precedent in the project (other data stores are also in the `Services` typealias). Not a violation, but slightly broader than the architecture prefers.
+It is not a stored property on `ServiceContainer`, not in the `Services` typealias, and not exposed to the UI layer at all. Only `HasOfflineSyncResolver` is in the `Services` typealias, which narrows the original concern significantly. See updated DI-2 below for that remaining (smaller) concern.
 
 ### Issue DI-2: `HasOfflineSyncResolver` in `Services` Typealias (Low)
 

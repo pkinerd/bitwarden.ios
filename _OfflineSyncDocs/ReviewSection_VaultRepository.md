@@ -1,3 +1,8 @@
+> **Reconciliation Note (2026-02-21):** Line numbers, feature flag names, org-guard
+> placement, success-path cleanup semantics, `cleanUpOfflineCreatedCipherIfNeeded`
+> documentation, and test counts have been verified against the current source
+> (`VaultRepository.swift` and `VaultRepositoryTests.swift`) and corrected where stale.
+
 # Detailed Review: VaultRepository Offline Changes
 
 ## Files Covered
@@ -24,7 +29,7 @@ A new dependency `pendingCipherChangeDataStore: PendingCipherChangeDataStore` is
 encrypt(cipherView) → addCipherWithServer(encrypted) → done
 ```
 
-**After: [Updated]**
+**After (lines 505-547): [Updated]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
 2. [New] If cipher.id is nil, assign temp UUID via cipher.withId(UUID().uuidString)
@@ -32,13 +37,15 @@ encrypt(cipherView) → addCipherWithServer(encrypted) → done
 4. [New] On success: clean up any orphaned pending change from a prior offline add
 5. catch (denylist pattern):
    a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
-   b. If isOrgCipher → rethrow the original caught error
-   c. Otherwise → handleOfflineAdd(encryptedCipher, userId)
+   b. Guard: isOrgCipher must be false AND both feature flags
+      (.offlineSyncEnableResolution, .offlineSyncEnableOfflineChanges) must be enabled;
+      otherwise rethrow the caught error
+   c. → handleOfflineAdd(encryptedCipher, userId)
 ```
 
-**[Updated]** The catch block evolved from `catch let error as URLError where error.isNetworkConnectionError` through bare `catch` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, and `ResponseValidationError` with status < 500; all other errors (including 5xx and `URLError`) trigger offline save.
+**[Updated]** The catch block evolved from `catch let error as URLError where error.isNetworkConnectionError` through bare `catch` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, and `ResponseValidationError` with status < 500; all other errors (including 5xx and `URLError`) trigger offline save — but only when both feature flags (`.offlineSyncEnableResolution` and `.offlineSyncEnableOfflineChanges`) are enabled and the cipher is not an organization cipher.
 
-**[Updated]** On successful server add, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)`. This prevents false conflicts on the next sync.
+**[Updated]** On successful server add, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)` (lines 522-528). This prevents false conflicts on the next sync.
 
 **Security Flow:** The encryption step (`clientService.vault().ciphers().encrypt(cipherView:)`) occurs BEFORE the server call attempt. The encrypted cipher is available in the catch block, so no additional encryption is needed for offline storage. This preserves the encrypt-before-queue invariant.
 
@@ -51,20 +58,22 @@ encrypt(cipherView) → addCipherWithServer(encrypted) → done
 encrypt(cipherView) → updateCipherWithServer(encrypted) → done
 ```
 
-**After: [Updated]**
+**After (lines 970-1011): [Updated]**
 ```
 1. Check if cipher has organizationId (isOrgCipher)
 2. encrypt(cipherView) → try updateCipherWithServer(encrypted)
 3. [New] On success: clean up any orphaned pending change from a prior offline save
 4. catch (denylist pattern):
    a. Rethrow ServerError, CipherAPIServiceError, ResponseValidationError < 500
-   b. If isOrgCipher → rethrow the original caught error
-   c. Otherwise → handleOfflineUpdate(cipherView, encryptedCipher, userId)
+   b. Guard: isOrgCipher must be false AND both feature flags
+      (.offlineSyncEnableResolution, .offlineSyncEnableOfflineChanges) must be enabled;
+      otherwise rethrow the caught error
+   c. → handleOfflineUpdate(cipherView, encryptedCipher, userId)
 ```
 
-**[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save.
+**[Updated]** Error handling evolved from `catch let error as URLError where error.isNetworkConnectionError` to the current denylist pattern: rethrow `ServerError`, `CipherAPIServiceError`, `ResponseValidationError < 500`; all other errors trigger offline save — but only when both feature flags (`.offlineSyncEnableResolution` and `.offlineSyncEnableOfflineChanges`) are enabled and the cipher is not an organization cipher.
 
-**[Updated]** On successful server update, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)`. This mirrors the same cleanup pattern in `addCipher`.
+**[Updated]** On successful server update, orphaned pending change records from prior offline attempts are cleaned up via `pendingCipherChangeDataStore.deletePendingChange(cipherId:userId:)` (lines 985-991). This mirrors the same cleanup pattern in `addCipher`.
 
 **Notable:** `handleOfflineUpdate` receives both the decrypted `cipherView` (for password change detection) and the encrypted cipher (for local storage). The decrypted view is never persisted — it's used only for an in-memory comparison.
 
@@ -154,7 +163,7 @@ Parameters: cipherView: CipherView, encryptedCipher: Cipher, userId: String
 
 **[Updated] `.create` Type Preservation:** If the cipher was originally created offline and hasn't been synced to the server yet (existing pending change has `changeType == .create`), the update preserves the `.create` type instead of overwriting it to `.update`. From the server's perspective, this cipher is still new and needs to be POSTed, not PUTted. This prevents the resolver from trying to GET the cipher by its temporary ID.
 
-**Password Change Detection Logic (lines 1055-1073):**
+**Password Change Detection Logic (lines 1075-1082):**
 
 This is the most complex part of the offline handling. It needs to determine if the current edit changed the password from the previous version. There are two cases:
 
@@ -214,9 +223,9 @@ The following `VaultRepository` methods are NOT offline-aware:
 
 | Method | Lines | Impact |
 |--------|-------|--------|
-| `archiveCipher(_:)` | 546-553 | Generic network error if offline |
-| `unarchiveCipher(_:)` | 950-957 | Generic network error if offline |
-| `updateCipherCollections(_:)` | 994-997 | Generic network error if offline |
+| `archiveCipher(_:)` | 549-556 | Generic network error if offline |
+| `unarchiveCipher(_:)` | 961-968 | Generic network error if offline |
+| `updateCipherCollections(_:)` | 1013-1021 | Generic network error if offline |
 | `shareCipher(...)` | Various | Not applicable (requires network for org encryption) |
 | `restoreCipher(_:)` | Various | Generic network error if offline |
 

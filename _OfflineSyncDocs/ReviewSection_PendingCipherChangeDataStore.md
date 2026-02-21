@@ -1,3 +1,5 @@
+> **Reconciliation Note (2026-02-21):** This document was verified and corrected against the source code on 2026-02-21. Corrections include: `changeTypeRaw` type updated from `Int16` to `String?` (the enum `PendingCipherChangeType` is now `String`-backed), `offlinePasswordChangeCount` type updated from `Integer 16` to `Integer 64`, the enum description updated to include the `.hardDelete` case and `String` raw value type, the `changeType` computed property description updated to reflect `flatMap`-based parsing, and the `HasPendingCipherChangeDataStore` reference removed (the data store is passed directly via initializers, not through the `Services` typealias).
+
 # Detailed Review: PendingCipherChangeDataStore & PendingCipherChangeData
 
 ## Files Covered
@@ -31,11 +33,14 @@ PendingCipherChangeData : NSManagedObject
 └── static predicate/request helpers (7 methods)
 ```
 
-**Change Type Enum (`PendingCipherChangeType`):**
+**Change Type Enum (`PendingCipherChangeType: String`):**
 
-- `.update` (rawValue: 0) — Update to an existing cipher
-- `.create` (rawValue: 1) — Newly created cipher (offline)
-- `.softDelete` (rawValue: 2) — Soft delete of an existing cipher
+- `.update` (rawValue: `"update"`) — Update to an existing cipher
+- `.create` (rawValue: `"create"`) — Newly created cipher (offline)
+- `.softDelete` (rawValue: `"softDelete"`) — Soft delete of an existing cipher
+- `.hardDelete` (rawValue: `"hardDelete"`) — Hard (permanent) delete of an existing cipher
+
+The computed property `changeType` uses `changeTypeRaw.flatMap(PendingCipherChangeType.init(rawValue:)) ?? .update` to convert from the stored `String?` to the typed enum, defaulting to `.update` if the raw value is nil or unrecognized.
 
 **Notable Design Decisions:**
 
@@ -58,12 +63,12 @@ The schema adds the `PendingCipherChangeData` entity with 9 attributes and a uni
     <attribute name="id" attributeType="String"/>
     <attribute name="cipherId" attributeType="String"/>
     <attribute name="userId" attributeType="String"/>
-    <attribute name="changeTypeRaw" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+    <attribute name="changeTypeRaw" optional="YES" attributeType="String"/>
     <attribute name="cipherData" optional="YES" attributeType="Binary"/>
     <attribute name="originalRevisionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     <attribute name="createdDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     <attribute name="updatedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-    <attribute name="offlinePasswordChangeCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+    <attribute name="offlinePasswordChangeCount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
     <uniquenessConstraints>
         <uniquenessConstraint>
             <constraint value="userId"/>
