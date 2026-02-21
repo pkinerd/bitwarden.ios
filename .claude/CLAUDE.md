@@ -123,10 +123,18 @@ git show origin/build-logs/<branch-name>:test.log
 git show origin/build-logs/<branch-name>:build-summary.md
 ```
 
+### Grepping test.log
+
+- Passing tests: `✓` (tick symbol)
+- Failing tests: `✖︎` (cross symbol)
+- Compiler/build errors: `error:` (with colon)
+
+Example: `git show origin/build-logs/<branch>:test.log | grep '✖︎\|error:'`
+
 ### When user reports a build error
 
 1. `git ls-remote --heads origin 'refs/heads/build-logs/*'` — find the most recent (or `fail`) branch
-2. `git fetch` + `git show` the `test.log` for compiler errors, test failures, or warnings
+2. `git fetch` + `git show` the `test.log`, grep for `✖︎` or `error:` to find failures
 3. `git show` the `build-summary.md` for context (commit, PR, branch)
 4. Diagnose and fix
 
