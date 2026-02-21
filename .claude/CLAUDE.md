@@ -138,6 +138,33 @@ Example: `git show origin/build-logs/<branch>:test.log | grep '✖︎\|error:'`
 3. `git show` the `build-summary.md` for context (commit, PR, branch)
 4. Diagnose and fix
 
+## Issue Tracking
+
+Issues are managed on the orphan branch `claude/issues`. This branch has its own
+history, separate from the main codebase. Use the `/issues` skill or follow the
+steps below.
+
+### Quick access
+
+```bash
+git fetch origin claude/issues
+git show origin/claude/issues:GUIDE.md       # Full guide
+git show origin/claude/issues:INDEX.md       # List all issues
+git show origin/claude/issues:SCHEMA.md      # Issue file format
+git show origin/claude/issues:state.json     # Next ID, valid labels
+```
+
+### Reading a specific issue
+
+```bash
+git show origin/claude/issues:issues/0001-example-slug.md
+```
+
+### Modifying issues
+
+Use the `/issues` skill which handles worktree setup, commits, and pushes. Or
+follow the workflows documented in `GUIDE.md` on the branch.
+
 ## Communication & Decision-Making
 
 Always clarify ambiguous requirements before implementing. Use specific questions:
