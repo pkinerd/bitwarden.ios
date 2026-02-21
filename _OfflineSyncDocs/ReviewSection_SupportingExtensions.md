@@ -1,5 +1,16 @@
 # Detailed Review: Supporting Extensions
 
+> **Reconciliation note (2026-02-21):** All line references, property counts, parameter lists,
+> test counts, and deletion records in this document have been verified against the current
+> source. `CipherView+OfflineSync.swift` (104 lines): `withId(_:)` at lines 16–24,
+> `update(name:)` at lines 34–42, `makeCopy(id:key:name:attachments:attachmentDecryptionFailures:)`
+> at lines 66–103. `makeCopy` copies exactly 28 `CipherView` properties (matching the
+> `- Important:` DocC comment at lines 53–55). `update(name:)` passes `id: nil`, `key: nil`,
+> `attachments: nil`, `attachmentDecryptionFailures: nil` and preserves `folderId` from the
+> receiver. `CipherViewOfflineSyncTests.swift` contains 10 tests (3 `withId`, 5 `update`,
+> 2 SDK property count guard). `URLError+NetworkConnection.swift` deletion in commit `e13aefe`
+> confirmed. No corrections were required.
+
 ## Files Covered
 
 | File | Type | Lines | Status |

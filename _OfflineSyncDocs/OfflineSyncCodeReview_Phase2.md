@@ -1,5 +1,12 @@
 # Offline Sync Feature - Phase 2 Code Review (Bug Fixes & Improvements)
 
+> **Reconciliation Note (2026-02-21):** Line number references in this document have been verified
+> against the current source and corrected where they had drifted since the original review.
+> Specifically: `VaultRepository.swift` addCipher snippet updated from `:509-516` to `:513-516`,
+> `OfflineSyncResolver.swift` resolveCreate snippet updated from `:145-166` to `:154-167`,
+> and `SyncService.swift` remainingCount reference updated from `:339` to `:348`.
+> All feature flag names, dependency counts, and type references were verified as accurate.
+
 ## Summary
 
 This review covers the 30+ commits applied after the initial offline sync implementation and its [original code review](OfflineSyncCodeReview.md). These changes address bugs discovered during testing (spinner hangs, crash on conflict backup view, temp-ID server fetch failures), harden error handling, add orphaned pending change cleanup, and improve test infrastructure.
@@ -64,7 +71,7 @@ Workflow changes are out of scope for this architecture review but noted for com
 
 **After:** `CipherView.withId(_:)` assigns the ID to the `CipherView` *before* encryption. The ID is embedded in the encrypted payload and survives the encrypt-decrypt round-trip.
 
-**`VaultRepository.swift:509-516` (master):**
+**`VaultRepository.swift:513-516` (master):**
 ```swift
 let cipherToEncrypt = cipher.id == nil ? cipher.withId(UUID().uuidString) : cipher
 let cipherEncryptionContext = try await clientService.vault().ciphers()
@@ -170,7 +177,7 @@ if let existing = try await pendingCipherChangeDataStore.fetchPendingChange(...)
 
 **[Updated 2]** Note: `DefaultOfflineSyncResolver` has been converted from a `class` to an `actor` (commit `9415019`), improving thread safety for concurrent sync operations.
 
-**`OfflineSyncResolver.swift:145-166` (master):**
+**`OfflineSyncResolver.swift:154-167` (master):**
 ```swift
 let tempId = cipher.id
 try await cipherService.addCipherWithServer(cipher, encryptedFor: userId)
@@ -215,7 +222,7 @@ if let tempId {
 
 ### 2.8 Server 404 Handling in resolveUpdate and resolveSoftDelete (Important Fix)
 
-**Bug:** When `resolveUpdate` or `resolveSoftDelete` called `cipherAPIService.getCipher(withId:)` and the cipher had been deleted on the server while the user was offline, the resulting error propagated unhandled. The pending change stayed unresolved, and all future syncs were permanently blocked (`remainingCount > 0` at `SyncService.swift:339` prevents full sync).
+**Bug:** When `resolveUpdate` or `resolveSoftDelete` called `cipherAPIService.getCipher(withId:)` and the cipher had been deleted on the server while the user was offline, the resulting error propagated unhandled. The pending change stayed unresolved, and all future syncs were permanently blocked (`remainingCount > 0` at `SyncService.swift:348` prevents full sync).
 
 **Fix — 404 detection via `GetCipherRequest.validate`:**
 

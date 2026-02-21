@@ -1,5 +1,7 @@
 # Offline Sync Implementation Plan
 
+> **Reconciliation Note (2026-02-21):** This document was the original implementation plan. Some details diverge from the final implementation. Key corrections have been applied inline where the plan did not match the implemented code. In particular: `HasPendingCipherChangeDataStore` was never added to `Services.swift`; the `pendingCipherChangeDataStore` dependency is injected directly via initializers rather than through a `Has*` protocol. Where applicable, sections are annotated as "as-planned" or "as-implemented" to clarify divergences.
+
 ## Overview
 
 Add support for saving vault items locally while offline, with automatic syncing on reconnection. Conflict resolution preserves data faithfully - no silent data loss.
@@ -274,8 +276,7 @@ This ensures accurate tracking of offline password change count even across vaul
 
 ### Registration
 
-- New protocol: `HasPendingCipherChangeDataStore` in `Services.swift`
-- Added to `Services` typealias composition
+- **[As-implemented]** The `pendingCipherChangeDataStore` is injected directly via initializers (e.g., into `VaultRepository`, `SyncService`, and `OfflineSyncResolver`) rather than through a `HasPendingCipherChangeDataStore` protocol in `Services.swift`. Only `HasOfflineSyncResolver` was added to `Services.swift`.
 - Instantiated in `ServiceContainer`
 
 ---
@@ -523,7 +524,7 @@ This cleanly excludes org ciphers without affecting any other flow.
 | File | Location | Changes |
 |------|----------|---------|
 | `Bitwarden.xcdatamodeld` | `BitwardenShared/Core/Platform/Services/Stores/` | Add `PendingCipherChangeData` entity |
-| `Services.swift` | `BitwardenShared/Core/Platform/Services/` | Add `HasPendingCipherChangeDataStore`, `HasOfflineSyncResolver` protocols; add to `Services` typealias |
+| `Services.swift` | `BitwardenShared/Core/Platform/Services/` | **[As-implemented]** Add `HasOfflineSyncResolver` protocol only; add to `Services` typealias. `HasPendingCipherChangeDataStore` was not added — `pendingCipherChangeDataStore` is injected directly via initializers. |
 | `ServiceContainer.swift` | `BitwardenShared/Core/Platform/Services/` | Register new services, add properties and init params |
 | `VaultRepository.swift` | `BitwardenShared/Core/Vault/Repositories/` | Offline-aware `updateCipher()`, `addCipher()`, `deleteCipher()`, `softDeleteCipher()` with API failure catch-and-queue |
 | `SyncService.swift` | `BitwardenShared/Core/Vault/Services/` | Add early-abort pattern: resolve pending changes before `fetchSync()`, abort if unresolved to protect offline edits |

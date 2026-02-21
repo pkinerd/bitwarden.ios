@@ -1,3 +1,10 @@
+> **Reconciliation Note (2026-02-21):** This document has been corrected to reflect the actual
+> codebase. The original review incorrectly stated that a `HasPendingCipherChangeDataStore` protocol
+> existed and was included in the `Services` typealias. In reality, only `HasOfflineSyncResolver`
+> is in the `Services` typealias — no `HasPendingCipherChangeDataStore` protocol exists in
+> `Services.swift`. All references, code snippets, recommendations, and analysis related to
+> `HasPendingCipherChangeDataStore` being in the `Services` typealias have been removed or corrected.
+
 # Review: Dependency Injection Wiring (ServiceContainer, Services)
 
 ## Files Reviewed
@@ -5,18 +12,18 @@
 | File | Status | Lines Changed |
 |------|--------|--------------|
 | `BitwardenShared/Core/Platform/Services/ServiceContainer.swift` | Modified | +35 |
-| `BitwardenShared/Core/Platform/Services/Services.swift` | Modified | +18 |
+| `BitwardenShared/Core/Platform/Services/Services.swift` | Modified | +8 |
 | `BitwardenShared/Core/Platform/Services/TestHelpers/ServiceContainer+Mocks.swift` | Modified | +4 |
 
 ## Overview
 
-These files wire the new offline sync components into the existing dependency injection system. The `ServiceContainer` creates and holds references to the new `OfflineSyncResolver` and `PendingCipherChangeDataStore`, the `Services.swift` file defines the `Has*` protocols for DI composition, and the mock helper adds parameters for test injection.
+These files wire the new offline sync components into the existing dependency injection system. The `ServiceContainer` creates and holds references to the new `OfflineSyncResolver` and `PendingCipherChangeDataStore`, the `Services.swift` file defines the `HasOfflineSyncResolver` protocol for DI composition, and the mock helper adds parameters for test injection. Note: `PendingCipherChangeDataStore` is NOT exposed through the `Services` typealias — it is injected directly through initializers only.
 
 ## Architecture Compliance
 
 ### DI Pattern (Architecture.md)
 
-- **Compliant**: Follows the established `Has<Service>` protocol composition pattern. New protocols `HasOfflineSyncResolver` and `HasPendingCipherChangeDataStore` are added to `Services.swift` and included in the `Services` typealias.
+- **Compliant**: Follows the established `Has<Service>` protocol composition pattern. `HasOfflineSyncResolver` is added to `Services.swift` and included in the `Services` typealias. `PendingCipherChangeDataStore` is not exposed via a `Has*` protocol in the typealias — it is injected directly through initializers to `VaultRepository` and `SyncService`, keeping it appropriately scoped to the core layer.
 - **Compliant**: Both new dependencies are created in `ServiceContainer`'s factory method and injected into their consumers through initializers.
 - **Compliant**: Mock extensions in `ServiceContainer+Mocks.swift` allow test injection.
 
@@ -24,30 +31,27 @@ These files wire the new offline sync components into the existing dependency in
 
 ### Services.swift — Has Protocols
 
+Only `HasOfflineSyncResolver` is defined in `Services.swift` and added to the `Services` typealias:
+
 ```swift
 protocol HasOfflineSyncResolver {
     var offlineSyncResolver: OfflineSyncResolver { get }
 }
-
-protocol HasPendingCipherChangeDataStore {
-    var pendingCipherChangeDataStore: PendingCipherChangeDataStore { get }
-}
 ```
-
-Both are added to the `Services` typealias:
 
 ```swift
 typealias Services = HasAPIService
     & ...
     & HasOfflineSyncResolver
     & ...
-    & HasPendingCipherChangeDataStore
-    & ...
 ```
+
+There is no `HasPendingCipherChangeDataStore` protocol in `Services.swift`. The `PendingCipherChangeDataStore` is injected directly through initializers to the components that need it (`VaultRepository`, `SyncService`, `OfflineSyncResolver`), keeping it scoped to the core layer.
 
 **Assessment**:
 - **Compliant**: Alphabetical ordering maintained in the typealias
-- **Compliant**: Proper DocC documentation on each protocol
+- **Compliant**: Proper DocC documentation on the protocol
+- **Good architectural decision**: Not exposing the data store in the `Services` typealias keeps the UI layer from having unnecessary access to it
 
 ### ServiceContainer.swift — Property Declarations
 
@@ -66,8 +70,7 @@ let preSyncOfflineSyncResolver = DefaultOfflineSyncResolver(
     cipherAPIService: apiService,
     cipherService: cipherService,
     clientService: clientService,
-    pendingCipherChangeDataStore: dataStore,
-    stateService: stateService,
+    pendingCipherChangeDataStore: dataStore
 )
 ```
 
@@ -96,7 +99,7 @@ let offlineSyncResolver: OfflineSyncResolver = preSyncOfflineSyncResolver
 
 **Assessment**:
 - **Good**: The `DataStore` instance is reused for `PendingCipherChangeDataStore` (since `DataStore` conforms to the protocol via extension). This means no new Core Data stack is created.
-- **Concern — `HasPendingCipherChangeDataStore` exposure to UI layer**: The `PendingCipherChangeDataStore` is included in the `Services` typealias, which means it's theoretically accessible from the UI layer. Per Architecture.md, stores should typically "only need to be accessed by services or repositories in the core layer and wouldn't need to be exposed to the UI layer." The data store is currently only used by `VaultRepository` (core layer) and `SyncService` (core layer), so exposing it to the UI layer is unnecessary. This is documented in `AP-DI1_DataStoreExposedToUILayer.md`. However, the current exposure doesn't cause any architectural violation — it just makes the store available where it shouldn't be needed.
+- **Good**: The `PendingCipherChangeDataStore` is NOT included in the `Services` typealias, which correctly keeps it scoped to the core layer. Per Architecture.md, stores should typically "only need to be accessed by services or repositories in the core layer and wouldn't need to be exposed to the UI layer." The data store is only injected directly into `VaultRepository`, `SyncService`, and `OfflineSyncResolver` through their initializers — this is the architecturally correct approach.
 - **Good**: The `OfflineSyncResolver` is exposed to the UI layer via `HasOfflineSyncResolver`, but this is less concerning since the resolver is a higher-level service, not a raw data store.
 
 ### ServiceContainer+Mocks.swift
@@ -125,9 +128,7 @@ These are unrelated to offline sync but were included in the same change.
 
 ## Cross-Component Dependencies
 
-The `Services` typealias now includes `HasPendingCipherChangeDataStore`, making the data store accessible across the entire UI layer. This is wider than necessary — ideally only `VaultRepository` and `SyncService` should access it. However, the practical impact is minimal since UI-layer code has no reason to call the data store directly.
-
-**Recommendation**: Consider removing `HasPendingCipherChangeDataStore` from the `Services` typealias and instead passing it directly through initializers of `VaultRepository` and `SyncService` (which is already done). The typealias inclusion is redundant since neither the UI layer nor any coordinator/processor needs direct data store access.
+The `Services` typealias includes `HasOfflineSyncResolver` but does NOT include `HasPendingCipherChangeDataStore`. The data store is correctly scoped — it is only injected directly through initializers into `VaultRepository`, `SyncService`, and `OfflineSyncResolver`, which are all core-layer components. This is the architecturally correct approach: only `HasOfflineSyncResolver` is exposed to the UI layer, since the resolver may be needed by UI-layer components, while the raw data store remains internal to the core layer.
 
 ## Code Style Compliance
 
@@ -137,8 +138,8 @@ The `Services` typealias now includes `HasPendingCipherChangeDataStore`, making 
 
 ## Simplification Opportunities
 
-1. **Remove `HasPendingCipherChangeDataStore` from `Services` typealias**: The data store is only needed in the core layer. Removing it from `Services` would reduce the API surface exposed to the UI layer.
-2. **Remove `HasOfflineSyncResolver` from `Services` typealias** if it's not needed by any UI-layer component. Currently it's in the typealias but may not be referenced from any processor or coordinator.
+1. ~~**Remove `HasPendingCipherChangeDataStore` from `Services` typealias**~~ — **Moot**: The data store was never in the `Services` typealias. It is already correctly scoped to core-layer initializer injection only.
+2. **Consider removing `HasOfflineSyncResolver` from `Services` typealias** if it's not needed by any UI-layer component. Currently it's in the typealias but may not be referenced from any processor or coordinator.
 
 ## Summary
 
@@ -148,4 +149,4 @@ The `Services` typealias now includes `HasPendingCipherChangeDataStore`, making 
 | DI wiring correctness | **Good** | All dependencies properly connected |
 | Security | **No concerns** | Standard DI patterns |
 | Code style | **Good** | Alphabetical, documented |
-| API surface | **Minor concern** | DataStore exposed to UI layer unnecessarily |
+| API surface | **Good** | DataStore correctly scoped to core layer (not in Services typealias) |

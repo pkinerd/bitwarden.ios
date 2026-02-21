@@ -1,5 +1,13 @@
 # Offline Sync for Vault Cipher Operations — Detailed Changelog
 
+> **Reconciliation Note (2026-02-21):** This changelog has been reviewed against the actual codebase
+> and corrected for accuracy. Inline annotations marked `[Corrected 2026-02-21]` indicate places
+> where the original changelog text diverged from the final implementation. Key corrections:
+> 1. `HasPendingCipherChangeDataStore` is NOT in the `Services` typealias -- only `HasOfflineSyncResolver` is; the data store is passed directly via initializers.
+> 2. `changeTypeRaw` Core Data type changed from `Integer 16` to `String` (optional); `PendingCipherChangeType` raw type changed from `Int16` to `String`. `offlinePasswordChangeCount` changed from `Integer 16` to `Integer 64` (`Int64`).
+> 3. `DefaultOfflineSyncResolver` has 4 dependencies (not 5) -- `stateService` was removed.
+> 4. Test counts updated: ~119 offline sync tests across 7 test files (previously understated).
+
 > **Feature**: Client-side offline vault sync with conflict resolution
 > **Fork base**: `0283b1f` (Update SDK to 9b59b09)
 > **Commits**: 5 (initial) + 8 (post-review fixes on dev: PRs #26-#33) + 2 (branch-only: backup reorder + RES-2 404 handling)
@@ -130,12 +138,12 @@ A new `PendingCipherChangeData` entity was added to the Core Data model with the
 | `id` | String | Yes | — | Primary key for the pending change record |
 | `cipherId` | String | Yes | — | Cipher ID (temporary UUID for creates, server ID for updates/deletes) |
 | `userId` | String | Yes | — | Active user ID for multi-user isolation |
-| `changeTypeRaw` | Integer 16 | Yes | `0` | Enum: `0` = update, `1` = create, `2` = softDelete, `3` = hardDelete |
+| `changeTypeRaw` | Integer 16 | Yes | `0` | Enum: `0` = update, `1` = create, `2` = softDelete, `3` = hardDelete | **[Corrected 2026-02-21]** Final type is `String` (optional). The enum `PendingCipherChangeType` uses `String` raw values (not `Int16`). See resolved issues CD-TYPE-1 and CD-TYPE-2.
 | `cipherData` | Binary | No | — | JSON-encoded encrypted `CipherDetailsResponseModel` |
 | `originalRevisionDate` | Date | No | — | Server `revisionDate` at time of first offline edit |
 | `createdDate` | Date | No | — | Timestamp of first queued change |
 | `updatedDate` | Date | No | — | Timestamp of most recent update to this record |
-| `offlinePasswordChangeCount` | Integer 16 | Yes | `0` | Number of password changes while offline |
+| `offlinePasswordChangeCount` | Integer 16 | Yes | `0` | Number of password changes while offline | **[Corrected 2026-02-21]** Final type is `Integer 64` (`Int64` in Swift). See resolved issue CD-TYPE-2.
 
 ### Uniqueness Constraint
 
@@ -168,21 +176,23 @@ This ensures **one pending change record per cipher per user**. Subsequent edits
 #### PendingCipherChangeType Enum (line 8)
 
 ```swift
-enum PendingCipherChangeType: Int16 {
-    case update = 0
-    case create = 1
-    case softDelete = 2
-    case hardDelete = 3
+// [Corrected 2026-02-21] Original changelog showed Int16 raw type with numeric values.
+// Final implementation uses String raw type. See resolved issues CD-TYPE-1 and CD-TYPE-2.
+enum PendingCipherChangeType: String {
+    case update
+    case create
+    case softDelete
+    case hardDelete
 }
 ```
 
-Four change types representing the operations a user can perform on vault items. `update` is `0` for backwards compatibility with the Core Data default value. `hardDelete` distinguishes permanent delete intent from soft delete so the resolver can call the correct server API.
+Four change types representing the operations a user can perform on vault items. `hardDelete` distinguishes permanent delete intent from soft delete so the resolver can call the correct server API. **[Corrected 2026-02-21]** The raw type was changed from `Int16` (with numeric values 0-3) to `String` (with implicit string values matching the case names). The Core Data attribute `changeTypeRaw` is stored as an optional `String` rather than `Integer 16`.
 
 #### NSManagedObject Subclass (line 27)
 
 The `PendingCipherChangeData` class uses `@NSManaged` properties matching the Core Data schema. Key details:
 
-- **Computed `changeType` property** (line 60): Converts between raw `Int16` and the `PendingCipherChangeType` enum.
+- **Computed `changeType` property** (line 60): Converts between raw `String?` and the `PendingCipherChangeType` enum. **[Corrected 2026-02-21]** Originally documented as `Int16`; final implementation uses `String?` (`changeTypeRaw` is an optional String, resolved via `flatMap(PendingCipherChangeType.init(rawValue:))` with a fallback to `.update`).
 - **Convenience initializer** (line 83): Sets `id = UUID().uuidString`, `createdDate` and `updatedDate` to current time.
 - **Static predicate helpers** (lines 108–142): `userIdPredicate`, `userIdAndCipherIdPredicate`, `idPredicate` — used by fetch/delete requests.
 - **Static fetch request helpers** (lines 144–180): `fetchByUserIdRequest` (sorted by `createdDate` ascending), `fetchByCipherIdRequest`, `fetchByIdRequest`.
@@ -526,18 +536,18 @@ Single-method protocol following the existing service pattern.
 
 Declared as an `actor` (not a `class`) for thread safety.
 
-#### Dependencies (5) **[Updated]**
+#### Dependencies (4) **[Updated] [Corrected 2026-02-21]** Originally documented as 5 dependencies; `stateService` was removed (commit `a52d379` removed unused `timeProvider`, and `stateService` was also removed as it is not used by the resolver -- userId is passed as a parameter). The actual dependency count is 4.
 
 - `cipherAPIService` — fetches current server cipher for conflict comparison
 - `cipherService` — adds/updates/soft-deletes ciphers locally and with server
 - `clientService` — SDK encryption/decryption for conflict resolution
 - ~~`folderService` — creates/finds the "Offline Sync Conflicts" folder~~ **[Removed]** — Conflict folder eliminated
 - `pendingCipherChangeDataStore` — fetches and deletes resolved pending changes
-- `stateService` — user state management
+- ~~`stateService` — user state management~~ **[Corrected 2026-02-21]** Not present in the final implementation. The userId is passed as a parameter to `processPendingChanges(userId:)` rather than being retrieved from `stateService`.
 
 #### Constants
 
-- `softConflictPasswordChangeThreshold: Int16 = 4` (line 60) — number of password changes that triggers a precautionary backup even without a server conflict
+- `softConflictPasswordChangeThreshold: Int64 = 4` (line 60) — number of password changes that triggers a precautionary backup even without a server conflict **[Corrected 2026-02-21]** Originally documented as `Int16`; final type is `Int64` to match the `offlinePasswordChangeCount` property type.
 
 ~~#### Cached State~~
 
@@ -728,12 +738,14 @@ guard try await needsSync(forceSync:, isPeriodic:, userId:) else { return }
 **File:** `BitwardenShared/Core/Platform/Services/Services.swift`
 **Change type:** Modified (+16 lines)
 
-Two new `Has*` protocols added in alphabetical order within the `Services` typealias:
+Two new `Has*` protocols were added. **[Corrected 2026-02-21]** Only `HasOfflineSyncResolver` is included in the `Services` typealias. `HasPendingCipherChangeDataStore` exists as a standalone protocol but is NOT part of the `Services` typealias -- the data store is instead passed directly via initializers to the components that need it (`DefaultSyncService`, `DefaultVaultRepository`, `DefaultOfflineSyncResolver`).
 
 ```swift
 typealias Services = ...
     & HasOfflineSyncResolver
-    & HasPendingCipherChangeDataStore
+    // [Corrected 2026-02-21] HasPendingCipherChangeDataStore is NOT in this typealias.
+    // The original changelog incorrectly showed it here. The data store is passed
+    // directly via initializers, not through the Services typealias.
     & ...
 ```
 
@@ -749,7 +761,7 @@ protocol HasPendingCipherChangeDataStore {
 }
 ```
 
-This follows the existing `Has*` protocol pattern used by all services in the project.
+`HasOfflineSyncResolver` follows the existing `Has*` protocol pattern used by all services in the project and is included in the `Services` typealias. `HasPendingCipherChangeDataStore` is defined but not included in the `Services` typealias -- it is used for direct dependency injection via initializers.
 
 ### 9b. ServiceContainer.swift
 
@@ -828,6 +840,8 @@ Tests the Core Data persistence layer for pending cipher changes. Uses a real in
 | `test_deletePendingChange_byCipherId` | Deletion by cipherId+userId preserves other records |
 | `test_deleteAllPendingChanges` | Bulk delete per user without affecting other users |
 | `test_pendingChangeCount` | Count accuracy with multi-user isolation |
+| `test_fetchPendingChanges_sortedByCreatedDate` | **[Corrected 2026-02-21]** Missing from original table. Results sorted by createdDate ascending |
+| `test_deleteDataForUser_deletesPendingCipherChanges` | **[Corrected 2026-02-21]** Missing from original table. User data cleanup deletes pending changes |
 
 **Key assertion in upsert test:** The `originalRevisionDate` from the first insert is preserved after the second upsert — this is critical for correct conflict detection.
 
@@ -859,9 +873,9 @@ The first 8 are pure model unit tests with no mock dependencies. The last 2 are 
 ## 12. Test Coverage: VaultRepositoryTests Offline Fallback
 
 **File:** `BitwardenShared/Core/Vault/Repositories/VaultRepositoryTests.swift`
-**Change type:** Modified (32 new offline fallback test functions)
+**Change type:** Modified (41 new offline fallback test functions) **[Corrected 2026-02-21]** Originally documented as 32 test functions; actual count is 41 (includes feature flag tests, resolution flag tests, cipher-not-found no-op, and additional edge cases added in later commits).
 
-Tests the offline fallback behavior in `VaultRepository` for all four CRUD operations. Each operation has tests for personal ciphers (success path), organization ciphers (rejection path), error type denylist handling (ServerError rethrow, 4xx ResponseValidationError rethrow), and additional edge cases including password change detection and cleanup of offline-created ciphers.
+Tests the offline fallback behavior in `VaultRepository` for all four CRUD operations. Each operation has tests for personal ciphers (success path), organization ciphers (rejection path), error type denylist handling (ServerError rethrow, 4xx ResponseValidationError rethrow), feature flag gating, resolution flag gating, and additional edge cases including password change detection and cleanup of offline-created ciphers.
 
 | Test | Operation | Expected Behavior |
 |------|-----------|-------------------|
@@ -872,11 +886,16 @@ Tests the offline fallback behavior in `VaultRepository` for all four CRUD opera
 | `test_addCipher_offlineFallback_responseValidationError5xx` | Create | 5xx errors trigger offline save |
 | `test_addCipher_serverError_rethrows` | Create | `ServerError` rethrown (server reachable, rejected request) |
 | `test_addCipher_responseValidationError4xx_rethrows` | Create | 4xx `ResponseValidationError` rethrown |
+| `test_addCipher_offlineFallback_disabledByFeatureFlag` | Create | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when feature flag disabled |
+| `test_addCipher_offlineFallback_disabledByResolutionFlag` | Create | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when resolution flag disabled |
 | `test_deleteCipher_offlineFallback` | Delete | Local delete + `.hardDelete` pending change |
 | `test_deleteCipher_offlineFallback_cleansUpOfflineCreatedCipher` | Delete | Cleans up locally for never-synced cipher |
 | `test_deleteCipher_offlineFallback_unknownError` | Delete | Unknown errors trigger offline save |
 | `test_deleteCipher_offlineFallback_responseValidationError5xx` | Delete | 5xx errors trigger offline save |
+| `test_deleteCipher_offlineFallback_cipherNotFound_noOp` | Delete | **[Corrected 2026-02-21]** Missing from original table. No-op when cipher not found locally |
 | `test_deleteCipher_offlineFallback_orgCipher_throws` | Delete | Org cipher rethrows original error (no offline save) |
+| `test_deleteCipher_offlineFallback_disabledByFeatureFlag` | Delete | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when feature flag disabled |
+| `test_deleteCipher_offlineFallback_disabledByResolutionFlag` | Delete | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when resolution flag disabled |
 | `test_deleteCipher_serverError_rethrows` | Delete | `ServerError` rethrown |
 | `test_deleteCipher_responseValidationError4xx_rethrows` | Delete | 4xx `ResponseValidationError` rethrown |
 | `test_updateCipher_offlineFallback` | Update | Local update + `.update` pending change |
@@ -888,6 +907,8 @@ Tests the offline fallback behavior in `VaultRepository` for all four CRUD opera
 | `test_updateCipher_offlineFallback_orgCipher_throws` | Update | Org cipher rethrows original error (no offline save) |
 | `test_updateCipher_offlineFallback_unknownError` | Update | Unknown errors trigger offline save |
 | `test_updateCipher_offlineFallback_responseValidationError5xx` | Update | 5xx errors trigger offline save |
+| `test_updateCipher_offlineFallback_disabledByFeatureFlag` | Update | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when feature flag disabled |
+| `test_updateCipher_offlineFallback_disabledByResolutionFlag` | Update | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when resolution flag disabled |
 | `test_updateCipher_serverError_rethrows` | Update | `ServerError` rethrown |
 | `test_updateCipher_responseValidationError4xx_rethrows` | Update | 4xx `ResponseValidationError` rethrown |
 | `test_softDeleteCipher_offlineFallback` | Soft Delete | Local update + `.softDelete` pending change |
@@ -895,6 +916,8 @@ Tests the offline fallback behavior in `VaultRepository` for all four CRUD opera
 | `test_softDeleteCipher_offlineFallback_orgCipher_throws` | Soft Delete | Org cipher rethrows original error (no offline save) |
 | `test_softDeleteCipher_offlineFallback_unknownError` | Soft Delete | Unknown errors trigger offline save |
 | `test_softDeleteCipher_offlineFallback_responseValidationError5xx` | Soft Delete | 5xx errors trigger offline save |
+| `test_softDeleteCipher_offlineFallback_disabledByFeatureFlag` | Soft Delete | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when feature flag disabled |
+| `test_softDeleteCipher_offlineFallback_disabledByResolutionFlag` | Soft Delete | **[Corrected 2026-02-21]** Missing from original table. Offline save skipped when resolution flag disabled |
 | `test_softDeleteCipher_serverError_rethrows` | Soft Delete | `ServerError` rethrown |
 | `test_softDeleteCipher_responseValidationError4xx_rethrows` | Soft Delete | 4xx `ResponseValidationError` rethrown |
 
@@ -936,6 +959,14 @@ Comprehensive tests for the conflict resolution engine. Includes a custom `MockC
 | `test_processPendingChanges_batch_allSucceed` | Batch: all items resolved successfully |
 | `test_processPendingChanges_batch_mixedFailure_successfulItemResolved` | Batch: mixed success/failure — successful items still resolved |
 | `test_processPendingChanges_batch_allFail` | Batch: all items fail — all pending records retained |
+| `test_processPendingChanges_create_corruptCipherData_skipsAndRetains` | **[Corrected 2026-02-21]** Missing from original table. Corrupt cipher data: skips and retains pending record |
+| `test_processPendingChanges_update_corruptCipherData_skipsAndRetains` | **[Corrected 2026-02-21]** Missing from original table. Corrupt cipher data on update: skips and retains |
+| `test_processPendingChanges_batch_corruptAndValid_validItemResolves` | **[Corrected 2026-02-21]** Missing from original table. Mixed corrupt/valid batch: valid item still resolves |
+| `test_processPendingChanges_create_nilCipherData_skipsAndRetains` | **[Corrected 2026-02-21]** Missing from original table. Nil cipher data on create: skips and retains |
+| `test_processPendingChanges_update_nilCipherData_skipsAndRetains` | **[Corrected 2026-02-21]** Missing from original table. Nil cipher data on update: skips and retains |
+| `test_processPendingChanges_update_nilOriginalRevisionDate_noConflict` | **[Corrected 2026-02-21]** Missing from original table. Nil original revision date treated as no conflict |
+| `test_processPendingChanges_update_conflict_backupNameFormat` | **[Corrected 2026-02-21]** Missing from original table. Backup name format validation |
+| `test_processPendingChanges_update_conflict_emptyNameBackup` | **[Corrected 2026-02-21]** Missing from original table. Empty name cipher backup handling |
 
 **Notable test patterns:**
 - Conflict detection tested with matching vs. mismatching `revisionDate` values
@@ -951,7 +982,7 @@ Comprehensive tests for the conflict resolution engine. Includes a custom `MockC
 ## 14. Test Coverage: SyncServiceTests Pre-Sync Resolution
 
 **File:** `BitwardenShared/Core/Vault/Services/SyncServiceTests.swift`
-**Change type:** Modified (+66 lines, 5 new test functions)
+**Change type:** Modified (+66 lines, 7 new test functions) **[Corrected 2026-02-21]** Originally documented as 5 test functions; actual count is 7 (includes feature flag tests added in later commits).
 
 Tests the pre-sync resolution integration in `fetchSync()`.
 
@@ -962,6 +993,8 @@ Tests the pre-sync resolution integration in `fetchSync()`.
 | `test_fetchSync_preSyncResolution_noPendingChanges` | Empty queue | Pre-count check returns 0, resolver NOT called (optimization), sync proceeds |
 | `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain` | Unresolved changes | Sync ABORTED — no HTTP request made |
 | `test_fetchSync_preSyncResolution_resolverThrows_syncFails` | Resolver error | Error propagated — sync fails |
+| `test_fetchSync_preSyncResolution_stillResolvesWhenOfflineSyncFlagDisabled` | **[Corrected 2026-02-21]** Missing from original table. Resolution still runs even when offline sync changes flag is disabled | Resolution proceeds (resolution flag controls resolution, not the changes flag) |
+| `test_fetchSync_preSyncResolution_skipsWhenResolutionFlagDisabled` | **[Corrected 2026-02-21]** Missing from original table. Resolution skipped when resolution-specific flag disabled | `processPendingChanges` NOT called, sync proceeds |
 
 The abort test is the most critical — it verifies that `replaceCiphers()` is never called when pending changes remain, preventing data loss. The resolver-throws test verifies that hard errors from `processPendingChanges()` propagate correctly instead of being silently swallowed.
 
@@ -1252,7 +1285,7 @@ The implementation includes extensive documentation in `_OfflineSyncDocs/`:
 | `Core/Platform/Services/Stores/DataStore.swift` | +1 | 0 | User data cleanup |
 | `Core/Platform/Services/TestHelpers/ServiceContainer+Mocks.swift` | +4 | 0 | Mock defaults |
 | `Core/Vault/Repositories/VaultRepository.swift` | +213 | −10 | Offline fallback handlers |
-| `Core/Vault/Repositories/VaultRepositoryTests.swift` | +590 | 0 | Offline fallback tests (32 test methods; initial +132, expanded across Phase 2 commits) |
+| `Core/Vault/Repositories/VaultRepositoryTests.swift` | +590 | 0 | Offline fallback tests (41 test methods **[Corrected 2026-02-21]**; initial +132, expanded across Phase 2 commits including feature flag and resolution flag tests) |
 | `Core/Vault/Services/SyncService.swift` | +27 | −1 | Pre-sync resolution |
-| `Core/Vault/Services/SyncServiceTests.swift` | +81 | 0 | Pre-sync tests (5 test methods; initial +66, expanded by T8 resolution) |
+| `Core/Vault/Services/SyncServiceTests.swift` | +81 | 0 | Pre-sync tests (7 test methods **[Corrected 2026-02-21]**; initial +66, expanded by T8 resolution and feature flag tests) |
 | `Bitwarden.xcdatamodel/contents` | +17 | 0 | Core Data entity |

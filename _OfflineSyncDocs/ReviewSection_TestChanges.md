@@ -1,5 +1,11 @@
 # Review: Changes to Pre-Existing Test Code
 
+> **Reconciliation (2026-02-21):** Test counts, mock file lists, SyncService test methods,
+> and feature flag gating coverage were verified against the actual codebase and corrected
+> in this revision. The previous count of "77 new tests" predated additions for corrupt data,
+> batch processing, guard clause, round-trip, and backup naming tests. The verified total is
+> ~119 offline sync tests across 6 test files.
+
 ## Scope
 
 Three pre-existing test/mock files were modified since the fork at `0283b1f`:
@@ -7,11 +13,33 @@ Three pre-existing test/mock files were modified since the fork at `0283b1f`:
 | File | Type | Lines Removed | Lines Added |
 |---|---|---|---|
 | `ServiceContainer+Mocks.swift` | Mock factory | 0 | 4 |
-| `VaultRepositoryTests.swift` | Test file | 0 | ~590 (32 new test methods + setup/teardown plumbing) |
-| `SyncServiceTests.swift` | Test file | 0 | ~79 (5 new test methods + setup/teardown plumbing) |
+| `VaultRepositoryTests.swift` | Test file | 0 | ~590 (~26 offline-sync test methods + setup/teardown plumbing) |
+| `SyncServiceTests.swift` | Test file | 0 | ~120 (7 new test methods + setup/teardown plumbing) |
 
 **No existing test code was removed or modified.** All changes are purely additive:
 new mock properties in setup/teardown plumbing and new test methods.
+
+### Verified Test Counts (2026-02-21)
+
+| Test File | Offline Sync Tests |
+|---|---|
+| `OfflineSyncResolverTests.swift` | ~54 |
+| `PendingCipherChangeDataStoreTests.swift` | 18 |
+| `VaultRepositoryTests.swift` (offline only) | ~26 |
+| `SyncServiceTests.swift` (offline only) | 7 |
+| `CipherViewOfflineSyncTests.swift` | 10 |
+| `GetCipherRequestTests.swift` | 3 |
+| **Total offline sync tests** | **~119** |
+
+### Test Helper Mocks
+
+Three mock files support the offline sync test suite:
+
+| Mock File | Protocol Mocked |
+|---|---|
+| `MockOfflineSyncResolver.swift` | `OfflineSyncResolver` |
+| `MockPendingCipherChangeDataStore.swift` | `PendingCipherChangeDataStore` |
+| `MockCipherAPIServiceForOfflineSync.swift` | `CipherAPIServiceForOfflineSync` |
 
 ---
 
@@ -64,16 +92,33 @@ Error rethrow (denylist verification):
 
 ### 3. SyncServiceTests.swift
 
-**Setup/teardown plumbing (8 insertions):** Added `offlineSyncResolver` and
+**Setup/teardown plumbing:** Added `offlineSyncResolver` and
 `pendingCipherChangeDataStore` mock properties with initialization, constructor wiring,
 and teardown.
 
-**5 new test methods:**
+**7 new pre-sync resolution test methods:**
 - `test_fetchSync_preSyncResolution_triggersPendingChanges`
 - `test_fetchSync_preSyncResolution_skipsWhenVaultLocked`
 - `test_fetchSync_preSyncResolution_noPendingChanges`
 - `test_fetchSync_preSyncResolution_abortsWhenPendingChangesRemain`
 - `test_fetchSync_preSyncResolution_resolverThrows_syncFails`
+- `test_fetchSync_preSyncResolution_stillResolvesWhenOfflineSyncFlagDisabled`
+- `test_fetchSync_preSyncResolution_skipsWhenResolutionFlagDisabled`
+
+### Feature Flag Gating Coverage
+
+Test coverage includes verification that all four CRUD operations respect feature flag
+state. Both the offline sync feature flag and the resolution feature flag have dedicated
+disabled-path tests:
+
+- `disabledByFeatureFlag` tests — verify that offline fallback is skipped when the
+  offline sync feature flag is disabled, for all 4 operations (add, update, delete,
+  soft delete).
+- `disabledByResolutionFlag` tests — verify that pre-sync resolution is skipped when
+  the resolution feature flag is disabled.
+
+These tests ensure that the offline sync code paths are fully gated and can be
+safely disabled via remote configuration.
 
 ---
 

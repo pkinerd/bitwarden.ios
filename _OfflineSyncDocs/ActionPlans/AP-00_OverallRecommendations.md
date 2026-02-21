@@ -1,8 +1,10 @@
 # Overall Recommendations & Action Plan Summary
 
+> **Reconciliation Note (2026-02-21):** DI-1/DI-2 references in this document originally implied both `HasOfflineSyncResolver` and `HasPendingCipherChangeDataStore` are in the `Services` typealias. Code verification confirms that only `HasOfflineSyncResolver` is present in `Services.swift` (line 40). `HasPendingCipherChangeDataStore` was never added to the `Services` typealias -- it uses direct initializer injection. The DI-2 concern (data store exposed to UI layer) is therefore moot. DI-1 (`HasOfflineSyncResolver` exposed) remains valid and accepted. Implementing U3 (pending changes indicator) would require explicitly adding `HasPendingCipherChangeDataStore` to `Services`, not leveraging existing exposure. See corrected entries below.
+
 ## Executive Summary
 
-The offline sync feature code review identified **32 distinct issues** across the implementation. None are critical blockers — the feature is architecturally sound, secure, and well-tested. The issues range from test gaps (highest priority) through reliability improvements to UX enhancements (future considerations). **[Updated]** A subsequent error handling simplification resolved/superseded 3 issues (SEC-1, EXT-1, T6) by deleting `URLError+NetworkConnection.swift` and simplifying VaultRepository catch blocks to plain `catch`. **[Updated]** Manual testing identified VI-1: offline-created ciphers fail to load in the detail view (infinite spinner). **[Updated 2026-02-19]** Of the 32 issues, **26 are now resolved, superseded, or accepted-as-is** (17 resolved/superseded + 9 accept-no-change). SEC-2 (encryption of `offlinePasswordChangeCount`) was prototyped and reverted — see [AP-SEC2](Resolved/AP-SEC2_PasswordChangeCountEncryption.md). The remaining **6 items requiring attention** are: **R4** (logging), **R3** (retry backoff), **R1** (data format versioning), **S7** (VaultRepository-level test gap -- partially resolved), **U2** (offline errors), **U3** (future enhancement). Of these, 5 require code changes: R4, R3, R1, S7 (VaultRepository-level test), and U2. The highest-impact remaining item is **R3** (prevents permanently blocked sync). **S8** (feature flag) is now fully resolved — two server-controlled flags gate all offline sync entry points, defaulting to `false` for server-controlled rollout.
+The offline sync feature code review identified **32 distinct issues** across the implementation. None are critical blockers — the feature is architecturally sound, secure, and well-tested. The issues range from test gaps (highest priority) through reliability improvements to UX enhancements (future considerations). **[Updated]** A subsequent error handling simplification resolved/superseded 3 issues (SEC-1, EXT-1, T6) by deleting `URLError+NetworkConnection.swift` and simplifying VaultRepository catch blocks to plain `catch`. **[Updated]** Manual testing identified VI-1: offline-created ciphers fail to load in the detail view (infinite spinner). **[Updated 2026-02-19]** Of the 32 issues, **26 are now resolved, superseded, or accepted-as-is** (17 resolved/superseded + 9 accept-no-change). SEC-2 (encryption of `offlinePasswordChangeCount`) was prototyped and reverted — see [AP-SEC2](Resolved/AP-SEC2_PasswordChangeCountEncryption.md). The remaining **3 items requiring code changes** are: **R3** (retry backoff), **R1** (data format versioning), and **U2** (offline-specific error messages). **R4** (logging) and **S7** (VaultRepository-level test) are now fully resolved. The highest-impact remaining item is **R3** (prevents permanently blocked sync). **U3** (pending changes indicator) remains a future enhancement. **S8** (feature flag) is fully resolved — two server-controlled flags gate all offline sync entry points, defaulting to `false` for server-controlled rollout.
 
 This document summarizes the recommended approach for each issue and proposes an implementation order.
 
@@ -39,15 +41,15 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 |-------|---------------|--------|------|
 | ~~**VI-1** — Offline-created cipher view failure~~ | ~~**Mitigated**~~ **[Resolved]** — Spinner fixed via UI fallback (PR #31). Root cause **fixed**: `Cipher.withTemporaryId()` replaced by `CipherView.withId()` (commit `3f7240a`). All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md). | ~~50-80 lines~~ 0 | N/A |
 | ~~**S6** — Password change test~~ | ~~Add dedicated tests (Option A)~~ **[Resolved]** — 4 password change counting tests added in `VaultRepositoryTests.swift`: first-edit changed, first-edit unchanged, subsequent-edit changed, subsequent-edit unchanged. See [Resolved/AP-S6](Resolved/AP-S6_PasswordChangeCountingTest.md). | ~~100-150 lines~~ 0 | N/A |
-| ~~**S7** — Cipher-not-found test~~ | ~~Add single targeted test (Option A)~~ **[Partially Resolved]** — Two 404-handling tests added in `OfflineSyncResolverTests` (resolver level). VaultRepository-level test gap remains open. | ~~30-40 lines~~ 0 | N/A |
+| ~~**S7** — Cipher-not-found test~~ | ~~Add single targeted test (Option A)~~ **[Resolved]** — `test_deleteCipher_offlineFallback_cipherNotFound_noOp` added in `VaultRepositoryTests.swift`. Two 404-handling tests also in `OfflineSyncResolverTests`. See [Resolved/AP-S7](Resolved/AP-S7_CipherNotFoundPathTest.md). | ~~30-40 lines~~ 0 | N/A |
 | ~~**SEC-1** — secureConnectionFailed~~ | ~~Add logging for TLS triggers~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted; plain `catch` replaces URLError filtering. | ~~10-15 lines~~ 0 | N/A |
 | ~~**EXT-1** — timedOut~~ | ~~Accept current behavior~~ **[Superseded]** — Extension deleted; all API errors now trigger offline save by design. | 0 lines | N/A |
 | ~~**S8** — Feature flag~~ | ~~Server-controlled flag (Option A)~~ **[Resolved]** — Two flags added (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`), both defaulting to `false`. Gates SyncService resolution + VaultRepository offline fallback. | ~~~20-30 lines~~ 0 | N/A |
 | ~~**A3** — Unused timeProvider~~ | ~~Remove dependency (Option A)~~ **[Resolved]** — Removed in commit `a52d379`. | ~~-10 lines~~ 0 | N/A |
 | ~~**CS-1** — Stray blank line~~ | ~~Remove blank line (Option A)~~ **[Resolved]** — Removed in commit `a52d379`. | ~~1 line~~ 0 | N/A |
-| **R4** — Silent sync abort | Add log line (Option A) | 1-2 lines | None |
+| ~~**R4** — Silent sync abort~~ | ~~Add log line (Option A)~~ **[Resolved]** — `Logger.application.info()` added at `SyncService.swift:349-351`. See [Resolved/AP-R4](Resolved/AP-R4_SilentSyncAbort.md). | ~~1-2 lines~~ 0 | N/A |
 
-**Rationale:** ~~VI-1's symptom (infinite spinner) is mitigated via UI fallback, but the root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains. Related edge cases (editing offline-created ciphers loses `.create` type; deleting offline-created ciphers queues futile `.softDelete`; no temp-ID cleanup in `resolveCreate()`) also remain.~~ **[UPDATE 2026-02-19]** VI-1 is fully resolved — root cause and all related edge cases fixed in Phase 2. S8 (feature flag) is now **resolved** — two server-controlled flags added with `false` defaults. Remaining actionable items in this phase: R4 logging is trivial. S7 VaultRepository-level test gap remains. A3, CS-1, SEC-1, EXT-1, S6, S7 (resolver-level), VI-1, and S8 are all resolved/superseded.
+**Rationale:** ~~VI-1's symptom (infinite spinner) is mitigated via UI fallback, but the root cause (`Cipher.withTemporaryId()` setting `data: nil`) remains. Related edge cases (editing offline-created ciphers loses `.create` type; deleting offline-created ciphers queues futile `.softDelete`; no temp-ID cleanup in `resolveCreate()`) also remain.~~ **[UPDATE 2026-02-21]** All Phase 2 items are now resolved. VI-1 fully resolved in Phase 2. S8 resolved with two server-controlled flags. R4 resolved with `Logger.application.info()` at `SyncService.swift:349`. S7 fully resolved — `test_deleteCipher_offlineFallback_cipherNotFound_noOp` added to `VaultRepositoryTests.swift`. A3, CS-1, SEC-1, EXT-1, S6 all resolved/superseded.
 
 ### Phase 3: Nice-to-Have (Low Priority)
 
@@ -73,7 +75,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | **U2** — Inconsistent offline ops | Add offline-specific errors (Option B) for initial release | ~20-30 lines |
 | **U3** — Pending indicator | Defer; implement toast (Option B) as first enhancement | Future |
 | ~~**U4** — English folder name~~ | ~~Accept English-only (Option C)~~ **[Superseded]** — Conflict folder removed | 0 |
-| **VR-2** — Delete → soft delete | Accept current behavior (Option A) | 0 |
+| ~~**VR-2** — Delete → soft delete~~ | ~~Accept current behavior (Option A)~~ **[Resolved]** — `.hardDelete` change type added; resolver calls permanent delete API. Commit `34b6c24`. | 0 |
 | ~~**RES-1** — Duplicate on retry~~ | ~~Accept risk (Option D)~~ **[Resolved]** — Hypothetical; same class as P2-T2 | 0 |
 | **RES-7** — No attachments in backup | Accept limitation (Option D) | 0 |
 | **PCDS-1** — id optional type | Accept optional (Option B) | 0 |
@@ -88,7 +90,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 ### Batch 1: Quick Wins (< 1 hour)
 1. ~~**A3** — Remove unused `timeProvider`~~ **[Resolved]** — Removed in commit `a52d379`
 2. ~~**CS-1** — Remove stray blank line~~ **[Resolved]** — Removed in commit `a52d379`
-3. **R4** — Add sync abort log line (1 file, 2 lines)
+3. ~~**R4** — Add sync abort log line (1 file, 2 lines)~~ **[Resolved]** — `Logger.application.info()` added at `SyncService.swift:349-351`
 4. ~~**SEC-1** — Add TLS fallback logging~~ **[Superseded]** — `URLError+NetworkConnection` extension deleted
 5. ~~**VI-1** — **Mitigated** — spinner fixed via UI fallback, root cause remains~~ **[Resolved]** — All 5 recommended fixes implemented in Phase 2. See [AP-VI1](AP-VI1_OfflineCreatedCipherViewFailure.md).
 
@@ -96,7 +98,7 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 5. ~~**T5** — Evaluate/replace inline mock (1 file)~~ **[Resolved]** — Mock extracted to dedicated `MockCipherAPIServiceForOfflineSync.swift` in `TestHelpers/` with maintenance comment
 6. ~~**S3 + S4** — Batch + API failure tests (1 file, ~400-600 lines)~~ **[Resolved]** — 7 tests added to `OfflineSyncResolverTests.swift`
 7. ~~**S6** — Password counting tests (1 file, ~100-150 lines)~~ **[Resolved]** — 4 tests added to `VaultRepositoryTests.swift`
-8. ~~**S7** — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added; VaultRepository-level test gap remains
+8. ~~**S7** — Cipher-not-found test~~ **[Resolved]** — `test_deleteCipher_offlineFallback_cipherNotFound_noOp` added in `VaultRepositoryTests.swift`; resolver-level 404 tests also added
 9. ~~**T8** — Hard error in pre-sync test (1-2 files, ~30-40 lines)~~ **[Resolved]** — 1 test added to `SyncServiceTests.swift`
 10. ~~**T6** — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 
@@ -144,10 +146,10 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 | Phase | Original Estimate | Resolved | Remaining |
 |-------|------------------|----------|-----------|
 | Phase 1 (Must-address) | 1 file, ~400-600 lines | **All resolved** (S3, S4) | None |
-| Phase 2 (Should-address) | 6-9 files, ~230-350 lines | S6, S7 (partial), SEC-1, EXT-1, A3, CS-1, VI-1, **S8** resolved/superseded | **R4** (~2 lines), **S7** VaultRepository test (~30-40 lines) |
+| Phase 2 (Should-address) | 6-9 files, ~230-350 lines | S6, **S7** (fully resolved), SEC-1, EXT-1, A3, CS-1, VI-1, **S8**, **R4** resolved/superseded | **None** — all resolved |
 | Phase 3 (Nice-to-have) | 6-8 files, ~200-300 lines | R2, T6, T7, T8, T5, **CS-2** resolved | **R3** (~30-50 lines), **R1** (~15-20 lines), **DI-1** (accept) |
 | Phase 4 (Accept/Future) | 0-1 files, ~20-30 lines | U4 superseded | **U2** (~20-30 lines), others accept-as-is |
-| **Remaining Total** | — | — | **~3-5 files, ~70-100 lines** |
+| **Remaining Total** | — | — | **~2-4 files, ~65-100 lines** (R3 + R1 + U2) |
 
 ---
 
@@ -156,9 +158,9 @@ After reviewing the actual source code, architecture docs (`Docs/Architecture.md
 **[Updated 2026-02-19]** The overall risk profile has improved significantly since the initial review:
 
 1. **Phase 1 is fully resolved.** All must-address test gaps (S3, S4) are covered.
-2. **Phase 2 is nearly complete.** VI-1 fully resolved. S6 tests added. S7 partially resolved (VaultRepository-level gap remains). SEC-1, EXT-1 superseded. A3, CS-1 resolved. **S8 resolved** — two feature flags added. Remaining: **R4** (logging) -- a low-risk additive change.
-3. **Phase 3 is mostly resolved.** R2 (actor), T5, T6, T7, T8, and now **CS-2** (review comments + property count guard tests) are all resolved. Remaining: **R3** (retry backoff) and **R1** (format versioning) -- both require Core Data schema changes.
-4. **Phase 4 items** are mostly accept-as-is -- no changes needed. U4 superseded.
+2. **Phase 2 is fully resolved.** VI-1, S6, S7, SEC-1, EXT-1, A3, CS-1, S8, and **R4** are all resolved/superseded. No remaining items.
+3. **Phase 3 is mostly resolved.** R2 (actor), T5, T6, T7, T8, and CS-2 are all resolved. Remaining: **R3** (retry backoff) and **R1** (format versioning) -- both require Core Data schema changes.
+4. **Phase 4 items** are mostly accept-as-is -- no changes needed. U4 superseded. VR-2 resolved (`.hardDelete` implemented).
 
 The most significant remaining risks:
 - ~~**Without S8 (feature flag):** No remote kill switch exists.~~ **[Resolved]** Two server-controlled flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) now gate all offline sync entry points. Both default to `false` — the server must enable them for the feature to activate.
@@ -207,7 +209,7 @@ The following 11 issues were confirmed as correct to accept without code changes
 - **PCDS-1** — id optional type: Core Data `@NSManaged` constraint, not a design flaw
 - **PCDS-2** — dates optional type: Core Data constraint, nil fallback chain handles it safely
 - **SS-2** — TOCTOU race: microsecond window, pending record survives, next sync resolves
-- **DI-1** — DataStore UI exposure: consistent with project conventions, enables future U3 feature
+- **DI-1** — ~~DataStore~~ Resolver UI exposure: `HasOfflineSyncResolver` in `Services` typealias is consistent with project conventions. **[CORRECTION (2026-02-21): Only `HasOfflineSyncResolver` is in `Services`. `HasPendingCipherChangeDataStore` is NOT in `Services` (uses direct initializer injection). Implementing U3 would require adding `HasPendingCipherChangeDataStore` to `Services` -- existing exposure does not enable U3 without additional work.]**
 - ~~**EXT-1** — timedOut classification~~ **[Superseded]** — Extension deleted; issue no longer exists
 
 ### Key Cross-Cutting Findings from Code Review
@@ -229,7 +231,7 @@ Based on the code review, the recommended implementation order is refined:
 **Batch 1: Quick Wins** (updated)
 1. ~~A3 — Remove unused timeProvider~~ **[Resolved]** — Commit `a52d379`
 2. ~~CS-1 — Remove stray blank line~~ **[Resolved]** — Commit `a52d379`
-3. R4 — Add sync abort log line
+3. ~~R4 — Add sync abort log line~~ **[Resolved]** — `Logger.application.info()` at `SyncService.swift:349`
 4. ~~SEC-1 — Add TLS fallback logging~~ **[Superseded]** — Extension deleted
 5. ~~**VI-1** — **Mitigated** — spinner fixed via UI fallback (PR #31), root cause remains~~ **[Resolved]** — All 5 recommended fixes implemented in Phase 2
 
@@ -237,7 +239,7 @@ Based on the code review, the recommended implementation order is refined:
 5. ~~T5 — Evaluate/replace inline mock~~ **[Resolved]** — Mock extracted to dedicated file with maintenance comment
 6. ~~S3 + S4 — Batch + API failure tests~~ **[Resolved]** — 7 tests added
 7. ~~S6 — Password counting tests~~ **[Resolved]** — 4 tests added
-8. ~~S7 — Cipher-not-found test~~ **[Partially Resolved]** — Resolver-level 404 tests added
+8. ~~S7 — Cipher-not-found test~~ **[Resolved]** — VaultRepository + resolver-level tests added
 9. ~~T8 — Hard error in pre-sync test~~ **[Resolved]** — 1 test added
 10. ~~T6 — Complete URLError test coverage~~ **[Resolved]** — Extension and tests deleted
 

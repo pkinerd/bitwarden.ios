@@ -1,5 +1,11 @@
 # Detailed Review: SyncService Offline Integration
 
+> **Reconciliation note (2026-02-21):** Line numbers verified against current `SyncService.swift`.
+> Code block and flow diagram updated to reflect the feature flag gate
+> (`.offlineSyncEnableResolution`, line 342) and the `Logger.application.info()` abort
+> message (lines 349-351). SS-3 marked resolved. `isVaultLocked` caching reference
+> corrected. All line references refreshed.
+
 ## Files Covered
 
 | File | Type | Lines Changed |
@@ -22,24 +28,35 @@ Both are injected via the initializer and documented with DocC parameter docs.
 
 ### 2. Pre-Sync Resolution Logic in `fetchSync()`
 
-The core change is a block inserted at the top of `fetchSync(forceSync:isPeriodic:)`, just after obtaining the `userId`, before the `needsSync()` check:
+The core change is a block inserted at the top of `fetchSync(forceSync:isPeriodic:)` (line 326), just after obtaining the `userId` (line 328), before the `needsSync()` check (line 357). The block is gated by the `.offlineSyncEnableResolution` feature flag (line 342) and the vault-lock state (line 341).
 
 **[Updated]** A pre-count check was re-added as an optimization so the common case (no pending changes) skips the resolver entirely. The resolver is only called when pending changes actually exist. Both pre-count and post-resolution count checks use `pendingCipherChangeDataStore.pendingChangeCount(userId:)`.
 
 ```swift
-// Resolve any pending offline changes before syncing. If pending changes
+// Resolve any pending offline changes before syncing. If pending changes     // line 330
 // remain after resolution, abort to prevent replaceCiphers from overwriting
 // local offline edits. Resolution is skipped when the vault is locked since
 // the SDK crypto context is needed for conflict resolution.
-let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
-if !isVaultLocked {
-    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+//
+// The enableOfflineSyncResolution flag controls whether this entire block
+// runs. When disabled, resolution is skipped and replaceCiphers proceeds
+// normally — pending change records stay in the database for future
+// resolution when the flag is re-enabled. The offlineSync flag (which gates
+// new offline saves in VaultRepository) is also implicitly disabled when
+// resolution is off, so no new pending changes accumulate.
+let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId) // line 341
+if await configService.getFeatureFlag(.offlineSyncEnableResolution),   // line 342
+   !isVaultLocked {
+    let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId) // line 344
     if pendingCount > 0 {
-        try await offlineSyncResolver.processPendingChanges(userId: userId)
-        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-        if remainingCount > 0 {
-            return   // ← Abort sync to prevent data loss
-        }
+        try await offlineSyncResolver.processPendingChanges(userId: userId)       // line 346
+        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId) // line 347
+        if remainingCount > 0 {                                                   // line 348
+            Logger.application.info(                                              // line 349
+                "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
+            )                                                                     // line 351
+            return                                                                // line 352
+        }                                                                         // line 353
     }
 }
 ```
@@ -47,34 +64,41 @@ if !isVaultLocked {
 **Flow diagram: [Updated]**
 
 ```
-fetchSync() called
+fetchSync() called                                        (line 326)
 │
-├── Get userId from active account
+├── Get userId from active account                        (line 327-328)
 │
-├── Check vault lock state
+├── Cache isVaultLocked (reused later at line 371)        (line 341)
+│
+├── Check feature flag: .offlineSyncEnableResolution      (line 342)
+│   └── If disabled → skip entire resolution block
+│
+├── Check vault lock state                                (line 343)
 │   └── If locked → skip resolution (can't decrypt/resolve)
 │
-├── Pre-count check: pendingChangeCount(userId:)
+├── Pre-count check: pendingChangeCount(userId:)          (line 344)
 │   └── If 0 → skip resolution entirely (optimization)
 │
-├── Attempt resolution: offlineSyncResolver.processPendingChanges(userId:)
+├── Attempt resolution: processPendingChanges(userId:)    (line 346)
 │
-├── Post-resolution count check: pendingChangeCount(userId:)
+├── Post-resolution count check: pendingChangeCount       (line 347)
 │   ├── If 0 → continue to normal sync (all resolved)
-│   └── If > 0 → ABORT SYNC (return early)
+│   └── If > 0 → log info message + ABORT SYNC           (lines 348-353)
 │
-└── Continue to normal sync: needsSync check → API call → replace data
+├── needsSync check                                       (line 357)
+│
+└── Continue to normal sync: API call → replace data
 ```
 
-**Critical Safety Property:** If any pending changes remain after resolution (e.g., the server is still unreachable, or resolution failed for some items), the sync is **aborted entirely**. This prevents `replaceCiphers()` (called later in `fetchSync`) from overwriting locally-stored offline edits with the server's version. Without this guard, a background sync could silently discard the user's offline changes.
+**Critical Safety Property:** If any pending changes remain after resolution (e.g., the server is still unreachable, or resolution failed for some items), the sync is **aborted entirely** with a `Logger.application.info()` message (lines 349-351). This prevents `replaceCiphers()` (called later in `fetchSync` at line 387) from overwriting locally-stored offline edits with the server's version. Without this guard, a background sync could silently discard the user's offline changes.
 
 ### 3. Minor Optimization: Reuse `isVaultLocked`
 
-The diff shows that the `isVaultLocked` variable (computed for the pre-sync check) is reused later in `fetchSync` where the original code called `await vaultTimeoutService.isLocked(userId: userId)` a second time. The original inline call at line 359 is replaced with the captured `isVaultLocked` value, eliminating a redundant async call.
+The `isVaultLocked` value is computed once at line 341 (`let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)`) and reused later at line 371 where the original code called `await vaultTimeoutService.isLocked(userId: userId)` a second time. Caching the result eliminates a redundant async call.
 
 ### 4. Whitespace-Only Change
 
-A blank line is added at line 382 (before `try await checkVaultTimeoutPolicy()`). This is cosmetic only.
+A blank line is added before `try await checkVaultTimeoutPolicy()` (line 395). This is cosmetic only.
 
 ---
 
@@ -135,11 +159,19 @@ There's a theoretical time-of-check-time-of-use (TOCTOU) gap between checking `r
 
 **Mitigation:** In practice, `fetchSync` is called from a serial context (the sync workflow), and user operations that queue pending changes go through `VaultRepository` methods which are separate async flows. The risk is very low.
 
-### Issue SS-3: Abort Sync is Silent (Low)
+### Issue SS-3: Abort Sync is Silent (Low) -- RESOLVED
 
-When the sync is aborted due to remaining pending changes, the method returns silently (`return`). There's no logging, no error, and no notification to the caller. The caller (`AppProcessor` or any sync trigger) has no way to know whether the sync succeeded, was skipped due to `needsSync`, or was aborted due to pending changes.
+~~When the sync is aborted due to remaining pending changes, the method returns silently (`return`). There's no logging, no error, and no notification to the caller.~~
 
-**Recommendation:** Add a `Logger.application.info()` log line when aborting to aid debugging in production.
+**Resolved (2026-02-21):** A `Logger.application.info()` call was added at lines 349-351:
+
+```swift
+Logger.application.info(
+    "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
+)
+```
+
+The abort is no longer silent; the remaining-count value is included in the log message to aid debugging in production.
 
 ### Issue SS-4: Full Pre-Sync Resolution On Every Sync Attempt (Low)
 

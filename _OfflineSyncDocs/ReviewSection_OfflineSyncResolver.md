@@ -1,3 +1,9 @@
+> **Reconciliation Note (2026-02-21):** This document was verified and corrected against the
+> current source code. Corrections include: dependency count updated from 5 to 4 (stateService
+> removed per commit a52d379 / AP-A3), line number references updated to match current source,
+> test count updated from 21 to 33 (actual test functions in OfflineSyncResolverTests), and
+> addCipherWithServer call details corrected for createBackupCipher.
+
 # Detailed Review: OfflineSyncResolver
 
 ## Files Covered
@@ -5,7 +11,7 @@
 | File | Type | Lines |
 |------|------|-------|
 | `BitwardenShared/Core/Vault/Services/OfflineSyncResolver.swift` | Service Protocol + Implementation | 349 |
-| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 933 |
+| `BitwardenShared/Core/Vault/Services/OfflineSyncResolverTests.swift` | Tests | 1088 |
 | `BitwardenShared/Core/Vault/Services/TestHelpers/MockOfflineSyncResolver.swift` | Mock | 13 |
 
 ---
@@ -45,7 +51,7 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 
 ### 3. Implementation (`DefaultOfflineSyncResolver`)
 
-**Dependencies (5 total):** **[Updated]** `timeProvider` removed in commit `a52d379` (was unused — see resolved Issue RES-5/A3). **[Updated]** `folderService` removed — the dedicated "Offline Sync Conflicts" folder has been eliminated; backups now retain the original cipher's folder assignment.
+**Dependencies (4 total):** **[Updated]** `timeProvider` removed in commit `a52d379` (was unused — see resolved Issue RES-5/A3). **[Updated]** `folderService` removed — the dedicated "Offline Sync Conflicts" folder has been eliminated; backups now retain the original cipher's folder assignment. **[Updated]** `stateService` removed in commit `a52d379` (AP-A3) — `userId` is passed as a parameter from `SyncService`.
 
 | Dependency | Used For |
 |------------|----------|
@@ -54,7 +60,6 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 | `clientService: ClientService` | Encrypt/decrypt operations via SDK |
 | ~~`folderService: FolderService`~~ | ~~Creating/fetching the "Offline Sync Conflicts" folder~~ **[Removed]** |
 | `pendingCipherChangeDataStore: PendingCipherChangeDataStore` | Fetching/deleting pending change records |
-| `stateService: StateService` | **Unused** — injected but never called; `userId` is passed as a parameter from `SyncService`. Should be removed (~4 lines cleanup). |
 
 ~~**Instance State:**~~
 
@@ -64,7 +69,7 @@ The protocol's simplicity is a deliberate design choice: the resolver exposes on
 
 **Named Constant:**
 
-- `static let softConflictPasswordChangeThreshold: Int16 = 4` — The minimum offline password change count that triggers a backup even without a server conflict. Extracted to a static named constant (addressed from earlier review feedback).
+- `static let softConflictPasswordChangeThreshold: Int64 = 4` — The minimum offline password change count that triggers a backup even without a server conflict. Extracted to a static named constant (addressed from earlier review feedback).
 
 ### 4. Resolution Flow
 
@@ -269,8 +274,18 @@ processPendingChanges(userId:)
 | `test_processPendingChanges_batch_allSucceed` | **[New]** Batch with create, update, soft delete — all succeed, all records cleaned up |
 | `test_processPendingChanges_batch_mixedFailure_successfulItemResolved` | **[New]** Batch with mixed success/failure — only successful records cleaned up |
 | `test_processPendingChanges_batch_allFail` | **[New]** Batch where all items fail — no records cleaned up |
+| `test_processPendingChanges_create_corruptCipherData_skipsAndRetains` | **[New]** Create with corrupt cipher data — skips resolution, retains pending record |
+| `test_processPendingChanges_update_corruptCipherData_skipsAndRetains` | **[New]** Update with corrupt cipher data — skips resolution, retains pending record |
+| `test_processPendingChanges_batch_corruptAndValid_validItemResolves` | **[New]** Batch with corrupt and valid items — valid item resolves, corrupt item retained |
+| `test_processPendingChanges_create_nilCipherData_skipsAndRetains` | **[New]** Create with nil cipher data — skips resolution, retains pending record |
+| `test_processPendingChanges_update_nilCipherData_skipsAndRetains` | **[New]** Update with nil cipher data — skips resolution, retains pending record |
+| `test_processPendingChanges_update_nilOriginalRevisionDate_noConflict` | **[New]** Update with nil original revision date — treated as no conflict |
+| `test_processPendingChanges_update_conflict_backupNameFormat` | **[New]** Verifies backup cipher name format: "{originalName} - {timestamp}" |
+| `test_processPendingChanges_update_conflict_emptyNameBackup` | **[New]** Conflict with empty cipher name — backup name is " - {timestamp}" |
 
-**Coverage Assessment:** Good coverage of the main resolution paths. **[Updated]** Two tests added for 404 handling in `resolveUpdate` and `resolveSoftDelete`. Conflict folder creation test removed — folder no longer created. **[Updated]** Three password history preservation tests, four API failure tests, and three batch processing tests have been added, significantly improving coverage. Former Issues RES-3 (batch processing) and RES-4 (API failure) are now addressed by these tests.
+**Total: 33 test functions** (excluding 1 struck-through removed test).
+
+**Coverage Assessment:** Good coverage of the main resolution paths with 33 test functions. **[Updated]** Two tests added for 404 handling in `resolveUpdate` and `resolveSoftDelete`. Conflict folder creation test removed — folder no longer created. **[Updated]** Three password history preservation tests, four API failure tests, and three batch processing tests have been added, significantly improving coverage. Former Issues RES-3 (batch processing) and RES-4 (API failure) are now addressed by these tests. **[Updated]** Eight additional edge-case tests cover corrupt cipher data handling (3 tests), nil cipher data handling (2 tests), nil original revision date behavior (1 test), and backup name formatting (2 tests).
 
 ---
 
@@ -296,7 +311,7 @@ If `cipherService.addCipherWithServer` succeeds on the server but the local stor
 
 ### ~~Issue RES-5: `timeProvider` Dependency Unused~~ [Resolved]
 
-~~The `timeProvider` is injected but never referenced in the implementation.~~ **[Resolved]** — The unused `timeProvider` dependency was removed in commit `a52d379`. **[Updated]** Combined with the removal of `folderService`, the dependency count has been reduced from 7 to 5.
+~~The `timeProvider` is injected but never referenced in the implementation.~~ **[Resolved]** — The unused `timeProvider` dependency was removed in commit `a52d379`. **[Updated]** Combined with the removal of `folderService` and `stateService`, the dependency count has been reduced from 7 to 4.
 
 ### Issue RES-6: `MockCipherAPIServiceForOfflineSync` is Fragile (Low) **[Updated]**
 

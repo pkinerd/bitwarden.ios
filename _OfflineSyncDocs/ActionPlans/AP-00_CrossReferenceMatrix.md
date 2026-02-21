@@ -4,17 +4,17 @@ This document maps dependencies and implications between all 32 action plans. An
 
 ## Critical Implication Clusters
 
-### Cluster 1: Test Infrastructure (~~S3~~, ~~S4~~, ~~T5~~, ~~T6~~, ~~S6~~, S7, ~~T7~~, ~~T8~~) **[Mostly Resolved]**
+### Cluster 1: Test Infrastructure (~~S3~~, ~~S4~~, ~~T5~~, ~~T6~~, ~~S6~~, ~~S7~~, ~~T7~~, ~~T8~~) **[Fully Resolved]**
 
 ~~All test gap issues share common infrastructure. The order of implementation matters:~~
 
-> **[UPDATE]** S3, S4, S6, T5, T7, T6, and T8 are all resolved. The remaining test gap is S7 (VaultRepository-level cipher-not-found test).
+> **[UPDATE 2026-02-21]** All issues in this cluster are now fully resolved.
 >
 > - **T5** — Inline mock retained with maintenance comment. AutoMockable annotation deferred.
 > - **S3 + S4** — 7 tests added to `OfflineSyncResolverTests.swift`: 3 batch tests (all-succeed, mixed-failure, all-fail) + 4 API failure tests (create, update server fetch, soft delete, backup creation).
 > - **S6** — 4 password change counting tests added to `VaultRepositoryTests.swift`.
 > - **T8** — 1 pre-sync resolution failure test added to `SyncServiceTests.swift`.
-> - **S7** — Resolver-level 404 tests exist; VaultRepository-level `handleOfflineDelete` not-found test gap remains open.
+> - **S7** — **[Resolved]** `test_deleteCipher_offlineFallback_cipherNotFound_noOp` added in `VaultRepositoryTests.swift`; resolver-level 404 tests also added.
 
 ### Cluster 2: Reliability & Safety (R3, R4, ~~S8~~, R1, ~~R2~~)
 
@@ -22,11 +22,11 @@ These issues form a layered defense system:
 
 1. ~~**S8 (feature flag)**~~ **[Resolved]** — the outermost safety layer. Two server-controlled flags (`.offlineSyncEnableResolution`, `.offlineSyncEnableOfflineChanges`) gate all offline sync entry points. Both default to `false` (server-controlled rollout).
 2. **R3 (retry backoff)** prevents permanently stuck items from blocking sync.
-3. **R4 (logging)** provides observability into what's happening.
+3. ~~**R4 (logging)**~~ provides observability into what's happening. **[Resolved]** — `Logger.application.info()` added.
 4. **R1 (format versioning)** prevents format mismatches from creating permanently stuck items.
 5. ~~**R2 (thread safety)** prevents concurrent access bugs.~~ **[Resolved]** — `DefaultOfflineSyncResolver` converted to `actor`. The `conflictFolderId` mutable state that originally motivated R2 has since been removed entirely (conflict folder eliminated).
 
-**Implication:** ~~If S8 (feature flag) is implemented, R3 (retry backoff) becomes less critical since the feature can be disabled entirely.~~ S8 is now resolved. R3 (retry backoff) is still valuable for graceful degradation — the feature flag is a blunt kill switch, while R3 provides automated recovery for individual failing items. R4 (logging) should be implemented regardless — it's trivial and provides debugging value.
+**Implication:** ~~If S8 (feature flag) is implemented, R3 (retry backoff) becomes less critical since the feature can be disabled entirely.~~ S8 is now resolved. R3 (retry backoff) is still valuable for graceful degradation — the feature flag is a blunt kill switch, while R3 provides automated recovery for individual failing items. ~~R4 (logging) should be implemented regardless — it's trivial and provides debugging value.~~ **R4 is now resolved.**
 
 **Implication:** R1 (format versioning) and R3 (retry backoff with expiry) both address the "permanently stuck item" problem. Implementing R3 with TTL-based expiry covers the format versioning case (old items expire) without needing a version field. Both together provide defense in depth.
 
@@ -79,7 +79,7 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | ~~**SEC-1**~~ | ~~T6 (test updates)~~ | ~~EXT-1 (holistic review)~~ **[Superseded]** — Extension deleted |
 | ~~**SEC-2**~~ | — | — **[Resolved — Will Not Implement]** — Encryption of `offlinePasswordChangeCount` prototyped (AES-256-GCM) and reverted. Plaintext storage accepted as consistent with existing security model. See [Resolved/AP-SEC2](Resolved/AP-SEC2_PasswordChangeCountEncryption.md). |
 | ~~**S6**~~ | — | ~~T7~~ (T7 resolved separately) **[Resolved]** — 4 password change counting tests added |
-| **S7** | — | VR-2 (delete context) — **[Partially Resolved]** Resolver-level 404 tests added via RES-2 fix; VaultRepository-level `handleOfflineDelete` not-found test gap remains open |
+| ~~**S7**~~ | — | VR-2 (delete context) — **[Resolved]** `test_deleteCipher_offlineFallback_cipherNotFound_noOp` added in `VaultRepositoryTests.swift`; resolver-level 404 tests also added |
 | ~~**S8**~~ | R3 (less critical), U2 (gates all ops), U3 (indicator respects flag) | — | **[Resolved]** Two flags added, both defaulting to `false` |
 | ~~**EXT-1**~~ | ~~T6 (test updates)~~ | ~~SEC-1 (holistic review), R3 (false-positive mitigation)~~ **[Superseded]** — Extension deleted |
 | ~~**A3**~~ | ~~R2 (simpler migration)~~ | ~~R3 (timeProvider may be repurposed)~~ **[Resolved]** — Removed in commit `a52d379`. Note: if R3 (retry backoff) is implemented, `timeProvider` would need to be re-introduced to the resolver. |
@@ -88,14 +88,14 @@ These all involve the `PendingCipherChangeData` Core Data entity:
 | **R1** | — | R3 (both address stuck items), PCDS-1/PCDS-2 (schema changes) |
 | ~~**R2**~~ | — | ~~A3 (remove first for simpler migration)~~ **[A3 resolved]** — **[R2 Resolved]** Converted to `actor`; `conflictFolderId` state subsequently removed (conflict folder eliminated) |
 | **R3** | S8 (complementary), R1 (complementary), SS-2 (recovery), ~~RES-1 (expire duplicates)~~ **[RES-1 resolved]** | ~~S4 (test retry behavior)~~ **[S4 resolved]** — R3 tests would need new dedicated tests when implemented |
-| **R4** | ~~T8 (distinguish abort vs error)~~ **[T8 resolved]** — R4 logging still independently valuable for production observability | R3 (log expired items), S8 (log flag state) |
+| ~~**R4**~~ | ~~T8 (distinguish abort vs error)~~ **[T8 resolved]** | R3 (log expired items), S8 (log flag state) — **[Resolved]** `Logger.application.info()` added at `SyncService.swift:349-351` |
 | **DI-1** | U3 (enables indicator) | — |
 | ~~**T6**~~ | — | ~~SEC-1 (classification change), EXT-1 (classification change)~~ **[Resolved]** — Extension and tests deleted |
 | **U1** | — | ~~EXT-1 (timeout duration)~~ **[EXT-1 Superseded]** — Extension deleted; timeout duration concern no longer applies |
 | **U2** | — | S8 (feature flag gates all) |
 | **U3** | — | DI-1 (requires UI access), R3 (notify on expiry), R4 (abort notification) |
 | ~~**U4**~~ | — | — **[Superseded]** — Conflict folder removed; English-only name concern no longer applies |
-| **VR-2** | S7 (delete context) | U2 (consistency with other ops) |
+| ~~**VR-2**~~ | ~~S7 (delete context)~~ **[S7 resolved]** | U2 (consistency with other ops) — **[Resolved]** `.hardDelete` change type added; commit `34b6c24` |
 | ~~**RES-1**~~ | — | ~~R3 (expire stuck creates)~~ **[Resolved]** — Hypothetical; same class as P2-T2; requires Core Data write failure after server success |
 | **RES-7** | — | ~~CS-2 (update method changes)~~ **[CS-2 resolved]** — `update(name:)` now uses consolidated `makeCopy` helper; attachment=nil behavior documented |
 | ~~**T5**~~ | ~~S3 (test quality), S4 (test quality)~~ | ~~CS-2 (same fragility class)~~ **[Both T5 and CS-2 Resolved]** — Maintenance comment added |
