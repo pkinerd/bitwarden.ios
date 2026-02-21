@@ -70,7 +70,7 @@ It is never instantiated with `throw OfflineSyncError.vaultLocked` anywhere.
 
 ## Recommendation
 
-**Option A: Keep As Defensive Code.** The `.vaultLocked` error case is a well-defined sentinel for a common failure condition. Removing it saves 4 lines but sacrifices expressiveness. If the resolver is ever enhanced to be self-protective (Option C), having the error already defined avoids churn. The cost of keeping it is negligible.
+**Option B: Remove Dead Code.** The `.vaultLocked` case is never thrown and adds cruft. Clean it up along with its associated test to keep the error enum honest. If a self-protective resolver is needed later, the case can be re-added at that time with a concrete caller.
 
 ## Dependencies
 
