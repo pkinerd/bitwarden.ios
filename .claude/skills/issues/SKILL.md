@@ -256,6 +256,91 @@ search.
 5. Push and clean up (same as create steps 7-8).
 6. Confirm to the user.
 
+### Bulk Operations
+
+When creating more than ~5 issues at once, or copying a directory of documents,
+skip the interactive per-item workflow and operate directly on the worktree. This
+avoids repeated AskUserQuestion prompts and produces a single clean commit.
+
+#### When to use bulk mode
+
+- Migrating issues from another tracking system or document
+- Importing a batch of related issues (e.g., from a code review)
+- Copying a directory tree of documentation files
+
+#### Bulk issue creation
+
+1. **Fetch state and set up worktree** (same as single-issue steps 1-3).
+
+2. **Read `state.json`** to get the starting `next_id`, and **read `INDEX.md`**
+   to get the existing table content.
+
+3. **Write a Python script** (to `/tmp/create_issues.py` or similar) that
+   generates all issue files at once. The script should:
+   - Build a list of issues with title, slug, status, labels, priority, and
+     description for each
+   - Assign sequential IDs starting from `next_id`
+   - Write each issue file to `/tmp/claude-issues/issues/<id>-<slug>.md` using
+     the SCHEMA.md frontmatter format (id, title, status, created, author, plus
+     optional labels, priority, closed)
+   - Every issue body must include `## Description` and `## Comments` sections
+   - Append one row per issue to INDEX.md
+   - Update `state.json` with the final `next_id`
+
+   Using a script is preferred over writing files one at a time with the Write
+   tool because it handles ID assignment, INDEX.md updates, and state.json
+   atomically and avoids the Read-before-Write requirement for generated files.
+
+4. **Run the script**:
+   ```bash
+   cd /tmp/claude-issues && python3 /tmp/create_issues.py
+   ```
+
+5. **Commit and push** in a single commit:
+   ```bash
+   cd /tmp/claude-issues
+   git add -A
+   git -c commit.gpgsign=false commit -m "Import <N> issues from <source>"
+   git push origin HEAD:refs/heads/claude/issues-<suffix>
+   ```
+
+6. **Clean up** the worktree.
+
+#### Bulk document import
+
+To copy an entire directory tree of documentation:
+
+1. Set up the worktree (same as above).
+
+2. Create the target directory structure and copy files:
+   ```bash
+   mkdir -p /tmp/claude-issues/docs/<target-dir>/<subdirs>
+   cp -r /path/to/source/docs/* /tmp/claude-issues/docs/<target-dir>/
+   ```
+
+3. Commit and push in a single commit:
+   ```bash
+   cd /tmp/claude-issues
+   git add -A
+   git -c commit.gpgsign=false commit -m "Import <source> documentation (<N> files)"
+   git push origin HEAD:refs/heads/claude/issues-<suffix>
+   ```
+
+4. Clean up the worktree.
+
+#### Tips
+
+- **One commit**: Batch all files into a single commit rather than committing
+  per-item. This keeps history clean and is much faster.
+- **Script for issues, `cp` for docs**: Issue files need generated IDs and
+  frontmatter, so a script is the right tool. Docs are plain file copies, so
+  `cp -r` is sufficient.
+- **Verify counts**: After running the script, check the file count matches
+  expectations before committing (e.g., `ls issues/ | wc -l`).
+- **Closed issues**: For importing historical/resolved issues, set
+  `status: closed` and `closed: <date>` in the frontmatter. This is common
+  when migrating from a document that tracks both open and resolved items.
+
 ### Error Handling
 
 - If `git fetch origin claude/issues` fails, the branch may not exist yet.
