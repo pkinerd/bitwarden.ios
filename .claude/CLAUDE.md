@@ -96,10 +96,10 @@ Build logs from the `Build, Test & Package Simulator` workflow are pushed to ded
 
 ### How to discover available build log branches
 
-Use `WebFetch` to list branches matching the `build-logs/` prefix:
+List branches matching the `build-logs/` prefix using the `gh` CLI (works in all environments including Claude Code web):
 
-```
-URL: https://api.github.com/repos/pkinerd/bitwarden.ios/git/matching-refs/heads/build-logs/
+```bash
+gh api repos/pkinerd/bitwarden.ios/git/matching-refs/heads/build-logs/ --jq '.[].ref'
 ```
 
 Branch names follow the pattern: `build-logs/<run_number>-<run_id>-<timestamp>-<pass|fail>`
@@ -121,23 +121,31 @@ Each log branch contains these files at its root:
 | `test.log` | Raw console output from the Test job (build + test output) |
 | `push-build-logs.log` | Console output from the log-push job itself |
 
-Fetch raw file content using `WebFetch`:
+Fetch the branch and read files using `git` (works reliably in all environments):
 
-```
-URL: https://raw.githubusercontent.com/pkinerd/bitwarden.ios/<branch-name>/test.log
+```bash
+# Fetch the specific build-log branch
+git fetch origin build-logs/<branch-name>
+
+# Read files from the fetched branch without checking it out
+git show origin/build-logs/<branch-name>:test.log
+git show origin/build-logs/<branch-name>:build-summary.md
 ```
 
 For example, to read the test log from build #138:
 
+```bash
+git fetch origin build-logs/138-22244913185-20260221T050510Z-pass
+git show origin/build-logs/138-22244913185-20260221T050510Z-pass:test.log
 ```
-URL: https://raw.githubusercontent.com/pkinerd/bitwarden.ios/build-logs/138-22244913185-20260221T050510Z-pass/test.log
-```
+
+**Note:** Do NOT use `WebFetch` with `api.github.com` or `raw.githubusercontent.com` — these URLs may be blocked in the Claude Code web environment. Always use `gh api` and `git fetch`/`git show` instead.
 
 ### Typical workflow when user reports a build error
 
-1. Fetch the branch list to find the most recent `fail` branch (or the latest branch)
-2. Read `test.log` to find compiler errors, test failures, or warnings
-3. Read `build-summary.md` for context (commit SHA, PR, branch)
+1. Run `gh api repos/pkinerd/bitwarden.ios/git/matching-refs/heads/build-logs/ --jq '.[].ref'` to find the most recent `fail` branch (or the latest branch)
+2. `git fetch` that branch, then `git show` the `test.log` to find compiler errors, test failures, or warnings
+3. `git show` the `build-summary.md` for context (commit SHA, PR, branch)
 4. Diagnose and fix the issue based on the log content
 
 ## Communication & Decision-Making
