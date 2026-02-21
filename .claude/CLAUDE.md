@@ -144,12 +144,12 @@ After pushing code, use the `poll-build-logs` skill to automatically monitor for
 
 ```bash
 # Start polling (run with run_in_background: true)
-./Scripts/poll-build-logs.sh <commit_sha> --interval 60 --delay 180 --timeout 2700
+./Scripts/poll-build-logs.sh <commit_sha> --interval 60 --delay 60 --timeout 2700
 ```
 
 | Parameter | Default | Purpose |
 |-----------|---------|---------|
-| `--delay` | 180s | Initial wait before first poll |
+| `--delay` | 60s | Initial wait before first poll |
 | `--interval` | 60s | Seconds between `git ls-remote` checks |
 | `--timeout` | 2700s (45 min) | Maximum wait before giving up |
 

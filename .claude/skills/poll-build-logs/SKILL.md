@@ -28,7 +28,7 @@ git branch --show-current
 Launch the polling script as a **background task** so the session stays active while waiting:
 
 ```bash
-./Scripts/poll-build-logs.sh <commit_sha> --interval 60 --delay 180 --timeout 2700
+./Scripts/poll-build-logs.sh <commit_sha> --interval 60 --delay 60 --timeout 2700
 ```
 
 **IMPORTANT:** Use `run_in_background: true` when calling the Bash tool. This is what keeps the Claude Code web session alive during the wait.
@@ -37,15 +37,15 @@ Launch the polling script as a **background task** so the session stays active w
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--delay` | 180s (3 min) | Initial wait before first poll. iOS CI needs at least a few minutes to start producing results. |
+| `--delay` | 60s (1 min) | Initial wait before first poll. Gives CI a moment to start before checking. |
 | `--interval` | 60s | Time between polls. `git ls-remote` is lightweight, so 60s is a good balance. |
 | `--timeout` | 2700s (45 min) | Maximum wait. Covers typical iOS CI builds (15-40 min) with margin. |
 
 #### Tuning for different scenarios
 
-- **Quick lint/compile check**: `--delay 60 --interval 30 --timeout 600`
-- **Full test suite**: `--delay 180 --interval 60 --timeout 2700` (default)
-- **Known slow build**: `--delay 300 --interval 90 --timeout 3600`
+- **Quick lint/compile check**: `--delay 30 --interval 30 --timeout 600`
+- **Full test suite**: `--delay 60 --interval 60 --timeout 2700` (default)
+- **Known slow build**: `--delay 120 --interval 90 --timeout 3600`
 
 ### Step 3: Monitor Progress
 

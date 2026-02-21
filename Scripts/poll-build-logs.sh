@@ -9,7 +9,7 @@
 #
 # Options:
 #   --interval <s>   Seconds between polls (default: 60)
-#   --delay <s>      Initial delay before first poll (default: 180)
+#   --delay <s>      Initial delay before first poll (default: 60)
 #   --timeout <s>    Maximum total wait time in seconds (default: 2700 = 45 min)
 #
 # Output:
@@ -18,7 +18,7 @@
 #   the build-summary.md content. Exits 0 on match, 1 on timeout.
 #
 # Example:
-#   ./Scripts/poll-build-logs.sh abc1234 --interval 60 --delay 180 --timeout 2700
+#   ./Scripts/poll-build-logs.sh abc1234 --interval 60 --delay 60 --timeout 2700
 
 set -euo pipefail
 
@@ -33,7 +33,7 @@ COMMIT_SHA="$1"
 shift
 
 POLL_INTERVAL=60
-INITIAL_DELAY=180
+INITIAL_DELAY=60
 MAX_TIMEOUT=2700
 
 while [ $# -gt 0 ]; do
