@@ -1,0 +1,16 @@
+{
+  "next_id": 1,
+  "labels": [
+    "bug",
+    "feature",
+    "enhancement",
+    "question",
+    "documentation",
+    "refactor"
+  ],
+  "statuses": [
+    "open",
+    "in-progress",
+    "closed"
+  ]
+}
