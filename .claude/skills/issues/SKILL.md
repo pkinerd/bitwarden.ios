@@ -12,7 +12,7 @@ argument: "Optional subcommand and arguments: list, create, show <id>, update <i
 Manage issues stored on the `claude/issues` orphan branch. All operations follow
 the conventions defined in `GUIDE.md` and `SCHEMA.md` on that branch.
 
-### Step 1: Fetch the branch and read the guide
+### Step 1: Fetch the branch and determine session suffix
 
 Always start by fetching the latest state:
 
@@ -25,6 +25,13 @@ If this is your first time working with issues in this session, read the guide:
 ```bash
 git show origin/claude/issues:GUIDE.md
 ```
+
+**Determine the session suffix** from your assigned development branch name.
+Extract the part after the last hyphen. For example, if your development branch
+is `claude/some-task-aBc12`, the suffix is `aBc12`. You will push to
+`claude/issues-<suffix>` instead of directly to `claude/issues`. This is required
+because the web proxy only allows pushing to session-scoped branches. A GitHub
+Action will automatically sync session branches back to `claude/issues`.
 
 ### Step 2: Determine the operation
 
@@ -92,13 +99,15 @@ given, default to `list`.
 6. Update `/tmp/claude-issues/INDEX.md` — add a new row to the table. If the
    table contains the "*No issues yet.*" placeholder, remove it first.
 
-7. Commit and push:
+7. Commit and push to the session-scoped branch:
    ```bash
    cd /tmp/claude-issues
    git add -A
    git commit -m "Create issue #<id>: <title>"
-   git push origin HEAD:claude/issues
+   git push origin HEAD:claude/issues-<suffix>
    ```
+   Where `<suffix>` is the session suffix determined in Step 1. A GitHub Action
+   will automatically merge this into `claude/issues`.
 
 8. Clean up:
    ```bash
@@ -150,6 +159,8 @@ given, default to `list`.
 - If a worktree already exists at `/tmp/claude-issues`, remove it before
   creating a new one.
 - If a push fails, retry up to 4 times with exponential backoff (2s, 4s, 8s,
-  16s) for network errors. For permission errors (403), inform the user.
+  16s) for network errors. For permission errors (403), verify you are pushing
+  to `claude/issues-<suffix>` (not `claude/issues` directly) and that the suffix
+  matches your session ID.
 - If an issue ID is not found, list available issues and ask the user to
   clarify.

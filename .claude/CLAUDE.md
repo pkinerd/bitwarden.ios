@@ -165,6 +165,11 @@ git show origin/claude/issues:issues/0001-example-slug.md
 Use the `/issues` skill which handles worktree setup, commits, and pushes. Or
 follow the workflows documented in `GUIDE.md` on the branch.
 
+**Note:** The web proxy restricts pushes to session-scoped branches. The skill
+pushes to `claude/issues-<session-suffix>` instead of `claude/issues` directly.
+A GitHub Action (`sync-issues-branch.yml`) automatically merges session branches
+back into `claude/issues` and cleans up the session branch afterward.
+
 ## Communication & Decision-Making
 
 Always clarify ambiguous requirements before implementing. Use specific questions:

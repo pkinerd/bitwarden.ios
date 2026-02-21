@@ -1,0 +1,55 @@
+name: Sync Issues Branch
+
+# Merges session-scoped issue branches (claude/issues-*) back into the
+# canonical claude/issues orphan branch. Claude Code web sessions push to
+# claude/issues-<suffix> because the proxy restricts pushes to session-scoped
+# branches. This workflow bridges that gap automatically.
+
+on:
+  push:
+    branches:
+      - 'claude/issues-*'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Sync session branch to claude/issues
+        run: |
+          SESSION_BRANCH="${GITHUB_REF#refs/heads/}"
+          SESSION_SHA=$(git rev-parse HEAD)
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Check if the canonical claude/issues branch exists
+          if git ls-remote --heads origin claude/issues | grep -q claude/issues; then
+            git fetch origin claude/issues
+            BASE_SHA=$(git rev-parse origin/claude/issues)
+
+            if [ "$SESSION_SHA" = "$BASE_SHA" ]; then
+              echo "Session branch is identical to claude/issues — nothing to sync."
+            elif git merge-base --is-ancestor "$BASE_SHA" "$SESSION_SHA"; then
+              echo "Fast-forwarding claude/issues to $SESSION_SHA"
+              git push origin "$SESSION_SHA:refs/heads/claude/issues"
+            else
+              echo "Session branch has diverged — performing merge"
+              git checkout -B claude/issues origin/claude/issues
+              git merge "$SESSION_SHA" --no-edit -m "Merge $SESSION_BRANCH into claude/issues"
+              git push origin claude/issues
+            fi
+          else
+            echo "claude/issues does not exist yet — creating from session branch"
+            git push origin "$SESSION_SHA:refs/heads/claude/issues"
+          fi
+
+          # Clean up the session branch
+          echo "Deleting $SESSION_BRANCH"
+          git push origin --delete "$SESSION_BRANCH"
