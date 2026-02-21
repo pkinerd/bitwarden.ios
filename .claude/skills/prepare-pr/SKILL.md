@@ -52,11 +52,11 @@ Here is a concrete example showing the expected output (replace values with the 
 
 ---
 
-**PR URL** (copyable):
-```
+**PR URL** (copyable — select and copy the text below):
+
 https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1
-```
-[Open PR on GitHub](https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1)
+
+**Clickable link:** [Open PR on GitHub](https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1)
 
 **Title** (copyable):
 ```
@@ -82,7 +82,8 @@ Add offline sync resolver
 
 IMPORTANT formatting rules:
 - The PR URL MUST be a plain `github.com` URL — never a localhost or proxy URL
-- The PR URL inside the code fence MUST be the bare URL with NO angle brackets, NO markdown link syntax, and NO other decoration — just the raw URL string so the user can copy it directly
-- The clickable markdown link below the code fence must also point to the real `github.com` URL
+- For the copyable URL: output the bare URL as plain text on its own line (NOT inside a code fence, NOT wrapped in angle brackets `<>`, NOT as a markdown link). Just the raw URL text on a line by itself so the user can select and copy it
+- NEVER wrap URLs in angle brackets like `<https://...>` — this is the most critical rule
+- The clickable link on the separate "Clickable link:" line must also use the real `github.com` URL
 - The description must be fenced with four backticks (````) so that markdown inside it (with triple backticks) is preserved literally and copyable
 - Do NOT use placeholder syntax with angle brackets (e.g. do not write `<url>`) — always output the actual computed values
