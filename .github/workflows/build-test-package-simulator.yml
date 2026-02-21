@@ -392,14 +392,14 @@ jobs:
           gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" \
             > logs/jobs.json 2>/dev/null || true
 
-          # Download full logs for each job
+          # Download logs for completed jobs only (in-progress jobs return 404)
           if [ -f logs/jobs.json ]; then
-            for job_id in $(jq -r '.jobs[].id' logs/jobs.json 2>/dev/null); do
-              job_name=$(jq -r --arg id "$job_id" '.jobs[] | select(.id == ($id | tonumber)) | .name' logs/jobs.json)
-              safe_name=$(echo "$job_name" | tr ' /' '-_' | tr '[:upper:]' '[:lower:]')
-              gh api "repos/${{ github.repository }}/actions/jobs/${job_id}/logs" \
-                > "logs/${safe_name}.log" 2>/dev/null || true
-            done
+            jq -r '.jobs[] | select(.status == "completed") | "\(.id) \(.name)"' logs/jobs.json 2>/dev/null \
+              | while read -r job_id job_name; do
+                  safe_name=$(echo "$job_name" | tr ' /' '-_' | tr '[:upper:]' '[:lower:]')
+                  gh api "repos/${{ github.repository }}/actions/jobs/${job_id}/logs" \
+                    > "logs/${safe_name}.log" 2>/dev/null || true
+                done
           fi
 
       - name: Push logs to branch
