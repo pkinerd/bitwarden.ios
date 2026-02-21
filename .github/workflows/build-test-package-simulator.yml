@@ -263,6 +263,7 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04
     permissions:
+      contents: read
       issues: write
       pull-requests: write
     if: success()
