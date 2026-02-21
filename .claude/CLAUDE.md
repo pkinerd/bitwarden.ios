@@ -144,16 +144,17 @@ After pushing code, use the `poll-build-logs` skill to automatically monitor for
 
 ```bash
 # Start polling (run with run_in_background: true)
-./Scripts/poll-build-logs.sh <commit_sha> --interval 60 --delay 60 --timeout 2700
+./Scripts/poll-build-logs.sh <commit_sha> --branch <branch_name>
 ```
 
 | Parameter | Default | Purpose |
 |-----------|---------|---------|
+| `--branch` | _(none)_ | **Recommended.** Branch name to match (essential for PR builds where CI uses merge commit SHA) |
 | `--delay` | 60s | Initial wait before first poll |
 | `--interval` | 60s | Seconds between `git ls-remote` checks |
 | `--timeout` | 2700s (45 min) | Maximum wait before giving up |
 
-The script snapshots existing build-log branches at start, then polls for new ones matching the commit SHA. On match, it fetches and displays `build-summary.md` and (for failures) error lines from `test.log`.
+The script snapshots existing build-log branches at start, then polls for new ones matching the commit SHA **or** branch name. On match, it fetches and displays `build-summary.md` and (for failures) error lines from `test.log`.
 
 ## Communication & Decision-Making
 

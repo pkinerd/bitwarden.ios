@@ -9,34 +9,32 @@ description: Polls for CI build log branches matching changes from the current s
 
 After pushing code changes, use this process to monitor for CI build results and analyze them when available.
 
-### Step 1: Identify the Commit
+### Step 1: Identify the Commit and Branch
 
-Determine the commit SHA that was pushed. Use the most recent commit on the current branch:
+Determine the commit SHA and branch name:
 
 ```bash
 git rev-parse HEAD
-```
-
-Also note the branch name for correlation:
-
-```bash
 git branch --show-current
 ```
+
+**Both are needed.** For `pull_request` CI events, GitHub records a merge commit SHA (not the branch HEAD), so matching on branch name is essential.
 
 ### Step 2: Start Background Polling
 
 Launch the polling script as a **background task** so the session stays active while waiting:
 
 ```bash
-./Scripts/poll-build-logs.sh <commit_sha> --interval 60 --delay 60 --timeout 2700
+./Scripts/poll-build-logs.sh <commit_sha> --branch <branch_name>
 ```
 
-**IMPORTANT:** Use `run_in_background: true` when calling the Bash tool. This is what keeps the Claude Code web session alive during the wait.
+**IMPORTANT:** Always pass `--branch` with the current branch name. Use `run_in_background: true` when calling the Bash tool — this keeps the Claude Code web session alive during the wait.
 
 #### Parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
+| `--branch` | _(none)_ | **Recommended.** Branch name to match in build-summary.md. Essential for PR builds where the CI commit SHA differs from branch HEAD. |
 | `--delay` | 60s (1 min) | Initial wait before first poll. Gives CI a moment to start before checking. |
 | `--interval` | 60s | Time between polls. `git ls-remote` is lightweight, so 60s is a good balance. |
 | `--timeout` | 2700s (45 min) | Maximum wait. Covers typical iOS CI builds (15-40 min) with margin. |
@@ -116,17 +114,19 @@ User: Push my changes and let me know if the build passes.
 
 Claude:
 1. Commits and pushes to the PR branch
-2. Records commit SHA: abc1234def
+2. Records commit SHA and branch name:
+   SHA=abc1234def  BRANCH=claude/my-feature-branch
 3. Starts background polling:
-   ./Scripts/poll-build-logs.sh abc1234def --interval 60 --delay 180 --timeout 2700
+   ./Scripts/poll-build-logs.sh abc1234def --branch claude/my-feature-branch
 4. [Background task runs, session stays active]
 5. [~20 minutes later, task completes with match]
-6. Reports: "CI build passed for commit abc1234. Build log: build-logs/142-123456-20260221T150000Z-pass"
+6. Reports: "CI build passed on branch claude/my-feature-branch.
+   Build log: build-logs/142-123456-20260221T150000Z-pass"
 ```
 
 ## Important Notes
 
-- The script uses `git ls-remote` which only fetches ref names — it is very lightweight and safe to run frequently.
+- The script matches on **commit SHA or branch name** — this handles both `push` events (exact SHA) and `pull_request` events (merge commit SHA differs from branch HEAD).
+- The script uses `git ls-remote` which only fetches ref names — very lightweight and safe to run frequently.
 - The background task **keeps the web session alive**. Without it, the session may time out before CI completes.
 - Only the 10 most recent build-log branches are retained by CI, so poll promptly after pushing.
-- If multiple pushes happen in quick succession, the script matches on commit SHA, so it will find the correct build.
