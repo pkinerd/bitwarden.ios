@@ -146,11 +146,43 @@ After pushing code, use the `poll-build-logs` skill to monitor for CI results. i
 # Snapshot current branches, note the highest run number
 git ls-remote --heads origin 'refs/heads/build-logs/*'
 
-# Then repeat every ~1 min (run_in_background: true):
-sleep 60 && git ls-remote --heads origin 'refs/heads/build-logs/*'
+# Then repeat every ~3 min (run_in_background: true):
+sleep 180 && git ls-remote --heads origin 'refs/heads/build-logs/*'
 ```
 
 When a new branch appears, fetch `build-summary.md` and verify the `Branch` field matches yours. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit). See `poll-build-logs` skill for full details.
+
+## Issue Tracking
+
+Issues are managed on the orphan branch `claude/issues`. This branch has its own
+history, separate from the main codebase. Use the `/issues` skill or follow the
+steps below.
+
+### Quick access
+
+```bash
+git fetch origin claude/issues
+git show origin/claude/issues:GUIDE.md       # Full guide
+git show origin/claude/issues:INDEX.md       # List all issues
+git show origin/claude/issues:SCHEMA.md      # Issue file format
+git show origin/claude/issues:state.json     # Next ID, valid labels
+```
+
+### Reading a specific issue
+
+```bash
+git show origin/claude/issues:issues/0001-example-slug.md
+```
+
+### Modifying issues
+
+Use the `/issues` skill which handles worktree setup, commits, and pushes. Or
+follow the workflows documented in `GUIDE.md` on the branch.
+
+**Note:** The web proxy restricts pushes to session-scoped branches. The skill
+pushes to `claude/issues-<session-suffix>` instead of `claude/issues` directly.
+A GitHub Action (`sync-issues-branch.yml`) automatically merges session branches
+back into `claude/issues` and cleans up the session branch afterward.
 
 ## Communication & Decision-Making
 

@@ -103,7 +103,7 @@ processPendingChanges(userId:)
 
 - **Good**: Each pending change is processed independently in a `do/catch` block. Failure to resolve one change doesn't prevent processing of subsequent changes. Errors are logged via `Logger.application.error()`.
 - **Concern — Silently swallowed errors**: When a single change resolution fails, the error is logged but the pending change remains in the store for the next sync attempt. This is reasonable for transient errors but could lead to permanently stuck changes if the error is structural (e.g., corrupted `cipherData`). There's no retry limit or escalation mechanism.
-- **Note**: The `OfflineSyncError` enum provides clear, meaningful error cases (`missingCipherData`, `missingCipherId`, `vaultLocked`, `cipherNotFound`). These are `LocalizedError` compliant and `Equatable` for testing.
+- **Note**: The `OfflineSyncError` enum provides clear, meaningful error cases (`missingCipherData`, `missingCipherId`, `cipherNotFound`). These are `LocalizedError` compliant and `Equatable` for testing. **[Updated]** The `.vaultLocked` case was removed as dead code (AP-68) — the vault-locked guard lives in `SyncService.fetchSync()` and skips resolution via conditional, never throwing.
 
 ## Security Assessment
 
