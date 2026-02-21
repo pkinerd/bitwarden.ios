@@ -140,21 +140,27 @@ Example: `git show origin/build-logs/<branch>:test.log | grep '✖︎\|error:'`
 
 ### Polling for build logs (web sessions)
 
-After pushing code, use the `poll-build-logs` skill to automatically monitor for CI results. This runs `Scripts/poll-build-logs.sh` as a **background task**, which keeps the web session alive while CI runs.
+After pushing code, use the `poll-build-logs` skill to monitor for CI results. iOS builds take ~15-30 minutes.
+
+**Web sessions:** Use repeated short background tasks (the platform kills long-running scripts):
 
 ```bash
-# Start polling (run with run_in_background: true)
+# Snapshot current branches, note the highest run number
+git ls-remote --heads origin 'refs/heads/build-logs/*'
+
+# Then repeat every ~5 min (run_in_background: true):
+sleep 300 && git ls-remote --heads origin 'refs/heads/build-logs/*'
+```
+
+When a new branch appears, fetch `build-summary.md` and verify the `Branch` field matches yours. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit).
+
+**Local/terminal sessions:** Use the polling script directly:
+
+```bash
 ./Scripts/poll-build-logs.sh <commit_sha> --branch <branch_name>
 ```
 
-| Parameter | Default | Purpose |
-|-----------|---------|---------|
-| `--branch` | _(none)_ | **Recommended.** Branch name to match (essential for PR builds where CI uses merge commit SHA) |
-| `--delay` | 60s | Initial wait before first poll |
-| `--interval` | 60s | Seconds between `git ls-remote` checks |
-| `--timeout` | 2700s (45 min) | Maximum wait before giving up |
-
-The script snapshots existing build-log branches at start, then polls for new ones matching the commit SHA **or** branch name. On match, it fetches and displays `build-summary.md` and (for failures) error lines from `test.log`.
+The script accepts `--branch`, `--delay`, `--interval`, and `--timeout` flags. See `poll-build-logs` skill for full details.
 
 ## Communication & Decision-Making
 
