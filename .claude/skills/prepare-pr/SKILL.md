@@ -52,12 +52,7 @@ Here is a concrete example showing the expected output (replace values with the 
 
 ---
 
-**PR URL** — copy and combine these two lines (host + path):
-```
-github.com
-/example-org/example-repo/compare/main...feature-branch?expand=1
-```
-**Clickable link:** [Open PR on GitHub](https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1)
+**PR URL:** [Open PR on GitHub](https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1)
 
 **Title** (copyable):
 ```
@@ -83,8 +78,6 @@ Add offline sync resolver
 
 IMPORTANT formatting rules:
 - The PR URL MUST use `github.com` — never a localhost or proxy URL
-- To prevent the renderer from auto-linking and wrapping in angle brackets, split the URL across two lines inside the code fence: line 1 is `github.com`, line 2 is the path starting with `/`. The user will prepend `https://` and combine them
-- NEVER output a full `https://...` URL inside a code fence — the renderer will add angle brackets
-- Below the code fence, include a clickable markdown link with the full URL (this is the convenient click target)
+- Do NOT put URLs inside code fences — the renderer wraps them in angle brackets. Instead, present the PR URL only as a clickable markdown link
 - The description must be fenced with four backticks (````) so that markdown inside it (with triple backticks) is preserved literally and copyable
 - Do NOT use placeholder syntax with angle brackets — always output the actual computed values
