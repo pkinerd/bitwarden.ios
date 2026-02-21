@@ -12,11 +12,11 @@
 |----------|-------|-------|
 | **Open — Requires Code Changes** | 3 | R3, R1, U2-B |
 | **Partially Addressed** | 1 | EXT-3/CS-2 |
-| **Open — Accepted (No Code Change Planned)** | 11 | Includes AP-36, AP-40, AP-41 (moved to `Accepted/`) |
+| **Open — Accepted (No Code Change Planned)** | 39 | 11 (original Section 5) + 28 moved from Section 4 to `Accepted/` |
 | **Deferred (Future Enhancement)** | 5 | Includes PLAN-3/AP-77 |
-| **Review2 — Triaged (Action Plans Created)** | 37 | Items still in Section 4 tables |
-| **Resolved / Superseded** | 58 | Includes AP-35, AP-37, AP-38, AP-42 (moved to `Resolved/`); R4, S7 now fully resolved |
-| **Total Unique Issues** | 114 | Up from 93 due to issues discovered and resolved during implementation |
+| **Review2 — Still Open** | 6 | 1 reliability (R2-PCDS-1) + 4 UX (AP-53, AP-54, AP-55, AP-78) + 1 (partially: R2-PCDS-1) |
+| **Resolved / Superseded** | 61 | 58 previous + AP-34, AP-56, AP-69 (moved to `Resolved/`) |
+| **Total Unique Issues** | 114 | All issues accounted for across sections |
 
 ---
 
@@ -58,20 +58,24 @@ These issues have been worked on but still have remaining gaps.
 
 These issues were identified in the second review pass. All have been triaged and have corresponding action plans in `ActionPlans/`.
 
+> **[UPDATE 2026-02-21]** During the issue status audit, 28 items from this section were moved to `Accepted/` (their own action plan documents recommend "Accept As-Is") and 3 were moved to `Resolved/` (issue no longer applicable). Only 6 items remain open in Section 4. See subsections below.
+
 ### 4a. Code Quality / Cleanup
 
-| # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
-|---|----------|-------------|----------|------------|-------------|-------------------|
-| 30 | **P2-CS1** | Redundant MARK comment in `CipherView+OfflineSync.swift` after removing `Cipher` extension | Low | Low | AP-30 | OfflineSyncCodeReview_Phase2.md |
-| 31 | **R2-MAIN-20** | Error classification do/catch pattern repeated 4 times in VaultRepository (~15 lines each); could extract helper | Low | Low | AP-31 | Review2/00_Main, Review2/03_VaultRepository |
-| 33 | **R2-EXT-3** | Three `/// - Important` comments about SDK fragility across files could reference a shared document | Low | Low | AP-33 | Review2/07_CipherViewExtensions |
-| 34 | **R2-EXT-4** | `@retroactive CipherWithArchive` conformance change rationale unclear | Low | Low | AP-34 | Review2/07_CipherViewExtensions |
-| 72 | **R2-SS-5** | SyncService simplification: two `pendingChangeCount` calls could be replaced by resolver returning boolean — saves one Core Data query | Low | Low | AP-72 | Review2/04_SyncService |
-| 73 | **R2-SS-6** | SyncService simplification: extract 15-line pre-sync resolution block into private method `resolveOfflineChangesIfNeeded(userId:isVaultLocked:)` | Low | Low | AP-73 | Review2/04_SyncService |
-| 74 | **R2-RES-10** | Resolver simplification: `resolveConflict` local-newer and server-newer branches have symmetric structure; could be abstracted (current explicit form more readable) | Low | Low | AP-74 | Review2/02_OfflineSyncResolver |
-| 75 | **R2-RES-11** | `softConflictPasswordChangeThreshold` hardcoded to 4 as `static let` — not configurable without code change; tuning based on user feedback would require recompilation | Low | Low | AP-75 | Review2/02_OfflineSyncResolver |
-| 76 | **R2-VR-9** | VaultRepository simplification: use `Cipher` directly instead of roundtripping through `CipherDetailsResponseModel` JSON (~20 lines savings per handler) — would require different serialization approach | Low | Low | AP-76 | OfflineSyncCodeReview.md |
-| 84 | **R2-EXT-5** | Simplification: consider inlining `CipherView+OfflineSync` extension — `withId` and `update(name:)` are small and used in only 2 places; review recommends keeping current extension approach as cleaner | Low | Low | AP-84 | Review2/00_Main |
+_All 10 issues in this section have been accepted as-is or resolved. Action plans moved to `Accepted/` or `Resolved/`:_
+
+| # | Issue ID | Description | Disposition | Action Plan |
+|---|----------|-------------|-------------|-------------|
+| 30 | P2-CS1 | Redundant MARK comment — matches project conventions | Accepted | `Accepted/AP-30` |
+| 31 | R2-MAIN-20 | Error classification duplication — explicit repetition preferred | Accepted | `Accepted/AP-31` |
+| 33 | R2-EXT-3 | SDK fragility comments — guard tests provide centralized protection | Accepted | `Accepted/AP-33` |
+| 34 | R2-EXT-4 | `@retroactive CipherWithArchive` — annotation does not exist in current code | Resolved | `Resolved/AP-34` |
+| 72 | R2-SS-5 | Two `pendingChangeCount` calls — more robust than single return value | Accepted | `Accepted/AP-72` |
+| 73 | R2-SS-6 | Pre-sync resolution extraction — 8 lines of actual code, well-commented | Accepted | `Accepted/AP-73` |
+| 74 | R2-RES-10 | `resolveConflict` symmetry — explicit form more readable | Accepted | `Accepted/AP-74` |
+| 75 | R2-RES-11 | Hardcoded threshold — unlikely to need remote tuning | Accepted | `Accepted/AP-75` |
+| 76 | R2-VR-9 | Cipher roundtrip — required by SDK type constraints | Accepted | `Accepted/AP-76` |
+| 84 | R2-EXT-5 | Extension inlining — current approach cleaner per review | Accepted | `Accepted/AP-84` |
 
 ### 4b. Test Coverage Gaps
 
@@ -81,9 +85,9 @@ _All 6 issues in this section have been resolved, accepted as-is, or deferred. S
 
 | # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
 |---|----------|-------------|----------|------------|-------------|-------------------|
-| 43 | **R2-MAIN-7** | No maximum pending change age or count — unbounded accumulation possible during extended offline periods | Low | Low | AP-R2-MAIN-7 | Review2/00_Main |
-| 44 | **R2-RES-2** | Conflict resolution timestamp comparison uses client-side timestamps — device clock skew could select wrong "winner" | Low | Low | AP-R2-RES-2 | Review2/02_OfflineSyncResolver |
 | 48 | **R2-PCDS-1** | No Core Data schema versioning step — current entity addition works via lightweight migration but future attribute changes require explicit versioning | Medium | Medium | AP-R2-PCDS-1 | Review2/01_PendingCipherChangeData |
+
+_2 issues accepted as-is: #43 R2-MAIN-7 (max pending change limit — unbounded accumulation risk is very low) → `Accepted/AP-R2-MAIN-7`; #44 R2-RES-2 (clock skew — both versions always preserved) → `Accepted/AP-R2-RES-2`._
 
 ### 4d. UX Improvements
 
@@ -96,33 +100,37 @@ _All 6 issues in this section have been resolved, accepted as-is, or deferred. S
 
 ### 4e. Upstream / Process Concerns
 
-| # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
-|---|----------|-------------|----------|------------|-------------|-------------------|
-| 56 | **R2-UP-1** | SDK API changes (`.authenticator` to `.vaultAuthenticator`, `emailHashes` removal) need verification against offline sync cipher operations | Medium | Low | AP-56 | Review2/09_UpstreamChanges |
-| 57 | **R2-UP-3** | `MockCipherService` changed `cipherChangesSubject` from `CurrentValueSubject` to `PassthroughSubject` — alters timing semantics for existing tests | Medium | Low | AP-57 | Review2/09_UpstreamChanges |
-| 58 | **R2-UP-4** | ~60% of changed files are upstream changes, complicating offline sync diff review | Low | Low | AP-58 | Review2/09_UpstreamChanges |
-| 59 | **R2-UP-5** | `ExportVaultService` typo fix mixed into offline sync commits — should be separate commit | Low | Low | AP-59 | Review2/09_UpstreamChanges |
-| 79 | **R2-DI-6** | ServiceContainer includes two additional incidental typo fixes unrelated to offline sync (`DefultExportVaultService` → `DefaultExportVaultService`, `Exhange` → `Exchange`) | Low | Low | AP-79 | Review2/05_DIWiring |
-| 80 | **R2-UP-6** | `AuthCoordinator.swift` parameter rename (`attemptAutmaticBiometricUnlock` → `attemptAutomaticBiometricUnlock`) is a compile-affecting upstream change mixed into the offline sync diff | Low | Low | AP-80 | Review2/09_UpstreamChanges |
+_All 6 issues in this section have been accepted as-is or resolved. Changes are properly applied, verified, and have no impact on offline sync functionality._
+
+| # | Issue ID | Description | Disposition | Action Plan |
+|---|----------|-------------|-------------|-------------|
+| 56 | R2-UP-1 | SDK API changes — verified no interaction with offline sync | Resolved | `Resolved/AP-56` |
+| 57 | R2-UP-3 | `PassthroughSubject` change — semantically correct | Accepted | `Accepted/AP-57` |
+| 58 | R2-UP-4 | ~60% upstream changes — review completed with awareness | Accepted | `Accepted/AP-58` |
+| 59 | R2-UP-5 | ExportVaultService typo fix — applied consistently | Accepted | `Accepted/AP-59` |
+| 79 | R2-DI-6 | Incidental typo fixes — applied consistently | Accepted | `Accepted/AP-79` |
+| 80 | R2-UP-6 | AuthCoordinator parameter rename — applied consistently | Accepted | `Accepted/AP-80` |
 
 ### 4f. Minor / Informational
 
-| # | Issue ID | Description | Severity | Complexity | Action Plan | Related Documents |
-|---|----------|-------------|----------|------------|-------------|-------------------|
-| 60 | **TC-5** | `@MainActor` annotation required on test as workaround for `MockVaultTimeoutService` actor isolation | Low | Medium | AP-60 | ReviewSection_TestChanges.md |
-| 61 | **TC-8** | ServiceContainer mock defaults: 131 calls across 107 test files silently receive new offline sync mocks | Low | Low | AP-61 | ReviewSection_TestChanges.md |
-| 62 | **R2-RES-4** | Backup naming uses device default timezone — timestamp may not match server time | Low | Low | AP-62 | Review2/02_OfflineSyncResolver |
-| 63 | **R2-RES-8** | Batch processing is sequential — many pending changes processed one-by-one (accepted simplicity tradeoff) | Low | Low | AP-63 | Review2/02_OfflineSyncResolver |
-| 65 | **TC-4** | `isVaultLocked` value is cached and reused across potentially long-running API calls | Low | Low | AP-65 | ReviewSection_TestChanges.md |
-| 66 | **R2-UI-3** | `specificPeopleUnavailable(action:)` alert is upstream change mixed into offline sync files | Low | Low | AP-66 | Review2/06_UILayer |
-| 67 | **PCDS-3/4** | `upsertPendingChange` uses fetch-then-update pattern rather than atomic upsert | Low | Medium | AP-67 | ReviewSection_PendingCipherChangeDataStore.md |
-| 68 | **RES-vaultLocked** | `.vaultLocked` error case defined but never thrown in current code — dead code | Low | Low | AP-68 | ReviewSection_OfflineSyncResolver.md |
-| 69 | **R2-UP-2** | `CipherPermissionsModel` typo fix ("acive" to "active") — low risk but needs verification | Low | Low | AP-69 | Review2/09_UpstreamChanges |
-| 70 | **PLAN-1** | Denylist pattern may miss new error types in future SDK updates that should be rethrown | Low | Low | AP-70 | OfflineSyncPlan.md |
-| 71 | **PLAN-2** | Sync resolution may be delayed up to one sync interval (~30 min) vs immediate connectivity-based trigger | Low | Medium | AP-71 | OfflineSyncPlan.md |
-| 81 | **PLAN-4** | Core Data store does not configure explicit `NSFileProtectionComplete` (`DataStore.swift:50-83`) — relies on iOS default file protection (Complete Until First User Authentication), application-level encryption, and application sandbox; existing characteristic unchanged by this feature | Low | Medium | AP-81 | OfflineSyncPlan.md |
-| 82 | **R2-CROSS-1** | If both R1 (data format versioning) and R3 (retry backoff) are implemented, Core Data schema changes should be bundled in a single migration step to minimize schema churn | Low | Low | AP-82 | AP-00_CrossReferenceMatrix.md |
-| 85 | **R2-UI-4** | `buildViewItemState(from:)` in `ViewItemProcessor` is ~35 lines — could benefit from further decomposition; review rates as "within acceptable limits" | Low | Low | AP-85 | Review2/06_UILayer |
+_All 15 issues in this section have been accepted as-is or resolved. All are low-severity informational items consistent with existing project patterns._
+
+| # | Issue ID | Description | Disposition | Action Plan |
+|---|----------|-------------|-------------|-------------|
+| 60 | TC-5 | `@MainActor` test annotation — pre-existing pattern | Accepted | `Accepted/AP-60` |
+| 61 | TC-8 | Mock defaults convention — consistent with project pattern | Accepted | `Accepted/AP-61` |
+| 62 | R2-RES-4 | Backup naming timezone — device-local is user-friendly | Accepted | `Accepted/AP-62` |
+| 63 | R2-RES-8 | Sequential batch processing — correct for conflict resolution | Accepted | `Accepted/AP-63` |
+| 65 | TC-4 | `isVaultLocked` caching — pre-existing pattern, very low risk | Accepted | `Accepted/AP-65` |
+| 66 | R2-UI-3 | `specificPeopleUnavailable` — upstream change, properly implemented | Accepted | `Accepted/AP-66` |
+| 67 | PCDS-3/4 | Fetch-then-update — safe with serial queue + uniqueness constraint | Accepted | `Accepted/AP-67` |
+| 68 | RES-vaultLocked | `.vaultLocked` dead code — kept as defensive code | Accepted | `Accepted/AP-68` |
+| 69 | R2-UP-2 | `CipherPermissionsModel` typo fix — already applied | Resolved | `Resolved/AP-69` |
+| 70 | PLAN-1 | Denylist future SDK errors — data preservation bias correct | Accepted | `Accepted/AP-70` |
+| 71 | PLAN-2 | Sync resolution delay — foreground sync covers common case | Accepted | `Accepted/AP-71` |
+| 81 | PLAN-4 | Core Data file protection — codebase-wide decision | Accepted | `Accepted/AP-81` |
+| 82 | R2-CROSS-1 | Schema migration bundling — planning note for R1/R3 | Accepted | `Accepted/AP-82` |
+| 85 | R2-UI-4 | `buildViewItemState` decomposition — within acceptable limits | Accepted | `Accepted/AP-85` |
 
 ---
 
@@ -247,22 +255,54 @@ The following key claims were verified as accurate against the source code:
 
 A comprehensive audit verified all issues against the current codebase and reorganized action plans.
 
-#### Action Plans Moved to `Resolved/`
+#### Action Plans Moved to `Resolved/` (7 total)
 
 | Action Plan | Issue ID | Verification |
 |-------------|----------|--------------|
+| AP-34 | R2-EXT-4 | `@retroactive CipherWithArchive` annotation does not exist in current code — issue not applicable |
 | AP-35 | R2-TEST-1 | `GetCipherRequestTests.swift` with 3 tests (`test_method`, `test_path`, `test_validate`) confirmed present |
 | AP-37 | R2-TEST-3 | `test_deleteDataForUser_deletesPendingCipherChanges` at `PendingCipherChangeDataStoreTests.swift:404` confirmed present |
 | AP-38 | R2-TEST-5 | 3 corrupt data tests in `OfflineSyncResolverTests.swift` confirmed present (lines 879, 896, 915) |
 | AP-42 | R2-TEST-4 | `test_processPendingChanges_update_conflict_backupNameFormat` and `emptyNameBackup` in `OfflineSyncResolverTests.swift` confirmed present (lines 1009, 1057) |
+| AP-56 | R2-UP-1 | SDK API changes (`.authenticator` → `.vaultAuthenticator`, `emailHashes` removal) verified — no interaction with offline sync code |
+| AP-69 | R2-UP-2 | `CipherPermissionsModel` typo fix already applied consistently — documentation-only change |
 
-#### Action Plans Moved to `Accepted/`
+#### Action Plans Moved to `Accepted/` (31 total)
 
 | Action Plan | Issue ID | Rationale |
 |-------------|----------|-----------|
+| AP-30 | P2-CS1 | MARK comment matches project-wide conventions |
+| AP-31 | R2-MAIN-20 | Explicit error handling repetition preferred over abstraction |
+| AP-33 | R2-EXT-3 | Guard tests provide centralized automated protection |
 | AP-36 | R2-TEST-2 | Entity addition is safest lightweight migration; no other entities have migration tests |
 | AP-40 | P2-T4 | Stale-state-after-fallback is intentional design; negative timeout tests inherently flaky |
-| AP-41 | TC-6 | Feature flag default `false` provides strong gate; `test_fetchSync_preSyncResolution_skipsWhenResolutionFlagDisabled` covers negative path |
+| AP-41 | TC-6 | Feature flag default `false` provides strong gate |
+| AP-57 | R2-UP-3 | `PassthroughSubject` change is semantically correct for event stream |
+| AP-58 | R2-UP-4 | Review completed with full awareness of upstream distinction |
+| AP-59 | R2-UP-5 | Typo fix already applied consistently |
+| AP-60 | TC-5 | `@MainActor` annotation is pre-existing project pattern |
+| AP-61 | TC-8 | Mock defaults follow established `withMocks()` convention |
+| AP-62 | R2-RES-4 | Device-local timezone more user-friendly for backup names |
+| AP-63 | R2-RES-8 | Sequential processing is correct design for conflict resolution |
+| AP-65 | TC-4 | Pre-existing caching pattern; extremely low stale-data risk |
+| AP-66 | R2-UI-3 | Upstream Send feature change; properly implemented and tested |
+| AP-67 | PCDS-3/4 | Safe with serial queue + uniqueness constraint + merge policy |
+| AP-68 | RES-vaultLocked | Kept as defensive code (4 lines, potential future use) |
+| AP-70 | PLAN-1 | Data preservation bias is correct for password manager |
+| AP-71 | PLAN-2 | Foreground sync covers common reconnection case |
+| AP-72 | R2-SS-5 | Two-count pattern more robust than single return value |
+| AP-73 | R2-SS-6 | Block is only 8 lines of actual code, well-commented |
+| AP-74 | R2-RES-10 | Explicit form more readable than abstraction |
+| AP-75 | R2-RES-11 | Threshold unlikely to need remote tuning |
+| AP-76 | R2-VR-9 | Roundtrip required by SDK type constraints |
+| AP-79 | R2-DI-6 | Typo fixes properly applied and consistent |
+| AP-80 | R2-UP-6 | Parameter rename properly applied throughout |
+| AP-81 | PLAN-4 | Codebase-wide file protection decision; unchanged by feature |
+| AP-82 | R2-CROSS-1 | Planning note for R1/R3 schema changes |
+| AP-84 | R2-EXT-5 | Extension approach cleaner per review assessment |
+| AP-85 | R2-UI-4 | Method within acceptable limits per review |
+| AP-R2-MAIN-7 | R2-MAIN-7 | Unbounded accumulation risk very low (~1-5 KB per item) |
+| AP-R2-RES-2 | R2-RES-2 | Both versions always preserved; clock skew rare on iOS |
 
 #### Newly Confirmed Resolutions
 
@@ -283,9 +323,12 @@ A comprehensive audit verified all issues against the current codebase and reorg
 
 #### Summary Statistics Updated
 
-- **Resolved / Superseded**: 36 → 58 (22 issues discovered and resolved during implementation were not reflected in count)
+- **Open — Accepted**: 11 → 39 (28 items from Section 4 whose action plans recommend "Accept As-Is" moved to `Accepted/`)
+- **Resolved / Superseded**: 36 → 61 (22 from implementation phase + 3 newly resolved: AP-34, AP-56, AP-69)
+- **Review2 — Still Open**: 37 → 6 (28 accepted, 3 resolved)
 - **Total Unique Issues**: 93 → 114 (includes newly tracked implementation-phase issues)
 - **Remaining code changes needed**: 3 items (R3, R1, U2-B)
+- **Action plan folder reorganization**: 37 `Resolved/`, 39 `Accepted/`, 2 `Superseded/`, 10 open (including 2 meta-docs)
 
 ---
 
