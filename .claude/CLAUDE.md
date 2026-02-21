@@ -90,6 +90,56 @@ See `.swiftlint.yml` for the full rule configuration including custom rules.
 - Undocumented public APIs
 - Tight coupling between targets
 
+## Build Logs (CI)
+
+Build logs from the `Build, Test & Package Simulator` workflow are pushed to dedicated branches after each run. When the user reports a build error, compile failure, or test failure, **you should immediately fetch the logs** rather than asking the user for details.
+
+### How to discover available build log branches
+
+Use `WebFetch` to list branches matching the `build-logs/` prefix:
+
+```
+URL: https://api.github.com/repos/pkinerd/bitwarden.ios/git/matching-refs/heads/build-logs/
+```
+
+Branch names follow the pattern: `build-logs/<run_number>-<run_id>-<timestamp>-<pass|fail>`
+
+- `run_number` is the human-readable build number (e.g. 138) shown in the GitHub Actions UI
+- `run_id` is the API identifier for the workflow run
+- `pass`/`fail` indicates the test job result
+
+Only the 5 most recent branches are kept; older ones are automatically cleaned up.
+
+### How to read the logs
+
+Each log branch contains these files at its root:
+
+| File | Contents |
+|------|----------|
+| `build-summary.md` | Build metadata: run number, commit, PR info, result, artifact list, coverage header |
+| `jobs.json` | Full job details from the GitHub Actions API |
+| `test.log` | Raw console output from the Test job (build + test output) |
+| `push-build-logs.log` | Console output from the log-push job itself |
+
+Fetch raw file content using `WebFetch`:
+
+```
+URL: https://raw.githubusercontent.com/pkinerd/bitwarden.ios/<branch-name>/test.log
+```
+
+For example, to read the test log from build #138:
+
+```
+URL: https://raw.githubusercontent.com/pkinerd/bitwarden.ios/build-logs/138-22244913185-20260221T050510Z-pass/test.log
+```
+
+### Typical workflow when user reports a build error
+
+1. Fetch the branch list to find the most recent `fail` branch (or the latest branch)
+2. Read `test.log` to find compiler errors, test failures, or warnings
+3. Read `build-summary.md` for context (commit SHA, PR, branch)
+4. Diagnose and fix the issue based on the log content
+
 ## Communication & Decision-Making
 
 Always clarify ambiguous requirements before implementing. Use specific questions:
