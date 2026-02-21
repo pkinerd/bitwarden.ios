@@ -640,15 +640,6 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
     }
 
-    // MARK: Tests - OfflineSyncError
-
-    /// `OfflineSyncError.vaultLocked` provides a localized description.
-    func test_offlineSyncError_vaultLocked_localizedDescription() {
-        let error = OfflineSyncError.vaultLocked
-        XCTAssertNotNil(error.errorDescription)
-        XCTAssertTrue(error.errorDescription?.contains("locked") ?? false)
-    }
-
     // MARK: Tests - API Failure Handling
 
     /// `processPendingChanges(userId:)` retains the pending record when a `.create`

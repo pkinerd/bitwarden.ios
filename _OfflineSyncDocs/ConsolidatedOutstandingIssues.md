@@ -14,8 +14,8 @@
 | **Partially Addressed** | 1 | EXT-3/CS-2 |
 | **Open — Accepted (No Code Change Planned)** | 38 | 11 (original Section 5) + 27 moved from Section 4 to `Accepted/` |
 | **Deferred (Future Enhancement)** | 5 | Includes PLAN-3/AP-77 |
-| **Review2 — Still Open** | 7 | 1 reliability (R2-PCDS-1) + 4 UX (AP-53, AP-54, AP-55, AP-78) + 1 dead code cleanup (AP-68) |
-| **Resolved / Superseded** | 61 | 58 previous + AP-34, AP-56, AP-69 (moved to `Resolved/`) |
+| **Review2 — Still Open** | 6 | 1 reliability (R2-PCDS-1) + 4 UX (AP-53, AP-54, AP-55, AP-78) |
+| **Resolved / Superseded** | 62 | 58 previous + AP-34, AP-56, AP-69 (moved to `Resolved/`) + AP-68 (dead code removed) |
 | **Total Unique Issues** | 114 | All issues accounted for across sections |
 
 ---
@@ -113,7 +113,7 @@ _All 6 issues in this section have been accepted as-is or resolved. Changes are 
 
 ### 4f. Minor / Informational
 
-_All 15 issues in this section have been accepted as-is or resolved. All are low-severity informational items consistent with existing project patterns._
+_All 14 issues in this section have been accepted as-is or resolved. All are low-severity informational items consistent with existing project patterns._
 
 | # | Issue ID | Description | Disposition | Action Plan |
 |---|----------|-------------|-------------|-------------|
@@ -124,7 +124,6 @@ _All 15 issues in this section have been accepted as-is or resolved. All are low
 | 65 | TC-4 | `isVaultLocked` caching — pre-existing pattern, very low risk | Accepted | `Accepted/AP-65` |
 | 66 | R2-UI-3 | `specificPeopleUnavailable` — upstream change, properly implemented | Accepted | `Accepted/AP-66` |
 | 67 | PCDS-3/4 | Fetch-then-update — safe with serial queue + uniqueness constraint | Accepted | `Accepted/AP-67` |
-| 68 | RES-vaultLocked | `.vaultLocked` error case defined but never thrown — recommend removing dead code | **Open** | AP-68 |
 | 69 | R2-UP-2 | `CipherPermissionsModel` typo fix — already applied | Resolved | `Resolved/AP-69` |
 | 70 | PLAN-1 | Denylist future SDK errors — data preservation bias correct | Accepted | `Accepted/AP-70` |
 | 71 | PLAN-2 | Sync resolution delay — foreground sync covers common case | Accepted | `Accepted/AP-71` |
@@ -217,6 +216,7 @@ These issues have been reviewed and a deliberate decision was made to accept the
 | P2-TEST-RND | No round-trip test for all four `PendingCipherChangeType` enum cases through Core Data string-backed storage | Added `test_allChangeTypes_roundTripThroughCoreData` to `PendingCipherChangeDataStoreTests` — exercises `.update`, `.create`, `.softDelete`, `.hardDelete` persistence | N/A (Resolved) |
 | R2-TEST-3 | `PendingCipherChangeData.deleteByUserIdRequest` addition to batch delete not explicitly tested | Added `test_deleteDataForUser_deletesPendingCipherChanges` to `PendingCipherChangeDataStoreTests` — verifies `DataStore.deleteDataForUser(userId:)` removes pending changes for target user while preserving other users' data | AP-37 (Resolved) |
 | R2-TEST-4 | Very long cipher names in backup naming pattern not tested for edge cases | Added `test_processPendingChanges_update_conflict_backupNameFormat` and `test_processPendingChanges_update_conflict_emptyNameBackup` to `OfflineSyncResolverTests` — verifies backup name format pattern and empty-name edge case | AP-42 (Resolved) |
+| RES-vaultLocked | `.vaultLocked` error case defined but never thrown — dead code | Removed `.vaultLocked` case from `OfflineSyncError` enum and associated test | AP-68 (Resolved) |
 
 ---
 
@@ -287,7 +287,7 @@ A comprehensive audit verified all issues against the current codebase and reorg
 | AP-65 | TC-4 | Pre-existing caching pattern; extremely low stale-data risk |
 | AP-66 | R2-UI-3 | Upstream Send feature change; properly implemented and tested |
 | AP-67 | PCDS-3/4 | Safe with serial queue + uniqueness constraint + merge policy |
-| ~~AP-68~~ | ~~RES-vaultLocked~~ | _Moved back to open — recommend removing dead code (see AP-68)_ |
+| ~~AP-68~~ | ~~RES-vaultLocked~~ | _Resolved — dead `.vaultLocked` case removed (see `Resolved/AP-68`)_ |
 | AP-70 | PLAN-1 | Data preservation bias is correct for password manager |
 | AP-71 | PLAN-2 | Foreground sync covers common reconnection case |
 | AP-72 | R2-SS-5 | Two-count pattern more robust than single return value |
@@ -318,17 +318,17 @@ A comprehensive audit verified all issues against the current codebase and reorg
 |----------|--------------|
 | **R3** | No retry count, backoff, or `.failed` state in `PendingCipherChangeData` or `OfflineSyncResolver`. Zero matches for `retryCount`, `maxRetries`, `failedState` across all Swift files. |
 | **R1** | No `dataVersion` attribute in `PendingCipherChangeData`. Entity has 9 attributes only. |
-| **U2-B** | `OfflineSyncError` has exactly 4 cases; no `operationNotSupportedOffline`. Archive/unarchive/restore methods have no offline-specific error handling. |
+| **U2-B** | `OfflineSyncError` has exactly 3 cases (`missingCipherData`, `missingCipherId`, `cipherNotFound`); no `operationNotSupportedOffline`. Archive/unarchive/restore methods have no offline-specific error handling. |
 | **EXT-3/CS-2** | `makeCopy()` still manually copies 28 properties. DocC `- Important:` callout and Mirror-based guard tests present. Underlying fragility inherent to external SDK types. |
 
 #### Summary Statistics Updated
 
-- **Open — Accepted**: 11 → 38 (27 items from Section 4 whose action plans recommend "Accept As-Is" moved to `Accepted/`; AP-68 moved back to open for dead code cleanup)
-- **Resolved / Superseded**: 36 → 61 (22 from implementation phase + 3 newly resolved: AP-34, AP-56, AP-69)
-- **Review2 — Still Open**: 37 → 7 (27 accepted, 3 resolved)
+- **Open — Accepted**: 11 → 38 (27 items from Section 4 whose action plans recommend "Accept As-Is" moved to `Accepted/`)
+- **Resolved / Superseded**: 36 → 62 (22 from implementation phase + 3 newly resolved: AP-34, AP-56, AP-69 + AP-68 dead code removed)
+- **Review2 — Still Open**: 37 → 6 (27 accepted, 3 resolved, AP-68 resolved)
 - **Total Unique Issues**: 93 → 114 (includes newly tracked implementation-phase issues)
 - **Remaining code changes needed**: 3 items (R3, R1, U2-B)
-- **Action plan folder reorganization**: 40 `Resolved/`, 38 `Accepted/`, 2 `Superseded/`, 11 open (including 2 meta-docs)
+- **Action plan folder reorganization**: 41 `Resolved/`, 38 `Accepted/`, 2 `Superseded/`, 10 open (including 2 meta-docs)
 
 ---
 

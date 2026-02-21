@@ -513,10 +513,11 @@ The core conflict resolution engine that processes pending offline changes when 
 enum OfflineSyncError: LocalizedError, Equatable {
     case missingCipherData
     case missingCipherId
-    case vaultLocked
     case cipherNotFound
 }
 ```
+
+**[Updated]** The `.vaultLocked` case was removed as dead code (AP-68).
 
 Four error types with `LocalizedError` and `Equatable` conformance for user-facing messages and test assertions. The `.cipherNotFound` case was added in commit `e929511` (RES-2 fix) to handle server 404 responses during conflict resolution.
 
@@ -951,7 +952,7 @@ Comprehensive tests for the conflict resolution engine. Includes a custom `MockC
 | ~~`test_processPendingChanges_update_conflict_createsConflictFolder`~~ | ~~Verifies "Offline Sync Conflicts" folder creation~~ **[Removed]** — Conflict folder eliminated |
 | `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
 | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
-| `test_offlineSyncError_vaultLocked_localizedDescription` | Error message for vault locked state |
+| ~~`test_offlineSyncError_vaultLocked_localizedDescription`~~ | ~~Error message for vault locked state~~ **[Removed]** — `.vaultLocked` case removed (AP-68) |
 | `test_processPendingChanges_create_apiFailure_pendingRecordRetained` | Create API failure: pending record retained for retry |
 | `test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained` | Update server fetch failure: pending record retained for retry |
 | `test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained` | Soft delete API failure: pending record retained for retry |
@@ -1130,7 +1131,7 @@ Changed organization cipher offline fallback guards to re-throw the original net
 
 ### Commit `4b64e9b`: Remove Dead `organizationCipherOfflineEditNotSupported` Enum Case
 
-Removed `OfflineSyncError.organizationCipherOfflineEditNotSupported` since it is no longer thrown by any production code after the previous commit. The `OfflineSyncError` enum now has 4 cases: `missingCipherData`, `missingCipherId`, `vaultLocked`, and `cipherNotFound`.
+Removed `OfflineSyncError.organizationCipherOfflineEditNotSupported` since it is no longer thrown by any production code after the previous commit. The `OfflineSyncError` enum now has 3 cases: `missingCipherData`, `missingCipherId`, and `cipherNotFound`. **[Updated]** The `.vaultLocked` case was subsequently removed as dead code (AP-68).
 
 ### Commit `1effe90`: Consolidate Fragile CipherView Copy Methods (CS-2)
 

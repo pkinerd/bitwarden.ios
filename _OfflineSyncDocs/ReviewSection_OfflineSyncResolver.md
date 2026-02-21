@@ -20,13 +20,12 @@
 
 ### 1. Error Enum (`OfflineSyncError`)
 
-Defines four error cases for offline sync operations:
+Defines three error cases for offline sync operations:
 
 | Error | Description | User-Facing Message |
 |-------|-------------|---------------------|
 | `.missingCipherData` | Pending change record has no `cipherData` | "The pending change record is missing cipher data." |
 | `.missingCipherId` | Pending change record has no cipher ID | "The pending change record is missing a cipher ID." |
-| `.vaultLocked` | Vault is locked; resolution cannot proceed | "The vault is locked. Please unlock to sync offline changes." |
 | `.cipherNotFound` | The cipher was not found on the server (HTTP 404) | "The cipher was not found on the server." |
 
 **[Updated]** The `.organizationCipherOfflineEditNotSupported` case has been removed. Organization cipher protection is now handled in `VaultRepository` by rethrowing the original network error rather than using a custom `OfflineSyncError` case.
@@ -35,7 +34,7 @@ All errors conform to `LocalizedError` with `errorDescription` and to `Equatable
 
 **[Added]** `.cipherNotFound` is thrown by `GetCipherRequest.validate(_:)` when the server returns a 404. This is caught specifically in `resolveUpdate` and `resolveSoftDelete` to handle the case where a cipher is deleted on the server while the user has pending offline changes.
 
-**Note:** The `.vaultLocked` error is defined but never thrown in the current code. The vault-locked guard is in `SyncService.fetchSync()` where it returns early rather than throwing. This error case appears to be defensive, reserved for potential future use.
+**[Updated]** The `.vaultLocked` error case was removed as dead code (AP-68). The vault-locked guard lives in `SyncService.fetchSync()` where it skips resolution via conditional rather than throwing.
 
 ### 2. Protocol (`OfflineSyncResolver`)
 
@@ -263,7 +262,7 @@ processPendingChanges(userId:)
 | ~~`test_processPendingChanges_update_conflict_createsConflictFolder`~~ | ~~Verifies folder creation and backup cipher assignment~~ **[Removed]** — Conflict folder eliminated |
 | `test_processPendingChanges_update_cipherNotFound_recreates` | Update where server returns 404 — re-creates cipher on server |
 | `test_processPendingChanges_softDelete_cipherNotFound_cleansUp` | Soft delete where server returns 404 — cleans up locally |
-| `test_offlineSyncError_vaultLocked_localizedDescription` | Error description verification |
+| ~~`test_offlineSyncError_vaultLocked_localizedDescription`~~ | ~~Error description verification~~ **[Removed]** — `.vaultLocked` case removed (AP-68) |
 | `test_processPendingChanges_update_conflict_localNewer_preservesPasswordHistory` | **[New]** Hard conflict (local wins) preserves separate password histories |
 | `test_processPendingChanges_update_conflict_serverNewer_preservesPasswordHistory` | **[New]** Hard conflict (server wins) preserves separate password histories |
 | `test_processPendingChanges_update_softConflict_preservesPasswordHistory` | **[New]** Soft conflict preserves accumulated local password history |
