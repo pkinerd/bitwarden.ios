@@ -46,31 +46,43 @@ Based on the changes, generate:
 
 ### Step 4: Present to the user
 
-Present the output in this exact format so each section is clearly copyable:
+Present the output in this exact format so each section is clearly copyable.
+
+Here is a concrete example showing the expected output (replace values with the actual ones):
 
 ---
 
 **PR URL** (copyable):
 ```
-<url without any decoration>
+https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1
 ```
-[Open PR on GitHub](<same url>)
+[Open PR on GitHub](https://github.com/example-org/example-repo/compare/main...feature-branch?expand=1)
 
 **Title** (copyable):
 ```
-<title text>
+Add offline sync resolver
 ```
 
 **Description** (copyable):
 ````
-<full markdown description>
+## Summary
+
+- Added offline sync resolver for conflict handling
+
+## Changes
+
+- `Core/Services/OfflineSyncResolver.swift` — new resolver implementation
+
+## Test Plan
+
+- [ ] Verify offline sync resolves conflicts correctly
 ````
 
 ---
 
 IMPORTANT formatting rules:
-- The PR URL must be a plain `github.com` URL — never a localhost or proxy URL
-- The PR URL in the copyable block must have no angle brackets or other decoration
-- The clickable link must also use the raw `github.com` URL
-- The description must be fenced so the user can copy the raw markdown
-- Use four backticks (````) to fence the description so that markdown inside it (with triple backticks) is preserved literally
+- The PR URL MUST be a plain `github.com` URL — never a localhost or proxy URL
+- The PR URL inside the code fence MUST be the bare URL with NO angle brackets, NO markdown link syntax, and NO other decoration — just the raw URL string so the user can copy it directly
+- The clickable markdown link below the code fence must also point to the real `github.com` URL
+- The description must be fenced with four backticks (````) so that markdown inside it (with triple backticks) is preserved literally and copyable
+- Do NOT use placeholder syntax with angle brackets (e.g. do not write `<url>`) — always output the actual computed values
