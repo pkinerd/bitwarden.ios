@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Won't-fix — `unknownError` tests already prove generic catch path; additional error types add no branch coverage.
+
 ## Comments

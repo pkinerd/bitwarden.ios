@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Changed `changeTypeRaw` to String-backed storage and `offlinePasswordChangeCount` to Integer 64; also fixed `changeTypeRaw` optionality (`String` → `String?`). Commits: `1bc17cb`, `d7a77c9`.
+
 ## Comments

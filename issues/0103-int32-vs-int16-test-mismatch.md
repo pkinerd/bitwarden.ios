@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Fixed `offlinePasswordChangeCount` parameter type in test helper. Commit: `d168860`.
+
 ## Comments

@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Stray blank line removed. Commit: `a52d379`.
+
 ## Comments

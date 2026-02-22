@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Added `test_processPendingChanges_create_nilCipherData_skipsAndRetains` and `test_processPendingChanges_update_nilCipherData_skipsAndRetains` to `OfflineSyncResolverTests`.
+
 ## Comments

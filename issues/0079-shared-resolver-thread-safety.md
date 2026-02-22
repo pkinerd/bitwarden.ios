@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Resolved via actor conversion of `DefaultOfflineSyncResolver`. Commit: `9415019`.
+
 ## Comments

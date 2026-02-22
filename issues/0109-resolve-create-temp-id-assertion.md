@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Added `XCTAssertEqual(cipherService.deleteCipherWithLocalStorageId, "cipher-1")` assertion to `test_processPendingChanges_create`.
+
 ## Comments

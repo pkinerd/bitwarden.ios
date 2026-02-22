@@ -18,4 +18,243 @@ Attachment upload/download requires server communication; distinct from org ciph
 
 **Related Documents:** Review2/00_Main
 
+## Action Plan
+
+*Source: `ActionPlans/AP-78.md`*
+
+> **Issue:** #78 from ConsolidatedOutstandingIssues.md
+> **Severity:** Low | **Complexity:** High
+> **Status:** Triaged
+> **Source:** Review2/00_Main_Review.md
+
+## Problem Statement
+
+Attachment operations (upload, download, and delete) in the Bitwarden iOS app require server communication and have no offline fallback. Unlike cipher CRUD operations (add, update, delete, soft-delete), which were modified to save locally and queue pending changes when the server is unreachable, attachment operations make direct server API calls with no error-catching mechanism for network failures. When a user attempts to upload, download, or delete an attachment while offline, they receive a generic network error with no offline-specific context.
+
+This is a distinct limitation from the organization cipher exclusion (U2). Organization ciphers are excluded because they require server-side policy enforcement. Attachments are excluded because the attachment binary data model is fundamentally different from the cipher JSON data model — attachments are large binary blobs that are uploaded/downloaded as separate server resources, making local queuing significantly more complex.
+
+## Current Behavior
+
+Three attachment operations in `VaultRepository.swift` have no offline fallback:
+
+### 1. Save Attachment (`VaultRepository.swift:871-896`)
+```swift
+func saveAttachment(cipherView: CipherView, fileData: Data, fileName: String) async throws -> CipherView {
+    let attachmentView = AttachmentView(...)
+    let cipher = try await encryptAndUpdateCipher(cipherView)
+    let attachment = try await clientService.vault().attachments().encryptBuffer(
+        cipher: cipher, attachment: attachmentView, buffer: fileData
+    )
+    let updatedCipher = try await cipherService.saveAttachmentWithServer(
+        cipher: cipher, attachment: attachment
+    )
+    return try await clientService.vault().ciphers().decrypt(cipher: updatedCipher)
+}
+```
+The call to `cipherService.saveAttachmentWithServer()` at `VaultRepository.swift:891` makes an HTTP POST request. If the server is unreachable, it throws a network error. The `AttachmentsProcessor.save()` method at `AttachmentsProcessor.swift:123-167` catches this and shows a generic error alert via `coordinator.showErrorAlert(error: error)`.
+
+### 2. Download Attachment (`VaultRepository.swift:717-750`)
+```swift
+func downloadAttachment(_ attachmentView: AttachmentView, cipher: CipherView) async throws -> URL? {
+    // ...
+    guard let downloadedUrl = try await cipherService.downloadAttachment(
+        withId: attachmentId, cipherId: cipherId
+    ) else { return nil }
+    // Decrypt and return URL
+}
+```
+The call to `cipherService.downloadAttachment()` at `VaultRepository.swift:729` makes an HTTP GET request. If offline, it throws a network error. The `ViewItemProcessor.downloadAttachment()` method at `ViewItemProcessor.swift:292-311` catches this and shows "Unable to download file" via `coordinator.showAlert(.defaultAlert(title: Localizations.unableToDownloadFile))`.
+
+### 3. Delete Attachment (`VaultRepository.swift:701-711`)
+```swift
+func deleteAttachment(withId attachmentId: String, cipherId: String) async throws -> CipherView? {
+    if let updatedCipher = try await cipherService.deleteAttachmentWithServer(
+        attachmentId: attachmentId, cipherId: cipherId
+    ) {
+        return try await clientService.vault().ciphers().decrypt(cipher: updatedCipher)
+    }
+    return nil
+}
+```
+The call to `cipherService.deleteAttachmentWithServer()` at `VaultRepository.swift:703` makes an HTTP DELETE request. If offline, it throws a network error. The `AttachmentsProcessor.deleteAttachment()` method at `AttachmentsProcessor.swift:79-100` catches this and shows a generic error alert.
+
+### UI-Level Callers
+
+- **Upload:** `AttachmentsProcessor.save()` (`AttachmentsProcessor.swift:123-167`) — Shows generic error
+- **Download:** `ViewItemProcessor.downloadAttachment()` (`ViewItemProcessor.swift:292-311`) — Shows "Unable to download file"
+- **Delete:** `AttachmentsProcessor.deleteAttachment()` (`AttachmentsProcessor.swift:79-100`) — Shows generic error
+
+None of these callers differentiate between a network error (offline) and other errors (permissions, data corruption, etc.).
+
+## Expected Behavior
+
+There are two levels of improvement:
+
+**Minimum (error messaging):** When attachment operations fail due to being offline, the user should see a message like "Attachment operations require an internet connection" rather than a generic error. This sets expectations and avoids confusion.
+
+**Ideal (offline support):** Attachment operations would be queued locally and synced when connectivity returns, similar to cipher CRUD operations. However, this is significantly more complex due to the binary data nature of attachments.
+
+## Assessment
+
+**Still Valid:** Yes. The three attachment methods at `VaultRepository.swift:701`, `VaultRepository.swift:717`, and `VaultRepository.swift:871` have no offline fallback or offline-specific error handling.
+
+**User Impact:** Low. Attachment operations are a less frequent activity compared to cipher CRUD operations. Users typically:
+- Add attachments when they have a specific file to associate with a credential (infrequent)
+- Download attachments when they need to access an attached file (infrequent, and inherently requires the file from the server)
+- Delete attachments rarely
+
+The download case is fundamentally impossible offline — the binary data must come from the server. Upload and delete could theoretically be queued, but the complexity is disproportionate to the frequency of use.
+
+**Priority:** Low. This is correctly categorized as a future enhancement, not an initial release requirement. The minimum improvement (better error messaging) is worth pursuing, but full offline attachment support is a separate feature.
+
+**Relationship to Other Issues:**
+- AP-RES7 (Backup ciphers lack attachments): Related — both involve attachment complexity in the offline sync context.
+- AP-U2 (Inconsistent offline support): Related — attachments are another category of operations that don't work offline.
+
+## Options
+
+### Option A: Add Offline-Specific Error Messages for Attachment Operations (Recommended)
+
+- **Effort:** Low (~15-25 lines, 2-3 files)
+- **Description:** Add specific error handling to the three attachment operations to detect network failures and show an informative message. This does not add offline queuing — it only improves the error message.
+
+  **In `AttachmentsProcessor.swift`:**
+  ```swift
+  private func save() async {
+      // ... existing validation ...
+      do {
+          // ... existing save logic ...
+      } catch let error as URLError where error.code == .notConnectedToInternet
+              || error.code == .networkConnectionLost {
+          coordinator.showAlert(.defaultAlert(
+              title: Localizations.anErrorHasOccurred,
+              message: Localizations.attachmentOperationsRequireInternet
+          ))
+      } catch let error as InputValidationError {
+          coordinator.showAlert(Alert.inputValidationAlert(error: error))
+      } catch {
+          await coordinator.showErrorAlert(error: error)
+          services.errorReporter.log(error: error)
+      }
+  }
+  ```
+
+  Similarly for `deleteAttachment()` in `AttachmentsProcessor.swift` and `downloadAttachment()` in `ViewItemProcessor.swift`.
+
+  New localization string:
+  ```
+  "AttachmentOperationsRequireInternet" = "Attachment operations require an internet connection. Please try again when you're online.";
+  ```
+
+- **UX Impact:** Users understand why the attachment operation failed and what to do about it.
+- **Pros:**
+  - Very low effort and risk
+  - Improves user understanding of the limitation
+  - No architectural changes needed
+  - Can be combined with U2-B (offline-specific error messages for other unsupported operations) in a single localization pass
+- **Cons:**
+  - Requires a new localization string
+  - Only catches `URLError` — other network-related errors (e.g., DNS resolution, timeout) might not be caught. Could use the same denylist pattern as the CRUD offline handlers for consistency.
+  - Doesn't actually enable offline attachment operations
+
+### Option B: Queue Attachment Upload and Delete Offline
+
+- **Effort:** High (~200-400 lines, 5-8 files, Core Data schema change)
+- **Description:** Extend the offline sync system to queue attachment uploads and deletes locally, and resolve them during sync.
+
+  **Upload queuing:**
+  1. When `saveAttachment` fails due to network error, save the encrypted attachment binary to a local file (not Core Data — too large)
+  2. Create a new `PendingAttachmentChange` record with metadata (cipher ID, file path, file name, change type)
+  3. During sync resolution, upload the queued attachment to the server
+
+  **Delete queuing:**
+  1. When `deleteAttachment` fails, create a pending record with attachment ID and cipher ID
+  2. Remove the attachment from the local cipher data (so the UI reflects the deletion)
+  3. During sync resolution, call the delete API
+
+  **Download:** Cannot be queued — the binary data must come from the server. Continue showing an error.
+
+  **Conflict resolution:** If the cipher is modified on the server while an attachment operation is pending, the resolver would need to handle:
+  - Pending upload + server cipher changed: Re-upload to the updated cipher
+  - Pending delete + server cipher changed: Delete may fail if attachment was already modified
+
+- **UX Impact:** Users can upload and delete attachments offline, with operations synced on reconnect.
+- **Pros:**
+  - Consistent offline experience for all personal cipher operations
+  - Users can add attachments to offline-created ciphers
+- **Cons:**
+  - Significant implementation complexity
+  - Large binary files stored locally (storage pressure on device)
+  - New Core Data entity needed (`PendingAttachmentChange`)
+  - Complex conflict resolution for attachments
+  - Attachment encryption keys complicate offline re-encryption
+  - Sync resolution becomes significantly slower if large files need to be uploaded
+  - Requires cleanup logic for orphaned local attachment files
+  - Premium status validation may change between offline save and sync
+
+### Option C: Queue Attachment Delete Only (Partial Offline Support)
+
+- **Effort:** Medium (~60-100 lines, 3-5 files)
+- **Description:** Queue only attachment deletions offline (which are metadata-only operations — just an ID to delete), but not uploads (which require storing large binary data). Downloads remain impossible offline.
+
+  Attachment deletion is simpler to queue because:
+  - Only the attachment ID and cipher ID need to be stored
+  - No binary data to persist
+  - The delete operation is idempotent
+  - Conflict resolution is straightforward (delete is delete)
+
+- **Pros:**
+  - Partial offline support with manageable complexity
+  - Delete is the simplest attachment operation to queue
+  - No large binary storage needed
+- **Cons:**
+  - Still inconsistent — upload and download don't work offline
+  - Users may be confused that delete works but upload doesn't
+  - Requires extending the pending change system
+
+### Option D: Accept As-Is
+
+- **Rationale:** Attachment operations are inherently server-dependent. Downloads require fetching binary data from the server — this is fundamentally impossible offline. Uploads require server-side storage allocation and encryption key management. Deletes require server-side resource removal. Unlike cipher metadata (which is small JSON that can be queued locally), attachment binaries can be megabytes in size, making local queuing expensive in terms of device storage.
+
+  The current behavior (network error on failure) is functional. Users attempting attachment operations while offline will see an error and can retry when online. The error message could be improved (see Option A), but the fundamental limitation is acceptable for a first release.
+
+  Attachment operations are also significantly less common than cipher CRUD operations. Most users interact with attachments infrequently, so the offline gap has limited real-world impact.
+
+- **Pros:**
+  - Zero effort
+  - No storage impact from queued attachment binaries
+  - No additional conflict resolution complexity
+  - Reduces initial scope
+- **Cons:**
+  - Generic error messages for attachment failures
+  - Not discoverable that attachments require being online
+
+## Recommendation
+
+**Option A: Add Offline-Specific Error Messages** as the minimum improvement for the initial release. This is very low effort (~15-25 lines) and meaningfully improves the user experience by explaining WHY attachment operations failed when offline, rather than showing a generic error. This should be bundled with Issue U2-B (offline-specific error messages for unsupported cipher operations like archive/unarchive/restore) in a single implementation pass.
+
+**Option D: Accept As-Is** for full offline attachment queuing. The complexity of Option B (full offline attachment support) is disproportionate to the user impact. Attachments are large binary files that would consume significant device storage if queued locally, and the conflict resolution for attachments is complex. This should be tracked as a long-term enhancement, not a near-term priority.
+
+**Option C (delete-only offline)** is a reasonable middle ground for a future iteration if users request offline attachment capabilities, but even this adds complexity to the sync resolver that may not be justified by usage frequency.
+
+## Dependencies
+
+- **Related Issues:**
+  - #15 / RES-7: Backup ciphers don't include attachments. See AP-RES7. Both involve attachment limitations in the offline sync context.
+  - #5 / U2-B: Offline-specific error messages for unsupported operations. Option A should be bundled with U2-B.
+  - #23 / U3: Pending changes indicator. If attachment operations were queued (Option B), the indicator would need to cover attachment changes too.
+  - Feature flags: If Option B were implemented, attachment offline support should be gated behind the same `.offlineSyncEnableResolution` and `.offlineSyncEnableOfflineChanges` flags.
+  - Premium status: Attachment upload requires premium. If queued offline, premium status could change between the offline save and sync, requiring validation during resolution.
+
+## Consolidated Assessment
+
+*From: ConsolidatedOutstandingIssues.md — Section 4d: UX Improvements*
+
+No offline support for attachment operations — attachment upload/download requires server communication; distinct from org cipher exclusion (U2).
+
+## Code Review References
+
+Relevant review documents:
+- `Review2/00_Main_Review.md`
+
 ## Comments

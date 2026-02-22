@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Accepted design decision — correct fail-safe behavior; Core Data failure indicates serious system issue; blocking sync prevents data corruption.
+
 ## Comments

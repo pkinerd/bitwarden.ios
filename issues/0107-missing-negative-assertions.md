@@ -15,4 +15,8 @@ closed: 2026-02-21
 
 **Disposition:** Resolved / Superseded
 
+## Resolution Details
+
+Added `XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)` to `test_addCipher`, `test_deleteCipher`, `test_updateCipher`, `test_softDeleteCipher`.
+
 ## Comments
