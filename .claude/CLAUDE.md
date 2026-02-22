@@ -146,8 +146,8 @@ After pushing code, use the `poll-build-logs` skill to monitor for CI results. i
 # Snapshot current branches, note the highest run number
 git ls-remote --heads origin 'refs/heads/build-logs/*'
 
-# Then repeat every ~3 min (run_in_background: true):
-sleep 180 && git ls-remote --heads origin 'refs/heads/build-logs/*'
+# Then repeat every 60s for up to 45 cycles (run_in_background: true):
+sleep 60 && git ls-remote --heads origin 'refs/heads/build-logs/*'
 ```
 
 When a new branch appears, fetch `build-summary.md` and verify the `Branch` field matches yours. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit). See `poll-build-logs` skill for full details.
