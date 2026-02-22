@@ -21,7 +21,7 @@ Source document: `docs/OfflineSyncDocs/PreUpstreamPRTasks.md` on `claude/issues`
 - [ ] **1a.** Remove `.claude/` changes (revert fork-specific CLAUDE.md modifications, remove artifacts)
 - [ ] **1b.** Remove custom scripts (build scripts, automation, helper scripts not part of the feature)
 - [ ] **1c.** Remove build changes / custom build configuration (revert .xcodeproj/.xcworkspace changes, match upstream Package.resolved, remove CI/build-log infrastructure)
-- [ ] **1d.** Remove offline sync docs folder (`_OfflineSyncDocs/` directory)
+- [x] **1d.** Remove offline sync docs folder (`_OfflineSyncDocs/` directory) — **Done.** Folder no longer present on feature branch.
 - [ ] **1e.** Verify clean diff — every remaining change directly relates to offline sync feature
 
 ## 2. Review Outstanding Issues
