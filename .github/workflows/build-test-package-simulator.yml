@@ -9,14 +9,12 @@ on:
       - "dev"
     paths-ignore:
       - .claude/**
-      - _OfflineSyncDocs/**
   pull_request:
     types: [opened, synchronize]
     paths-ignore:
       - .claude/**
       - Authenticator/**
       - AuthenticatorShared/**
-      - _OfflineSyncDocs/**
   workflow_dispatch:
     inputs:
       xcode-version:
