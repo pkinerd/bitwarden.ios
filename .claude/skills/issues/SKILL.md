@@ -273,16 +273,16 @@ The sync action deletes the session branch (`claude/zzsysissuesskill-<suffix>`) 
 merging. Poll for the branch's deletion as the success signal.
 
 ```bash
-# Poll every 5 seconds, up to 60 seconds total (12 attempts)
-for i in $(seq 1 12); do
+# Poll every 2 seconds, up to 60 seconds total (30 attempts)
+for i in $(seq 1 30); do
   if ! git ls-remote --heads origin refs/heads/claude/zzsysissuesskill-<suffix> 2>/dev/null | grep -q claude/zzsysissuesskill-<suffix>; then
     echo "Sync verified: session branch has been merged and cleaned up."
     break
   fi
-  if [ "$i" -eq 12 ]; then
+  if [ "$i" -eq 30 ]; then
     echo "Timeout: session branch still exists after 60 seconds."
   fi
-  sleep 5
+  sleep 2
 done
 ```
 
@@ -418,8 +418,8 @@ push may overwrite or conflict with the first.
    git fetch origin claude/issues
    git show origin/claude/issues:state.json   # verify next_id reflects your push
    ```
-2. Poll every ~15 seconds, up to ~2 minutes. The sync action typically completes
-   within 30 seconds.
+2. Poll every ~5 seconds, up to ~2 minutes. The sync action typically completes
+   within a few seconds.
 3. Once the changes are visible on `origin/claude/issues`, proceed with the next
    operation normally (set up worktree from the now-updated branch).
 
