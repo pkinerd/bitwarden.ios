@@ -29,7 +29,7 @@ git show origin/claude/issues:GUIDE.md
 **Determine the session suffix** from your assigned development branch name.
 Extract the part after the last hyphen. For example, if your development branch
 is `claude/some-task-aBc12`, the suffix is `aBc12`. You will push to
-`claude/issues-<suffix>` instead of directly to `claude/issues`. This is required
+`claude/zzsysissuesskill-<suffix>` instead of directly to `claude/issues`. This is required
 because the web proxy only allows pushing to session-scoped branches. A GitHub
 Action will automatically sync session branches back to `claude/issues`.
 
@@ -121,7 +121,7 @@ useful for tracking decisions or recording issues that were already resolved.
    cd /tmp/claude-issues
    git add -A
    git -c commit.gpgsign=false commit -m "Create issue #<id>: <title>"
-   git push origin HEAD:refs/heads/claude/issues-<suffix>
+   git push origin HEAD:refs/heads/claude/zzsysissuesskill-<suffix>
    ```
    Where `<suffix>` is the session suffix determined in Step 1. A GitHub Action
    will automatically merge this into `claude/issues`.
@@ -269,13 +269,13 @@ worktree cleanup and before confirming success to the user.
 
 **How it works:**
 
-The sync action deletes the session branch (`claude/issues-<suffix>`) after
+The sync action deletes the session branch (`claude/zzsysissuesskill-<suffix>`) after
 merging. Poll for the branch's deletion as the success signal.
 
 ```bash
 # Poll every 5 seconds, up to 60 seconds total (12 attempts)
 for i in $(seq 1 12); do
-  if ! git ls-remote --heads origin refs/heads/claude/issues-<suffix> 2>/dev/null | grep -q claude/issues-<suffix>; then
+  if ! git ls-remote --heads origin refs/heads/claude/zzsysissuesskill-<suffix> 2>/dev/null | grep -q claude/zzsysissuesskill-<suffix>; then
     echo "Sync verified: session branch has been merged and cleaned up."
     break
   fi
@@ -302,7 +302,7 @@ done
    user that the sync has not completed yet. The changes are safely on the
    session branch and will be merged when the action runs, but the user should
    be aware it hasn't happened yet. Message:
-   **"The session branch `claude/issues-<suffix>` was pushed successfully, but
+   **"The session branch `claude/zzsysissuesskill-<suffix>` was pushed successfully, but
    the GitHub Action has not merged it into `claude/issues` within 60 seconds.
    The changes are safe and will be merged automatically when the action
    completes. You can check manually with
@@ -357,7 +357,7 @@ avoids repeated AskUserQuestion prompts and produces a single clean commit.
    cd /tmp/claude-issues
    git add -A
    git -c commit.gpgsign=false commit -m "Import <N> issues from <source>"
-   git push origin HEAD:refs/heads/claude/issues-<suffix>
+   git push origin HEAD:refs/heads/claude/zzsysissuesskill-<suffix>
    ```
 
 6. **Clean up** the worktree.
@@ -381,7 +381,7 @@ To copy an entire directory tree of documentation:
    cd /tmp/claude-issues
    git add -A
    git -c commit.gpgsign=false commit -m "Import <source> documentation (<N> files)"
-   git push origin HEAD:refs/heads/claude/issues-<suffix>
+   git push origin HEAD:refs/heads/claude/zzsysissuesskill-<suffix>
    ```
 
 4. Clean up the worktree.
@@ -403,7 +403,7 @@ To copy an entire directory tree of documentation:
 
 ### Sequential Operations — Waiting for Sync
 
-Pushes go to a session-scoped branch (`claude/issues-<suffix>`), and a GitHub
+Pushes go to a session-scoped branch (`claude/zzsysissuesskill-<suffix>`), and a GitHub
 Action merges them back into `claude/issues`. If you perform a second operation
 that touches potentially conflicting files (e.g., INDEX.md, state.json, or the
 same issue file), you **must wait for the sync** before setting up a new
@@ -440,7 +440,7 @@ push may overwrite or conflict with the first.
   creating a new one.
 - If a push fails, retry up to 4 times with exponential backoff (2s, 4s, 8s,
   16s) for network errors. For permission errors (403), verify you are pushing
-  to `claude/issues-<suffix>` (not `claude/issues` directly) and that the suffix
+  to `claude/zzsysissuesskill-<suffix>` (not `claude/issues` directly) and that the suffix
   matches your session ID.
 - If an issue ID is not found, list available issues and ask the user to
   clarify.
