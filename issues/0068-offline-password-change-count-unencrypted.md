@@ -171,3 +171,7 @@ This decision should be revisited if:
 Analyzed; Will Not Implement. Surrounding plaintext metadata and comparable unencrypted metadata elsewhere in app mean encrypting this single field adds complexity without meaningfully reducing attack surface. Prototype created and reverted.
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Audit note:** Minor documentation correction: Several references in this issue describe `offlinePasswordChangeCount` as `Int16`. The actual Core Data model attribute type is `Integer 64` (Int64), as defined in `BitwardenShared.xcdatamodeld`. Affected references include the Action Plan summary ("plaintext `Int16` storage"), Description section ("stored as a plaintext `Int16`"), and the References section ("`offlinePasswordChangeCount: Int16`"). This does not affect the closure rationale — the security analysis (low-sensitivity ephemeral metadata consistent with existing unencrypted patterns) applies regardless of integer width. Noted for accuracy.

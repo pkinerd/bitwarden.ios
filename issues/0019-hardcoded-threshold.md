@@ -101,3 +101,7 @@ When `hasSoftConflict` is true and there is no hard conflict (server version unc
 None. The constant is self-contained within `DefaultOfflineSyncResolver`.
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Audit note:** Minor documentation correction: The "Current Code" section references the type as `Int16` (`static let softConflictPasswordChangeThreshold: Int16 = 4`). The actual type in `OfflineSyncResolver.swift:55` is `Int64`. This does not affect the closure rationale — the issue is about hardcoding vs configurability, not the integer width. Noted for accuracy.
