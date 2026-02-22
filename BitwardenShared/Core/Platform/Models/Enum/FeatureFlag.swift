@@ -40,7 +40,8 @@ extension FeatureFlag: @retroactive CaseIterable {
     /// When this flag is disabled, `offlineSyncEnableOfflineChanges` is implicitly disabled as well —
     /// there is no point queuing new offline saves if resolution cannot run.
     static let offlineSyncEnableResolution = FeatureFlag(
-        rawValue: "offline-sync-enable-resolution"
+        rawValue: "offline-sync-enable-resolution",
+        initialValue: .bool(true)
     )
 
     /// Flag to enable/disable offline sync for vault ciphers. When enabled, cipher operations
@@ -50,7 +51,10 @@ extension FeatureFlag: @retroactive CaseIterable {
     ///
     /// This flag is only effective when `offlineSyncEnableResolution` is also enabled.
     /// If resolution is disabled, no new offline saves are queued regardless of this flag.
-    static let offlineSyncEnableOfflineChanges = FeatureFlag(rawValue: "offline-sync-enable-offline-changes")
+    static let offlineSyncEnableOfflineChanges = FeatureFlag(
+        rawValue: "offline-sync-enable-offline-changes",
+        initialValue: .bool(true)
+    )
 
     /// Flag to enable/disable sends email verification feature.
     static let sendEmailVerification = FeatureFlag(rawValue: "pm-19051-send-email-verification")
