@@ -1,7 +1,7 @@
 | ID   | Title                                | Status | Labels | Priority | Created    |
 |------|--------------------------------------|--------|--------|----------|------------|
-| 0001 | Migrate offline sync docs and issues | open   |        |          | 2026-02-21 |
-| 0002 | Review issues skill                  | open   |        |          | 2026-02-21 |
+| 0001 | Migrate offline sync docs and issues | closed |        |          | 2026-02-21 |
+| 0002 | Review issues skill                  | closed |        |          | 2026-02-21 |
 | 0003 | [R3] No retry backoff for permanently failing resolution ite... | open | bug | high | 2026-02-21 |
 | 0004 | [R1] No data format versioning for cipherData JSON | open | bug | high | 2026-02-21 |
 | 0005 | [U2-B] No offline-specific error messages for unsupported op... | open | enhancement | medium | 2026-02-21 |
