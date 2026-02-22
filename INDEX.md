@@ -118,3 +118,5 @@
 | 0116 | [R2-TEST-4] Very long cipher names in backup naming not test... | closed | bug | low | 2026-02-21 |
 | 0117 | [RES-vaultLocked] .vaultLocked error case defined but never ... | closed | bug | low | 2026-02-21 |
 | 0118 | Review and test post-push sync verification skill change | closed | enhancement | medium | 2026-02-22 |
+| 0119 | Sync workflow accidentally triggered by unrelated claude/issues-* session branches | closed | bug | medium | 2026-02-22 |
+| 0120 | Reduce issues skill sync polling intervals | closed | enhancement | low | 2026-02-22 |
