@@ -136,7 +136,8 @@ useful for tracking decisions or recording issues that were already resolved.
    git worktree remove /tmp/claude-issues
    ```
 
-9. Confirm creation to the user with the issue ID and title.
+9. Run **Step 4** (verify sync) to confirm the changes were merged into
+   `claude/issues`. Include the issue ID and title in the success message.
 
 #### Update Issue
 
@@ -146,6 +147,7 @@ useful for tracking decisions or recording issues that were already resolved.
 4. Read then update INDEX.md if title, status, labels, or priority changed.
 5. Commit: `Update issue #<id>: <description of change>`
 6. Push and clean up (same as create steps 7-8).
+7. Run **Step 4** (verify sync).
 
 #### Comment on Issue
 
@@ -161,6 +163,7 @@ useful for tracking decisions or recording issues that were already resolved.
    if they are providing it.
 4. Commit: `Comment on issue #<id>`
 5. Push and clean up (same as create steps 7-8).
+6. Run **Step 4** (verify sync).
 
 #### Close Issue
 
@@ -171,7 +174,8 @@ useful for tracking decisions or recording issues that were already resolved.
 3. Read then update the status column in INDEX.md.
 4. Commit: `Close issue #<id>: <title>`
 5. Push and clean up (same as create steps 7-8).
-6. Confirm closure to the user.
+6. Run **Step 4** (verify sync). Include the issue ID and title in the
+   confirmation.
 
 #### Reopen Issue
 
@@ -184,7 +188,7 @@ useful for tracking decisions or recording issues that were already resolved.
 4. Read then update the status column in INDEX.md.
 5. Commit: `Reopen issue #<id>: <title>`
 6. Push and clean up (same as create steps 7-8).
-7. Confirm reopening to the user.
+7. Run **Step 4** (verify sync). Confirm reopening to the user.
 
 #### List Issues (with filter)
 
@@ -254,7 +258,59 @@ search.
 4. Commit: `Add doc: <name>` (or `Update doc: <name>` if the file already
    exists).
 5. Push and clean up (same as create steps 7-8).
-6. Confirm to the user.
+6. Run **Step 4** (verify sync). Confirm to the user.
+
+### Step 4: Verify sync (post-push)
+
+After **every** write operation (create, update, comment, close, reopen, docs
+add, bulk import) that pushes to the session branch, verify that the GitHub
+Action has merged the changes into `claude/issues`. Run this step after the
+worktree cleanup and before confirming success to the user.
+
+**How it works:**
+
+The sync action deletes the session branch (`claude/issues-<suffix>`) after
+merging. Poll for the branch's deletion as the success signal.
+
+```bash
+# Poll every 5 seconds, up to 60 seconds total (12 attempts)
+for i in $(seq 1 12); do
+  if ! git ls-remote --heads origin refs/heads/claude/issues-<suffix> 2>/dev/null | grep -q claude/issues-<suffix>; then
+    echo "Sync verified: session branch has been merged and cleaned up."
+    break
+  fi
+  if [ "$i" -eq 12 ]; then
+    echo "Timeout: session branch still exists after 60 seconds."
+  fi
+  sleep 5
+done
+```
+
+**After the loop:**
+
+1. **If the session branch was deleted** (sync verified): fetch `claude/issues`
+   and optionally spot-check that your changes are present (e.g., verify
+   `state.json` has the expected `next_id`, or the issue file exists):
+   ```bash
+   git fetch origin claude/issues
+   git show origin/claude/issues:state.json
+   ```
+   Inform the user: **"Changes have been synced to `claude/issues`
+   successfully."**
+
+2. **If the session branch still exists after 60 seconds** (timeout): inform the
+   user that the sync has not completed yet. The changes are safely on the
+   session branch and will be merged when the action runs, but the user should
+   be aware it hasn't happened yet. Message:
+   **"The session branch `claude/issues-<suffix>` was pushed successfully, but
+   the GitHub Action has not merged it into `claude/issues` within 60 seconds.
+   The changes are safe and will be merged automatically when the action
+   completes. You can check manually with
+   `git fetch origin claude/issues && git show origin/claude/issues:INDEX.md`."**
+
+**Important:** This step replaces the simple confirmation messages in individual
+operations. Do **not** confirm success to the user until this verification
+completes (or times out).
 
 ### Bulk Operations
 
@@ -306,6 +362,8 @@ avoids repeated AskUserQuestion prompts and produces a single clean commit.
 
 6. **Clean up** the worktree.
 
+7. Run **Step 4** (verify sync).
+
 #### Bulk document import
 
 To copy an entire directory tree of documentation:
@@ -327,6 +385,8 @@ To copy an entire directory tree of documentation:
    ```
 
 4. Clean up the worktree.
+
+5. Run **Step 4** (verify sync).
 
 #### Tips
 
