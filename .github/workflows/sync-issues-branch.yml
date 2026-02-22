@@ -1,14 +1,14 @@
 name: Sync Issues Branch
 
-# Merges session-scoped issue branches (claude/issues-*) back into the
+# Merges session-scoped issue branches (claude/zzsysissuesskill-*) back into the
 # canonical claude/issues orphan branch. Claude Code web sessions push to
-# claude/issues-<suffix> because the proxy restricts pushes to session-scoped
+# claude/zzsysissuesskill-<suffix> because the proxy restricts pushes to session-scoped
 # branches. This workflow bridges that gap automatically.
 
 on:
   push:
     branches:
-      - 'claude/issues-*'
+      - 'claude/zzsysissuesskill-*'
 
 permissions:
   contents: write
