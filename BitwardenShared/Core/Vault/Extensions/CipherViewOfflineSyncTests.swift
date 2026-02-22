@@ -140,8 +140,8 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
             propertyCount,
             28,
             "CipherView property count changed from 28 to \(propertyCount). "
-                + "Update all manual CipherView copy methods and then update this expected count. "
-                + "See AP-CS2 on the claude/issues branch: docs/OfflineSyncDocs/ActionPlans/Resolved/AP-CS2_FragileSDKCopyMethods.md."
+                + "Update all manual CipherView copy methods listed in this test's documentation, "
+                + "then update this expected count."
         )
     }
 
@@ -164,8 +164,8 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
             propertyCount,
             7,
             "LoginView property count changed from 7 to \(propertyCount). "
-                + "Update all manual LoginView copy methods and then update this expected count. "
-                + "See AP-CS2 on the claude/issues branch: docs/OfflineSyncDocs/ActionPlans/Resolved/AP-CS2_FragileSDKCopyMethods.md."
+                + "Update all manual LoginView copy methods listed in this test's documentation, "
+                + "then update this expected count."
         )
     }
 }
