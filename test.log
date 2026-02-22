@@ -1,0 +1,414 @@
+﻿2026-02-22T12:24:25.1868220Z Current runner version: '2.331.0'
+2026-02-22T12:24:25.1881480Z ##[group]Runner Image Provisioner
+2026-02-22T12:24:25.1881980Z Hosted Compute Agent
+2026-02-22T12:24:25.1882340Z Version: 20260213.493
+2026-02-22T12:24:25.1882730Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-02-22T12:24:25.1883180Z Build Date: 2026-02-13T00:28:41Z
+2026-02-22T12:24:25.1883600Z Worker ID: {ad5dff9e-3466-4d08-bb24-e3f1a8d0fbdf}
+2026-02-22T12:24:25.1884040Z Azure Region: westus
+2026-02-22T12:24:25.1884380Z ##[endgroup]
+2026-02-22T12:24:25.1885170Z ##[group]Operating System
+2026-02-22T12:24:25.1885510Z macOS
+2026-02-22T12:24:25.1885780Z 26.3
+2026-02-22T12:24:25.1886040Z 25D125
+2026-02-22T12:24:25.1886330Z ##[endgroup]
+2026-02-22T12:24:25.1886630Z ##[group]Runner Image
+2026-02-22T12:24:25.1886950Z Image: macos-26-arm64
+2026-02-22T12:24:25.1887260Z Version: 20260218.0219.1
+2026-02-22T12:24:25.1888000Z Included Software: https://github.com/actions/runner-images/blob/macos-26-arm64/20260218.0219/images/macos/macos-26-arm64-Readme.md
+2026-02-22T12:24:25.1888920Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-26-arm64%2F20260218.0219
+2026-02-22T12:24:25.1889480Z ##[endgroup]
+2026-02-22T12:24:25.1890220Z ##[group]GITHUB_TOKEN Permissions
+2026-02-22T12:24:25.1891080Z Contents: read
+2026-02-22T12:24:25.1891370Z Metadata: read
+2026-02-22T12:24:25.1891670Z ##[endgroup]
+2026-02-22T12:24:25.1892810Z Secret source: Actions
+2026-02-22T12:24:25.1893180Z Prepare workflow directory
+2026-02-22T12:24:25.2212820Z Prepare all required actions
+2026-02-22T12:24:25.2238300Z Getting action download info
+2026-02-22T12:24:25.6786750Z Download action repository 'bitwarden/ios@main' (SHA:f576389388e671cfa9ead91fe6375f90cf1e3f97)
+2026-02-22T12:24:34.6335670Z Download action repository 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' (SHA:08c6903cd8c0fde910a37f88322edcfb5dd907a8)
+2026-02-22T12:24:34.8542570Z Download action repository 'maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd' (SHA:60606e260d2fc5762a71e64e74b2174e8ea3c8bd)
+2026-02-22T12:24:35.7533900Z Download action repository 'ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb' (SHA:44511735964dcb71245e7e55f72539531f7bc0eb)
+2026-02-22T12:24:36.8244450Z Download action repository 'actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809' (SHA:0400d5f644dc74513175e3cd8d07132dd4860809)
+2026-02-22T12:24:37.0513450Z Download action repository 'actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4' (SHA:330a01c490aca151604b8cf639adc76d48f6c5d4)
+2026-02-22T12:24:37.2017990Z Download action repository 'appetizeio/github-action-appetize@v1.0.5' (SHA:ad90cd939d77bd5234ee5354ef7780e0bf4b7eaa)
+2026-02-22T12:24:38.5859450Z Complete job name: Test
+2026-02-22T12:24:38.6207480Z ##[group]Run bitwarden/ios/.github/actions/log-inputs@main
+2026-02-22T12:24:38.6207870Z with:
+2026-02-22T12:24:38.6208000Z   inputs: {}
+2026-02-22T12:24:38.6208220Z env:
+2026-02-22T12:24:38.6208350Z   MINT_LINK_PATH: .mint/bin
+2026-02-22T12:24:38.6208520Z   MINT_PATH: .mint/lib
+2026-02-22T12:24:38.6208730Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-22T12:24:38.6208960Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-22T12:24:38.6209230Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-22T12:24:38.6209440Z   _SIMULATOR_NAME: 
+2026-02-22T12:24:38.6209580Z   _SIMULATOR_VERSION: 
+2026-02-22T12:24:38.6209720Z   _XCODE_VERSION: 
+2026-02-22T12:24:38.6209850Z   _COMPILER_FLAGS: 
+2026-02-22T12:24:38.6210190Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22277088832/attempts/1
+2026-02-22T12:24:38.6210530Z ##[endgroup]
+2026-02-22T12:24:38.6273620Z ##[group]Run {
+2026-02-22T12:24:38.6273820Z [36;1m{[0m
+2026-02-22T12:24:38.6274040Z [36;1m  echo "<details><summary>Job Inputs</summary>"[0m
+2026-02-22T12:24:38.6274280Z [36;1m  echo ""[0m
+2026-02-22T12:24:38.6274420Z [36;1m  echo '```json'[0m
+2026-02-22T12:24:38.6274580Z [36;1m  echo "$INPUTS"[0m
+2026-02-22T12:24:38.6274730Z [36;1m  echo '```'[0m
+2026-02-22T12:24:38.6275280Z [36;1m  echo "</details>"[0m
+2026-02-22T12:24:38.6275470Z [36;1m} >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-22T12:24:38.6323270Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-02-22T12:24:38.6323550Z env:
+2026-02-22T12:24:38.6323680Z   MINT_LINK_PATH: .mint/bin
+2026-02-22T12:24:38.6323840Z   MINT_PATH: .mint/lib
+2026-02-22T12:24:38.6324000Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-22T12:24:38.6324230Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-22T12:24:38.6324490Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-22T12:24:38.6324720Z   _SIMULATOR_NAME: 
+2026-02-22T12:24:38.6324950Z   _SIMULATOR_VERSION: 
+2026-02-22T12:24:38.6325090Z   _XCODE_VERSION: 
+2026-02-22T12:24:38.6325240Z   _COMPILER_FLAGS: 
+2026-02-22T12:24:38.6325570Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22277088832/attempts/1
+2026-02-22T12:24:38.6325920Z   INPUTS: {}
+2026-02-22T12:24:38.6326040Z ##[endgroup]
+2026-02-22T12:24:38.7330050Z ##[group]Run actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+2026-02-22T12:24:38.7331180Z with:
+2026-02-22T12:24:38.7331360Z   persist-credentials: false
+2026-02-22T12:24:38.7331550Z   repository: pkinerd/bitwarden.ios
+2026-02-22T12:24:38.7331970Z   token: ***
+2026-02-22T12:24:38.7332130Z   ssh-strict: true
+2026-02-22T12:24:38.7332260Z   ssh-user: git
+2026-02-22T12:24:38.7332410Z   clean: true
+2026-02-22T12:24:38.7332550Z   sparse-checkout-cone-mode: true
+2026-02-22T12:24:38.7332730Z   fetch-depth: 1
+2026-02-22T12:24:38.7332870Z   fetch-tags: false
+2026-02-22T12:24:38.7333030Z   show-progress: true
+2026-02-22T12:24:38.7333190Z   lfs: false
+2026-02-22T12:24:38.7333330Z   submodules: false
+2026-02-22T12:24:38.7333480Z   set-safe-directory: true
+2026-02-22T12:24:38.7333650Z env:
+2026-02-22T12:24:38.7333790Z   MINT_LINK_PATH: .mint/bin
+2026-02-22T12:24:38.7333960Z   MINT_PATH: .mint/lib
+2026-02-22T12:24:38.7334130Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-22T12:24:38.7334430Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-22T12:24:38.7334710Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-22T12:24:38.7334950Z   _SIMULATOR_NAME: 
+2026-02-22T12:24:38.7335100Z   _SIMULATOR_VERSION: 
+2026-02-22T12:24:38.7335240Z   _XCODE_VERSION: 
+2026-02-22T12:24:38.7335370Z   _COMPILER_FLAGS: 
+2026-02-22T12:24:38.7335710Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22277088832/attempts/1
+2026-02-22T12:24:38.7336050Z ##[endgroup]
+2026-02-22T12:24:39.1864090Z Syncing repository: pkinerd/bitwarden.ios
+2026-02-22T12:24:39.1865200Z ##[group]Getting Git version info
+2026-02-22T12:24:39.1865520Z Working directory is '/Users/runner/work/bitwarden.ios/bitwarden.ios'
+2026-02-22T12:24:39.1866020Z [command]/opt/homebrew/bin/git version
+2026-02-22T12:24:39.2538760Z git version 2.53.0
+2026-02-22T12:24:39.2548690Z ##[endgroup]
+2026-02-22T12:24:39.2568950Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/b16da50f-0c37-4a1a-a650-9f0a559663c7/.gitconfig'
+2026-02-22T12:24:39.2570060Z Temporarily overriding HOME='/Users/runner/work/_temp/b16da50f-0c37-4a1a-a650-9f0a559663c7' before making global git config changes
+2026-02-22T12:24:39.2570770Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-22T12:24:39.2571310Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-22T12:24:39.2698290Z Deleting the contents of '/Users/runner/work/bitwarden.ios/bitwarden.ios'
+2026-02-22T12:24:39.2699650Z ##[group]Initializing the repository
+2026-02-22T12:24:39.2702380Z [command]/opt/homebrew/bin/git init /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-22T12:24:39.2859880Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-02-22T12:24:39.2860750Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-02-22T12:24:39.2861440Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-02-22T12:24:39.2862920Z hint: call:
+2026-02-22T12:24:39.2863370Z hint:
+2026-02-22T12:24:39.2863730Z hint: 	git config --global init.defaultBranch <name>
+2026-02-22T12:24:39.2864220Z hint:
+2026-02-22T12:24:39.2864570Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-02-22T12:24:39.2865180Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-02-22T12:24:39.2865650Z hint:
+2026-02-22T12:24:39.2866070Z hint: 	git branch -m <name>
+2026-02-22T12:24:39.2866370Z hint:
+2026-02-22T12:24:39.2866840Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-02-22T12:24:39.2867590Z Initialized empty Git repository in /Users/runner/work/bitwarden.ios/bitwarden.ios/.git/
+2026-02-22T12:24:39.2869010Z [command]/opt/homebrew/bin/git remote add origin https://github.com/pkinerd/bitwarden.ios
+2026-02-22T12:24:39.2927910Z ##[endgroup]
+2026-02-22T12:24:39.2928700Z ##[group]Disabling automatic garbage collection
+2026-02-22T12:24:39.2929910Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-02-22T12:24:39.2993070Z ##[endgroup]
+2026-02-22T12:24:39.2993500Z ##[group]Setting up auth
+2026-02-22T12:24:39.2996920Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-22T12:24:39.3061110Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-22T12:24:39.3992050Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-22T12:24:39.4028270Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-22T12:24:39.4861220Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-02-22T12:24:39.4948820Z ##[endgroup]
+2026-02-22T12:24:39.4949260Z ##[group]Fetching the repository
+2026-02-22T12:24:39.4950000Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +1f81bd9afebdff26f11385f0851365932eaa78d8:refs/remotes/origin/dev
+2026-02-22T12:24:43.7631500Z From https://github.com/pkinerd/bitwarden.ios
+2026-02-22T12:24:43.7642030Z  * [new ref]         1f81bd9afebdff26f11385f0851365932eaa78d8 -> origin/dev
+2026-02-22T12:24:43.7732260Z ##[endgroup]
+2026-02-22T12:24:43.7732700Z ##[group]Determining the checkout info
+2026-02-22T12:24:43.7733120Z ##[endgroup]
+2026-02-22T12:24:43.7733560Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-02-22T12:24:43.7792620Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-02-22T12:24:43.7849660Z ##[group]Checking out the ref
+2026-02-22T12:24:43.7853890Z [command]/opt/homebrew/bin/git checkout --progress --force -B dev refs/remotes/origin/dev
+2026-02-22T12:24:44.6688880Z Switched to a new branch 'dev'
+2026-02-22T12:24:44.6696340Z branch 'dev' set up to track 'origin/dev'.
+2026-02-22T12:24:44.6706880Z ##[endgroup]
+2026-02-22T12:24:44.6828900Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-02-22T12:24:44.6899350Z 1f81bd9afebdff26f11385f0851365932eaa78d8
+2026-02-22T12:24:44.6905070Z ##[group]Removing auth
+2026-02-22T12:24:44.6908130Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-22T12:24:44.6968230Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-22T12:24:44.7735700Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-22T12:24:44.7792270Z http.https://github.com/.extraheader
+2026-02-22T12:24:44.7797520Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-02-22T12:24:44.7866590Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-22T12:24:44.8554400Z ##[endgroup]
+2026-02-22T12:24:44.8696430Z Prepare all required actions
+2026-02-22T12:24:44.8750430Z ##[group]Run ./.github/actions/macos-runner-tuneup
+2026-02-22T12:24:44.8750660Z env:
+2026-02-22T12:24:44.8750790Z   MINT_LINK_PATH: .mint/bin
+2026-02-22T12:24:44.8750950Z   MINT_PATH: .mint/lib
+2026-02-22T12:24:44.8751110Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-22T12:24:44.8751330Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-22T12:24:44.8751610Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-22T12:24:44.8751840Z   _SIMULATOR_NAME: 
+2026-02-22T12:24:44.8751970Z   _SIMULATOR_VERSION: 
+2026-02-22T12:24:44.8752110Z   _XCODE_VERSION: 
+2026-02-22T12:24:44.8752250Z   _COMPILER_FLAGS: 
+2026-02-22T12:24:44.8752580Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22277088832/attempts/1
+2026-02-22T12:24:44.8752930Z ##[endgroup]
+2026-02-22T12:24:44.8766650Z ##[group]Run echo "🚀 Starting macOS Runner Tuneup..."
+2026-02-22T12:24:44.8767060Z [36;1mecho "🚀 Starting macOS Runner Tuneup..."[0m
+2026-02-22T12:24:44.8767340Z [36;1mecho "=================================="[0m
+2026-02-22T12:24:44.8767590Z [36;1m[0m
+2026-02-22T12:24:44.8767780Z [36;1mecho "🔍 Disabling Spotlight..."[0m
+2026-02-22T12:24:44.8768090Z [36;1msudo mdutil -a -i off # disables indexing on all volumes[0m
+2026-02-22T12:24:44.8768470Z [36;1msudo mdutil -a -d # disables spotlight activity on all volumes[0m
+2026-02-22T12:24:44.8768770Z [36;1m[0m
+2026-02-22T12:24:44.8768990Z [36;1mecho "🔍 Disabling Spotlight Knowledge Daemon..."[0m
+2026-02-22T12:24:44.8769360Z [36;1msudo launchctl disable system/com.apple.spotlightknowledged || true[0m
+2026-02-22T12:24:44.8769730Z [36;1msudo pkill -SIGKILL spotlightknowledged || true[0m
+2026-02-22T12:24:44.8770000Z [36;1m[0m
+2026-02-22T12:24:44.8770190Z [36;1mecho "🛑 Disabling metadata services..."[0m
+2026-02-22T12:24:44.8770530Z [36;1msudo launchctl disable system/com.apple.metadata.mds || true[0m
+2026-02-22T12:24:44.8770920Z [36;1msudo launchctl disable system/com.apple.metadata.mds.index || true[0m
+2026-02-22T12:24:44.8771320Z [36;1msudo launchctl disable system/com.apple.metadata.mds.scan || true[0m
+2026-02-22T12:24:44.8771620Z [36;1m[0m
+2026-02-22T12:24:44.8771800Z [36;1mecho "📦 Stopping metadata services..."[0m
+2026-02-22T12:24:44.8772120Z [36;1msudo launchctl bootout system/com.apple.metadata.mds || true[0m
+2026-02-22T12:24:44.8772500Z [36;1msudo launchctl bootout system/com.apple.metadata.mds.index || true[0m
+2026-02-22T12:24:44.8772900Z [36;1msudo launchctl bootout system/com.apple.metadata.mds.scan || true[0m
+2026-02-22T12:24:44.8773290Z [36;1msudo launchctl bootout system/com.apple.metadata.mdwrite || true[0m
+2026-02-22T12:24:44.8773590Z [36;1m[0m
+2026-02-22T12:24:44.8773770Z [36;1mecho "⚡ Killing metadata processes..."[0m
+2026-02-22T12:24:44.8774110Z [36;1msudo pkill -SIGKILL -f "Metadata.framework/Versions/A/Support/mds" || true[0m
+2026-02-22T12:24:44.8774460Z [36;1msudo pkill -SIGKILL Spotlight || true[0m
+2026-02-22T12:24:44.8774710Z [36;1mecho "✅ Spotlight disabled!"[0m
+2026-02-22T12:24:44.8774920Z [36;1m[0m
+2026-02-22T12:24:44.8775090Z [36;1mecho "💥 Disabling ReportCrash..."[0m
+2026-02-22T12:24:44.8775390Z [36;1msudo launchctl disable system/com.apple.ReportCrash || true[0m
+2026-02-22T12:24:44.8775770Z [36;1msudo launchctl disable system/com.apple.ReportCrash.Root || true[0m
+2026-02-22T12:24:44.8776060Z [36;1m[0m
+2026-02-22T12:24:44.8776230Z [36;1mecho "💥 Unloading ReportCrash..."[0m
+2026-02-22T12:24:44.8776530Z [36;1msudo launchctl bootout system/com.apple.ReportCrash || true[0m
+2026-02-22T12:24:44.8776900Z [36;1msudo launchctl bootout system/com.apple.ReportCrash.Root || true[0m
+2026-02-22T12:24:44.8777350Z [36;1m[0m
+2026-02-22T12:24:44.8777600Z [36;1msudo defaults write com.apple.CrashReporter DialogType none  || true[0m
+2026-02-22T12:24:44.8777930Z [36;1mecho "✅ ReportCrash disabled!"[0m
+2026-02-22T12:24:44.8778140Z [36;1m[0m
+2026-02-22T12:24:44.8778550Z [36;1mecho "🌱 Disabling EcosystemD..."[0m
+2026-02-22T12:24:44.8778950Z [36;1msudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.ecosystemd.plist || true[0m
+2026-02-22T12:24:44.8779350Z [36;1msudo pkill -SIGKILL -f "ecosystemd" || true[0m
+2026-02-22T12:24:44.8779610Z [36;1mecho "✅ EcosystemD disabled!"[0m
+2026-02-22T12:24:44.8779810Z [36;1m[0m
+2026-02-22T12:24:44.8780000Z [36;1mecho "🌱 Disabling EcosystemAnalyticsD..."[0m
+2026-02-22T12:24:44.8780340Z [36;1msudo launchctl bootout system/com.apple.ecosystemanalyticsd || true[0m
+2026-02-22T12:24:44.8780730Z [36;1mecho "✅ EcosystemAnalyticsD disabled!"[0m
+2026-02-22T12:24:44.8780970Z [36;1m[0m
+2026-02-22T12:24:44.8781150Z [36;1mecho "🌱 Disabling SubmitDiagInfo..."[0m
+2026-02-22T12:24:44.8781570Z [36;1msudo defaults write /Library/Preferences/com.apple.SubmitDiagInfo AutoSubmit -bool false || true[0m
+2026-02-22T12:24:44.8781950Z [36;1m[0m
+2026-02-22T12:24:44.8782130Z [36;1mecho "🌍 Disabling location services..."[0m
+2026-02-22T12:24:44.8782580Z [36;1msudo defaults write /Library/Preferences/com.apple.locationd.plist LocationServicesEnabled -int 0 || true[0m
+2026-02-22T12:24:44.8782990Z [36;1m[0m
+2026-02-22T12:24:44.8783150Z [36;1mecho "🔍 Disabling Siri..."[0m
+2026-02-22T12:24:44.8783510Z [36;1msudo defaults write com.apple.assistant.support Assistant\ Enabled -bool false || true[0m
+2026-02-22T12:24:44.8783980Z [36;1msudo defaults write com.apple.Siri StatusMenuVisible -bool false || true[0m
+2026-02-22T12:24:44.8784290Z [36;1m[0m
+2026-02-22T12:24:44.8784510Z [36;1mecho "🔒 Disabling iCloud analytics and usage tracking..."[0m
+2026-02-22T12:24:44.8784930Z [36;1msudo defaults write com.apple.UsageTracking CoreDonationsEnabled -bool false || true[0m
+2026-02-22T12:24:44.8785440Z [36;1msudo defaults write com.apple.UsageTracking UDCAutomationEnabled -bool false || true[0m
+2026-02-22T12:24:44.8785790Z [36;1m[0m
+2026-02-22T12:24:44.8785980Z [36;1mecho "🔍 Disabling Spotlight suggestions..."[0m
+2026-02-22T12:24:44.8786380Z [36;1msudo defaults write com.apple.lookup.shared LookupSuggestionsDisabled -bool true || true[0m
+2026-02-22T12:24:44.8786740Z [36;1m[0m
+2026-02-22T12:24:44.8786930Z [36;1mecho "📊 Process Information After Tuning"[0m
+2026-02-22T12:24:44.8787190Z [36;1mecho "=================================="[0m
+2026-02-22T12:24:44.8787440Z [36;1mecho "🧠 Sorted by memory usage:"[0m
+2026-02-22T12:24:44.8787700Z [36;1mhead -n20 < <(ps -emo pid,pcpu,pmem,comm)[0m
+2026-02-22T12:24:44.8787930Z [36;1mecho ""[0m
+2026-02-22T12:24:44.8788110Z [36;1mecho "🔥  Sorted by CPU usage:"[0m
+2026-02-22T12:24:44.8788360Z [36;1mhead -n20 < <(ps -ero pid,pcpu,pmem,comm)[0m
+2026-02-22T12:24:44.8788590Z [36;1mecho ""[0m
+2026-02-22T12:24:44.8788790Z [36;1mecho "🎉 macOS Runner Tuneup Complete!"[0m
+2026-02-22T12:24:44.8818270Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-02-22T12:24:44.8818530Z env:
+2026-02-22T12:24:44.8818680Z   MINT_LINK_PATH: .mint/bin
+2026-02-22T12:24:44.8818880Z   MINT_PATH: .mint/lib
+2026-02-22T12:24:44.8819080Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-22T12:24:44.8819350Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-22T12:24:44.8819640Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-22T12:24:44.8819890Z   _SIMULATOR_NAME: 
+2026-02-22T12:24:44.8820080Z   _SIMULATOR_VERSION: 
+2026-02-22T12:24:44.8820260Z   _XCODE_VERSION: 
+2026-02-22T12:24:44.8820430Z   _COMPILER_FLAGS: 
+2026-02-22T12:24:44.8820780Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22277088832/attempts/1
+2026-02-22T12:24:44.8821150Z ##[endgroup]
+2026-02-22T12:24:44.9001740Z 🚀 Starting macOS Runner Tuneup...
+2026-02-22T12:24:44.9002050Z ==================================
+2026-02-22T12:24:44.9002650Z 🔍 Disabling Spotlight...
+2026-02-22T12:24:44.9278500Z 2026-02-22 12:24:44.927 mdutil[7466:35717] mdutil disabling Spotlight: / -> kMDConfigSearchLevelFSSearchOnly
+2026-02-22T12:24:44.9818070Z 2026-02-22 12:24:44.981 mdutil[7466:35717] mdutil disabling Spotlight: /System/Volumes/Data -> kMDConfigSearchLevelFSSearchOnly
+2026-02-22T12:24:45.3980170Z 2026-02-22 12:24:45.397 mdutil[7466:35717] mdutil disabling Spotlight: /System/Volumes/Preboot -> kMDConfigSearchLevelFSSearchOnly
+2026-02-22T12:24:45.4370530Z /:
+2026-02-22T12:24:45.4371230Z 	Indexing disabled.
+2026-02-22T12:24:45.4371420Z /System/Volumes/Data:
+2026-02-22T12:24:45.4371620Z 	Indexing disabled.
+2026-02-22T12:24:45.4371810Z /System/Volumes/Preboot:
+2026-02-22T12:24:45.4371980Z 	Indexing disabled.
+2026-02-22T12:24:45.4559250Z 2026-02-22 12:24:45.455 mdutil[7468:35752] mdutil disabling Spotlight: / -> kMDConfigSearchLevelOff
+2026-02-22T12:24:45.4801040Z 2026-02-22 12:24:45.479 mdutil[7468:35752] mdutil disabling Spotlight: /System/Volumes/Data -> kMDConfigSearchLevelOff
+2026-02-22T12:24:45.5054900Z 2026-02-22 12:24:45.505 mdutil[7468:35752] mdutil disabling Spotlight: /System/Volumes/Preboot -> kMDConfigSearchLevelOff
+2026-02-22T12:24:45.5312580Z /:
+2026-02-22T12:24:45.5313810Z 	Indexing and searching disabled.
+2026-02-22T12:24:45.5314880Z /System/Volumes/Data:
+2026-02-22T12:24:45.5315260Z 	Indexing and searching disabled.
+2026-02-22T12:24:45.5315580Z /System/Volumes/Preboot:
+2026-02-22T12:24:45.5316040Z 	Indexing and searching disabled.
+2026-02-22T12:24:45.5321610Z 🔍 Disabling Spotlight Knowledge Daemon...
+2026-02-22T12:24:45.5899150Z 🛑 Disabling metadata services...
+2026-02-22T12:24:45.6357520Z 📦 Stopping metadata services...
+2026-02-22T12:24:45.7057800Z Boot-out failed: 3: No such process
+2026-02-22T12:24:45.7067390Z ⚡ Killing metadata processes...
+2026-02-22T12:24:45.7904570Z ✅ Spotlight disabled!
+2026-02-22T12:24:45.8081290Z 💥 Disabling ReportCrash...
+2026-02-22T12:24:45.8839830Z 💥 Unloading ReportCrash...
+2026-02-22T12:24:45.9041330Z Boot-out failed: 3: No such process
+2026-02-22T12:24:46.0919940Z ✅ ReportCrash disabled!
+2026-02-22T12:24:46.1123470Z 🌱 Disabling EcosystemD...
+2026-02-22T12:24:46.2271510Z ✅ EcosystemD disabled!
+2026-02-22T12:24:46.2396760Z 🌱 Disabling EcosystemAnalyticsD...
+2026-02-22T12:24:46.3361730Z ✅ EcosystemAnalyticsD disabled!
+2026-02-22T12:24:46.3508460Z 🌱 Disabling SubmitDiagInfo...
+2026-02-22T12:24:46.4029980Z 🌍 Disabling location services...
+2026-02-22T12:24:46.4333890Z 🔍 Disabling Siri...
+2026-02-22T12:24:46.5006950Z 🔒 Disabling iCloud analytics and usage tracking...
+2026-02-22T12:24:46.7827600Z 🔍 Disabling Spotlight suggestions...
+2026-02-22T12:24:46.8248540Z 📊 Process Information After Tuning
+2026-02-22T12:24:46.8351040Z ==================================
+2026-02-22T12:24:46.8414930Z 🧠 Sorted by memory usage:
+2026-02-22T12:24:46.8869780Z   PID  %CPU %MEM COMM
+2026-02-22T12:24:46.8877380Z ps: stdout: Broken pipe
+2026-02-22T12:24:46.8877740Z  6956  15.4  2.1 /Users/runner/actions-runner/cached/bin/Runner.Worker
+2026-02-22T12:24:46.8889350Z   409   6.5  1.6 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/corespotlightd
+2026-02-22T12:24:46.8930340Z  7493 124.9  1.6 /System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight
+2026-02-22T12:24:46.8947770Z  6939   7.1  1.5 /Users/runner/actions-runner/cached/bin/Runner.Listener
+2026-02-22T12:24:46.8948800Z   352   2.2  1.1 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter
+2026-02-22T12:24:46.8983020Z   466   0.0  1.0 /System/Library/CoreServices/Dock.app/Contents/XPCServices/com.apple.dock.extra.xpc/Contents/MacOS/com.apple.dock.extra
+2026-02-22T12:24:46.9003700Z   354   0.5  1.0 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder
+2026-02-22T12:24:46.9028240Z  4561   0.0  1.0 /System/Library/PrivateFrameworks/Noticeboard.framework/Versions/A/Resources/nbagent.app/Contents/MacOS/nbagent
+2026-02-22T12:24:46.9050270Z   739   0.0  0.9 /System/Library/PrivateFrameworks/SiriInference.framework/Versions/A/siriinferenced
+2026-02-22T12:24:46.9051800Z   179  26.2  0.9 /usr/libexec/mobileassetd
+2026-02-22T12:24:46.9052810Z   482   0.0  0.9 /System/Library/CoreServices/AccessibilityUIServer.app/Contents/MacOS/AccessibilityUIServer
+2026-02-22T12:24:46.9054210Z   518   0.0  0.9 /System/Applications/Weather.app/Contents/PlugIns/WeatherWidget.appex/Contents/MacOS/WeatherWidget
+2026-02-22T12:24:46.9055170Z   280   0.0  0.9 /System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated
+2026-02-22T12:24:46.9056000Z   494   0.0  0.8 /System/Library/PrivateFrameworks/HomeKitDaemon.framework/Support/homed
+2026-02-22T12:24:46.9056820Z   441   0.2  0.8 /System/Library/CoreServices/TextInputMenuAgent.app/Contents/MacOS/TextInputMenuAgent
+2026-02-22T12:24:46.9060290Z   432   0.0  0.8 /usr/libexec/sharingd
+2026-02-22T12:24:46.9069310Z   469   1.8  0.8 /usr/libexec/duetexpertd
+2026-02-22T12:24:46.9070110Z   366   0.0  0.8 /System/Library/PrivateFrameworks/VoiceShortcuts.framework/Versions/A/Support/siriactionsd
+2026-02-22T12:24:46.9072190Z   353   0.0  0.8 /System/Library/CoreServices/SystemUIServer.app/Contents/MacOS/SystemUIServer
+2026-02-22T12:24:46.9072780Z 
+2026-02-22T12:24:46.9073170Z 🔥  Sorted by CPU usage:
+2026-02-22T12:24:46.9242110Z   PID  %CPU %MEM COMM
+2026-02-22T12:24:46.9269120Z  7493 124.9  1.6 /System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight
+2026-02-22T12:24:46.9270280Z   179  26.2  0.9 /usr/libexec/mobileassetd
+2026-02-22T12:24:46.9280660Z  6956  15.4  2.1 /Users/runner/actions-runner/cached/bin/Runner.Worker
+2026-02-22T12:24:46.9281700Z   162  11.0  0.6 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+2026-02-22T12:24:46.9333620Z   471  10.5  0.4 /System/Library/PrivateFrameworks/ContinuousDialogManagerService.framework/assistant_cdmd
+2026-02-22T12:24:46.9336010Z ps: stdout: Broken pipe
+2026-02-22T12:24:46.9336500Z  6939   7.1  1.5 /Users/runner/actions-runner/cached/bin/Runner.Listener
+2026-02-22T12:24:46.9339230Z   409   6.5  1.6 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/corespotlightd
+2026-02-22T12:24:46.9363810Z   456   4.8  0.5 /System/Library/PrivateFrameworks/TextInputUIMacHelper.framework/Versions/A/XPCServices/CursorUIViewService.xpc/Contents/MacOS/CursorUIViewService
+2026-02-22T12:24:46.9365490Z   345   3.7  0.4 /System/Library/CoreServices/WindowManager.app/Contents/MacOS/WindowManager
+2026-02-22T12:24:46.9366270Z   523   3.6  0.2 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+2026-02-22T12:24:46.9367010Z     1   3.6  0.3 /sbin/launchd
+2026-02-22T12:24:46.9367470Z   158   2.2  0.1 /usr/sbin/cfprefsd
+2026-02-22T12:24:46.9367900Z   352   2.2  1.1 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter
+2026-02-22T12:24:46.9368580Z   346   2.1  0.4 /System/Library/PrivateFrameworks/BiomeStreams.framework/Support/BiomeAgent
+2026-02-22T12:24:46.9369220Z   469   1.8  0.8 /usr/libexec/duetexpertd
+2026-02-22T12:24:46.9369620Z   326   1.7  0.1 /usr/sbin/cfprefsd
+2026-02-22T12:24:46.9370070Z   128   1.6  0.4 /usr/libexec/opendirectoryd
+2026-02-22T12:24:46.9370520Z    88   1.5  0.5 /usr/libexec/logd
+2026-02-22T12:24:46.9370980Z   458   1.4  0.4 /System/Library/CoreServices/TextInputSwitcher.app/Contents/MacOS/TextInputSwitcher
+2026-02-22T12:24:46.9371540Z 
+2026-02-22T12:24:46.9377440Z 🎉 macOS Runner Tuneup Complete!
+2026-02-22T12:24:47.2161430Z ##[error]The operation was canceled.
+2026-02-22T12:24:47.2360680Z ##[group]Run xcresultparser -o cli "$_TESTS_RESULT_BUNDLE_PATH"
+2026-02-22T12:24:47.2362480Z [36;1mxcresultparser -o cli "$_TESTS_RESULT_BUNDLE_PATH"[0m
+2026-02-22T12:24:47.2362920Z [36;1mecho "# Test Summary" >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-22T12:24:47.2363650Z [36;1mxcresultparser -f -o txt "$_TESTS_RESULT_BUNDLE_PATH" | grep "Number of" >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-22T12:24:47.2452710Z shell: /bin/bash -e {0}
+2026-02-22T12:24:47.2453130Z env:
+2026-02-22T12:24:47.2453320Z   MINT_LINK_PATH: .mint/bin
+2026-02-22T12:24:47.2453540Z   MINT_PATH: .mint/lib
+2026-02-22T12:24:47.2453750Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-22T12:24:47.2454030Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-22T12:24:47.2454400Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-22T12:24:47.2454620Z   _SIMULATOR_NAME: 
+2026-02-22T12:24:47.2454760Z   _SIMULATOR_VERSION: 
+2026-02-22T12:24:47.2454940Z   _XCODE_VERSION: 
+2026-02-22T12:24:47.2455210Z   _COMPILER_FLAGS: 
+2026-02-22T12:24:47.2455570Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22277088832/attempts/1
+2026-02-22T12:24:47.2455950Z ##[endgroup]
+2026-02-22T12:24:47.3512960Z /Users/runner/work/_temp/16535e09-97ad-40d0-bc95-5f68aed63f6d.sh: line 1: xcresultparser: command not found
+2026-02-22T12:24:47.3517830Z ##[error]Process completed with exit code 127.
+2026-02-22T12:24:47.3890250Z ##[group]Run actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+2026-02-22T12:24:47.3890800Z with:
+2026-02-22T12:24:47.3890960Z   name: test-reports
+2026-02-22T12:24:47.3891140Z   compression-level: 9
+2026-02-22T12:24:47.3891430Z   path: build/coverage.xml
+build/bwpm-tests.xcresult
+build/bwpm-build.xcresult
+
+2026-02-22T12:24:47.3891760Z   if-no-files-found: warn
+2026-02-22T12:24:47.3891960Z   overwrite: false
+2026-02-22T12:24:47.3892120Z   include-hidden-files: false
+2026-02-22T12:24:47.3892280Z env:
+2026-02-22T12:24:47.3892420Z   MINT_LINK_PATH: .mint/bin
+2026-02-22T12:24:47.3892580Z   MINT_PATH: .mint/lib
+2026-02-22T12:24:47.3892750Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-22T12:24:47.3892980Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-22T12:24:47.3893240Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-22T12:24:47.3893450Z   _SIMULATOR_NAME: 
+2026-02-22T12:24:47.3893580Z   _SIMULATOR_VERSION: 
+2026-02-22T12:24:47.3893780Z   _XCODE_VERSION: 
+2026-02-22T12:24:47.3893910Z   _COMPILER_FLAGS: 
+2026-02-22T12:24:47.3894250Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22277088832/attempts/1
+2026-02-22T12:24:47.3894620Z ##[endgroup]
+2026-02-22T12:24:49.0122590Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-02-22T12:24:49.0124720Z The least common ancestor is /Users/runner/work/bitwarden.ios/bitwarden.ios/build. This will be the root directory of the artifact
+2026-02-22T12:24:49.0136830Z ##[warning]No files were found with the provided path: build/coverage.xml
+build/bwpm-tests.xcresult
+build/bwpm-build.xcresult. No artifacts will be uploaded.
+2026-02-22T12:24:49.0339590Z Post job cleanup.
+2026-02-22T12:24:49.1371510Z [command]/opt/homebrew/bin/git version
+2026-02-22T12:24:49.1445720Z git version 2.53.0
+2026-02-22T12:24:49.1471280Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/bb087cb7-bd85-4e19-ba71-ab715977d200/.gitconfig'
+2026-02-22T12:24:49.1478620Z Temporarily overriding HOME='/Users/runner/work/_temp/bb087cb7-bd85-4e19-ba71-ab715977d200' before making global git config changes
+2026-02-22T12:24:49.1479360Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-22T12:24:49.1482590Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-22T12:24:49.1560980Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-22T12:24:49.1634000Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-22T12:24:49.2413570Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-22T12:24:49.2492160Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-22T12:24:49.3622990Z Cleaning up orphan processes
