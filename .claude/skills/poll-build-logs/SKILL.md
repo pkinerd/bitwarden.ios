@@ -29,23 +29,32 @@ Note the highest run number (e.g., `build-logs/150-...`).
 
 ### Step 3: Wait and Check Periodically
 
-iOS CI builds typically take **15-30 minutes**, but builds with early errors can fail in under 5 minutes. Use a repeating check pattern:
+iOS CI builds typically take **15-30 minutes**, but builds with early errors can fail in under 5 minutes. Use a repeating check pattern with **60-second intervals for 45 cycles** (~45 minutes total):
 
-1. **Wait 3 minutes** using a background sleep to keep the session alive:
+1. **Launch ONE background task** to sleep and then check:
    ```bash
-   sleep 180 && git ls-remote --heads origin 'refs/heads/build-logs/*'
+   sleep 60 && git ls-remote --heads origin 'refs/heads/build-logs/*'
    ```
    Run this with `run_in_background: true`.
 
-2. When the background task completes, **read the output** and check for new branches (run numbers higher than the snapshot).
+2. **STOP and WAIT for the `task-notification`** that signals the background task completed. Do NOT read the output file, do NOT launch another cycle, and do NOT send any message to the user until you receive the `task-notification` for this specific task ID. The sleep takes 60 seconds — you must wait the full duration.
 
-3. If no new branches yet, **repeat step 1** — launch another background sleep+check.
+3. **Only after receiving the `task-notification`**, read the output file and check for new branches (run numbers higher than the snapshot).
 
-4. If new branches appeared, proceed to Step 4.
+4. If no new branches yet, **go back to step 1** — launch another single background sleep+check.
 
-5. **Give up after ~45 minutes** of checking (roughly 15 cycles).
+5. If new branches appeared, proceed to Step 4.
 
-**Why short-lived background tasks:** The Claude Code web platform kills long-running background processes (~8-10 min). A 3-minute sleep+check completes well within this limit.
+6. **Give up after 45 cycles** (~45 minutes of checking). You MUST run all 45 cycles before giving up — do NOT stop early.
+
+**CRITICAL — One task at a time:** Launch exactly ONE background task per cycle. After launching it, you MUST wait for its `task-notification` before doing anything else related to polling. Do NOT:
+- Read the output file immediately after launching (it will be empty — the task is still sleeping)
+- Launch multiple background tasks in rapid succession
+- Try to "check" on the task before it completes
+
+**CRITICAL — Run all 45 cycles:** You MUST keep polling for the full 45 cycles before giving up. Track your cycle count (e.g., "Poll cycle 7/45"). Do NOT give up early because "no changes were detected" — CI builds take 15-30 minutes, so it is normal to see no new branches for many cycles.
+
+**Why 60-second intervals:** The Claude Code web platform requires background tasks to complete within 90 seconds. A 60-second sleep+check completes well within this limit while providing frequent updates.
 
 **Silence between polls:** Do NOT send a message to the user for each intermediate check. Only notify the user when a matching build result is found or when giving up after timeout. Between polls, continue working on other tasks if available, or remain silent.
 
@@ -98,13 +107,14 @@ User: Push my changes and let me know if the build passes.
 Claude:
 1. Commits and pushes to the PR branch
 2. Records: BRANCH=claude/my-feature, latest run=150
-3. Launches: sleep 180 && git ls-remote ... (background)
-4. [3 minutes later, checks output — no new branches, stays silent]
-5. Repeats sleep 180 && git ls-remote ... cycles silently
-6. [~18 minutes later — new branch: build-logs/151-...-pass!]
-7. Fetches build-summary.md, confirms Branch matches
-8. Reports: "CI build passed on branch claude/my-feature.
-   Build log: build-logs/151-123456-20260221T150000Z-pass"
+3. Launches ONE background task: sleep 60 && git ls-remote ...
+4. STOPS and WAITS — does nothing until task-notification arrives
+5. [1 min later] Receives task-notification (cycle 1/45), reads output — no new branches
+6. Launches another ONE background task, WAITS again
+7. [repeats silently for many cycles — this is normal]
+8. [~20 min later, cycle 20/45] Receives task-notification — new branch: build-logs/151-...-pass!
+9. Fetches build-summary.md, confirms Branch matches
+10. Reports: "CI build passed on branch claude/my-feature."
 ```
 
 ### Non-matching branch (another PR's build)
@@ -112,10 +122,10 @@ Claude:
 ```
 Claude:
 1. Polling for BRANCH=claude/my-feature, latest run=150
-2. [6 minutes later — new branch: build-logs/151-...-fail]
+2. [5 min later, cycle 5/45] Receives task-notification — new branch: build-logs/151-...-fail
 3. Fetches build-summary.md, sees Branch=claude/other-pr — no match
-4. Ignores it, continues polling silently
-5. [15 minutes later — new branch: build-logs/152-...-pass]
+4. Ignores it, launches next background task, WAITS
+5. [18 min later, cycle 18/45] Receives task-notification — new branch: build-logs/152-...-pass
 6. Fetches build-summary.md, sees Branch=claude/my-feature — match!
 7. Reports result to user
 ```
