@@ -120,3 +120,4 @@
 | 0118 | Review and test post-push sync verification skill change | closed | enhancement | medium | 2026-02-22 |
 | 0119 | Sync workflow accidentally triggered by unrelated claude/issues-* session branches | closed | bug | medium | 2026-02-22 |
 | 0120 | Reduce issues skill sync polling intervals | closed | enhancement | low | 2026-02-22 |
+| 0121 | Pre-upstream PR checklist for offline sync feature | open | documentation | high | 2026-02-22 |
