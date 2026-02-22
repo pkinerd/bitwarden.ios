@@ -174,3 +174,14 @@ Relevant review documents:
 - `ReviewSection_PendingCipherChangeDataStore.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. PendingCipherChangeData.swift has NO `dataVersion` attribute
+2. Core Data model (Bitwarden.xcdatamodel) has no dataVersion field
+3. OfflineSyncResolver decodes cipherData with no version checking logic
+4. Zero matches for "dataVersion" across entire codebase
+
+If `CipherDetailsResponseModel` changes incompatibly, old pending records will fail to decode permanently.

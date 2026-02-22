@@ -258,3 +258,12 @@ Relevant review documents:
 - `Review2/00_Main_Review.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. `saveAttachment()` (line 871) — NO try/catch, NO offline fallback
+2. `downloadAttachment()` (line 717) — NO offline handling (fundamentally requires server)
+3. `deleteAttachment()` (line 701) — NO try/catch, NO offline fallback
+4. No `handleOfflineAttachment` or similar methods exist in the codebase

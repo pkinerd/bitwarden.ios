@@ -162,3 +162,12 @@ Relevant review documents:
 - `Review2/06_UILayer_Review.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. `fetchCipherDetailsDirectly()` (ViewItemProcessor.swift:619-632) is a one-time fetch
+2. On failure, sets state to `.error(errorMessage: Localizations.anErrorHasOccurred)` and returns
+3. No retry mechanism, no continuous publisher stream established
+4. Contrast: `streamCipherDetails()` uses `for try await` for continuous updates

@@ -151,3 +151,11 @@ Relevant review documents:
 - `ReviewSection_DIWiring.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. No `CoreServices` typealias found anywhere in the codebase
+2. `Services` typealias in Services.swift combines ~57 protocol conformances mixing core infrastructure, UI-layer, and feature-specific services
+3. Individual processors define their own `Services` typealiases with specific subsets, but no centralized `CoreServices` exists for reuse

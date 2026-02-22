@@ -158,3 +158,14 @@ Relevant review documents:
 - `Review2/01_PendingCipherChangeData_Review.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. Each `.xcdatamodeld` directory contains only ONE version of the model (no versioned models)
+2. DataStore loads persistent stores with no custom migration configuration (DataStore.swift:76-80)
+3. No `NSMigrationManager` or `NSMappingModel` usage found
+4. No lightweight migration configuration discovered
+
+If schema changes are needed in future updates, migrations will not be properly handled.

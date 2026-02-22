@@ -176,3 +176,13 @@ Relevant review documents:
 - `ReviewSection_VaultRepository.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. OfflineSyncError has NO `operationNotSupportedOffline` case (only: `missingCipherData`, `missingCipherId`, `cipherNotFound`)
+2. `archiveCipher` (line 549), `unarchiveCipher` (line 961), `restoreCipher` (line 864), `updateCipherCollections` (line 1013) — all lack try/catch blocks
+3. Zero matches for "operationNotSupportedOffline" in the codebase
+
+Users still see generic network errors for these operations when offline.

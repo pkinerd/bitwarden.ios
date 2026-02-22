@@ -176,3 +176,14 @@ Relevant review documents:
 - `ReviewSection_VaultRepository.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. `archiveCipher()` (line 549) — NO try/catch, NO offline fallback
+2. `unarchiveCipher()` (line 961) — NO try/catch, NO offline fallback
+3. `restoreCipher()` (line 864) — NO try/catch, NO offline fallback
+4. No `handleOfflineArchive`, `handleOfflineRestore`, or similar methods exist
+
+Contrast: add, update, delete, softDelete all have `handleOffline*` fallback handlers.

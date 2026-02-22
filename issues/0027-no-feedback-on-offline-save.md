@@ -257,3 +257,12 @@ When a cipher is saved offline, the operation completes silently — the user ha
 **Assessment:** This is an intentional UX decision for the initial implementation. The sync happens automatically on reconnection, so the user doesn't need to take action. A future enhancement could add a subtle indicator when pending offline changes exist.
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. `handleOfflineAdd` (line 1031), `handleOfflineUpdate` (line 1058), `handleOfflineSoftDelete` (line 1114), `handleOfflineDelete` (line 1150) — all complete silently
+2. No toast, notification, alert, or callback mechanism after offline saves
+3. Calling code cannot distinguish between successful online vs offline saves
+4. No return type modification, notification center usage, or delegate callbacks

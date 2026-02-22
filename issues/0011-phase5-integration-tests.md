@@ -135,3 +135,15 @@ If the team has capacity, **Option A** provides more thorough coverage but at 4-
 Phase 5 integration tests (end-to-end offline→reconnect→resolve). Existing `OfflineSyncResolverTests` with real `DataStore` already function as semi-integration tests. DefaultSyncService requires 19 dependencies; defer until integration test infrastructure exists.
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. No dedicated integration test files for end-to-end offline sync flow
+2. Comprehensive unit tests exist with mocked dependencies:
+   - OfflineSyncResolverTests.swift (20+ tests)
+   - SyncServiceTests.swift (9 offline-sync-specific tests, lines 1096-1225)
+   - VaultRepositoryTests.swift (32 tests including offline paths)
+3. No test simulates full flow: save offline → trigger sync → resolver execution → server verification
+4. All existing tests use mocked components (MockOfflineSyncResolver, MockPendingCipherChangeDataStore)

@@ -167,3 +167,12 @@ The review confirms the original assessment. After reviewing the implementation:
 No user-visible indicator for pending offline changes (badge, toast, banner). Would require adding `HasPendingCipherChangeDataStore` to `Services` typealias (currently not exposed to UI layer).
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. No UI banner, toast, badge, or settings entry shows pending offline changes
+2. `HasPendingCipherChangeDataStore` is NOT in the `Services` typealias (Services.swift lines 6-64)
+3. `handleOffline*` methods in VaultRepository complete silently — no UI notification mechanism
+4. Infrastructure exists (`pendingChangeCount(userId:)`) but is not exposed to UI layer

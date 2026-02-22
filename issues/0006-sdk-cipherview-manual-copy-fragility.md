@@ -184,3 +184,14 @@ Relevant review documents:
 - `ReviewSection_SupportingExtensions.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — in-progress status confirmed ACCURATE.**
+
+Mitigations verified in place:
+1. `makeCopy` helper with DocC `- Important:` comment (CipherView+OfflineSync.swift:53-55) documenting 28 properties
+2. Mirror-based property count guard tests in CipherViewOfflineSyncTests.swift: CipherView (28 properties, line 131) and LoginView (7 properties, line 155)
+3. `withId(_:)` and `update(name:)` both delegate to `makeCopy` — single point of change
+
+Inherent fragility remains: external SDK types require manual property copying. Only SDK-native copy methods (Option C) would fully resolve this.

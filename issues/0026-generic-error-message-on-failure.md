@@ -173,3 +173,11 @@ Relevant review documents:
 - `Review2/06_UILayer_Review.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. When `fetchCipherDetailsDirectly()` fails: `state.loadingState = .error(errorMessage: Localizations.anErrorHasOccurred)`
+2. Error is generic — no distinction between cipher not found, decryption failure, network error, etc.
+3. Actual error is logged via `errorReporter.log(error:)` but user sees only "An error has occurred"

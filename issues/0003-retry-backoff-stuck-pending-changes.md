@@ -224,3 +224,14 @@ Relevant review documents:
 - `ReviewSection_OfflineSyncResolver.md`
 
 ## Comments
+
+### claude — 2026-02-22
+
+**Codebase validated — issue confirmed OPEN.**
+
+1. SyncService.swift:344-352 still has the early-abort pattern: `pendingChangeCount > 0` after resolution → `return` (sync aborted)
+2. PendingCipherChangeData has NO `retryCount`, `nextRetryDate`, or failed state attributes
+3. OfflineSyncResolver `processPendingChanges` catches errors silently (log only, no backoff/TTL)
+4. PendingCipherChangeType enum has only: `update`, `create`, `softDelete`, `hardDelete` — no `.failed` case
+
+A single permanently failing pending change still blocks ALL syncing indefinitely.
