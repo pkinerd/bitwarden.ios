@@ -9,23 +9,30 @@ description: Polls for CI build log branches matching changes from the current s
 
 After pushing code changes, use this process to monitor for CI build results and analyze them when available.
 
-### Step 1: Identify the Branch
+### Step 1: Identify the Branch and Commit
 
-Note the current branch name for matching later:
+Note the current branch name and HEAD commit SHA for matching later:
 
 ```bash
 git branch --show-current
+git rev-parse HEAD
 ```
 
-### Step 2: Snapshot Existing Branches
+Record both values — `BRANCH` and `HEAD_SHA`. The branch is used for initial matching, and the commit SHA is used to verify the build covers the current code (not a stale push).
 
-Record the current build-log branches so you can detect new ones:
+### Step 2: Snapshot Existing Branches and Check for Existing Match
+
+Record the current build-log branches:
 
 ```bash
 git ls-remote --heads origin 'refs/heads/build-logs/*'
 ```
 
 Note the highest run number (e.g., `build-logs/150-...`).
+
+**Before polling, check if the most recent build-log branch already matches the current branch and commit.** Fetch the branch with the highest run number and verify it matches using the process described in Step 4 (branch name AND commit SHA). If it matches, **skip polling entirely** and proceed directly to reporting the result.
+
+This handles the common case where CI has already completed before polling starts — for example, when resuming a session where a previous push already triggered and completed a build.
 
 ### Step 3: Wait and Check Periodically
 
@@ -62,18 +69,27 @@ iOS CI builds typically take **15-30 minutes**, but builds with early errors can
 
 ### Step 4: Fetch and Analyze the Build Log
 
-When a new build-log branch appears with a run number higher than your snapshot:
+When a build-log branch is found (either pre-existing from Step 2 or newly appeared during polling):
 
 ```bash
-git fetch origin build-logs/<new-branch>
-git show origin/build-logs/<new-branch>:build-summary.md
+git fetch origin build-logs/<branch>
+git show origin/build-logs/<branch>:build-summary.md
 ```
 
-**Verify it matches** your branch by checking the `Branch` or `PR` field in build-summary.md. For PR builds, match on **branch name** (not commit SHA, since CI uses a merge commit).
+**Verify it matches** using two checks:
 
-**If multiple new branches appeared** since your last check, pick the one with the highest run number that matches your branch.
+1. **Branch match**: Check the `Branch` or `PR` field in build-summary.md matches the current branch name.
+2. **Commit match**: Extract the `head_sha` from `jobs.json` to verify the build was triggered by the current HEAD commit:
+   ```bash
+   git show origin/build-logs/<branch>:jobs.json | python3 -c "import sys,json; print(json.load(sys.stdin)['jobs'][0]['head_sha'])"
+   ```
+   Compare this value against `HEAD_SHA` recorded in Step 1. The `head_sha` in `jobs.json` is the actual branch HEAD commit (not the merge commit shown in build-summary.md), so it can be compared directly with `git rev-parse HEAD`.
 
-**If the new branch does not match** your branch (i.e., it belongs to a different PR or push), ignore it and continue polling — another PR's build completing should not terminate your poll loop.
+**Both checks must pass.** If the branch matches but the commit does not, the build is stale (from a previous push) — ignore it and continue polling for a newer build.
+
+**If multiple new branches appeared** since your last check, pick the one with the highest run number that matches both branch and commit.
+
+**If the new branch does not match** your branch or commit, ignore it and continue polling — another PR's build or a stale build should not terminate your poll loop.
 
 #### On success (pass)
 
@@ -106,15 +122,16 @@ User: Push my changes and let me know if the build passes.
 
 Claude:
 1. Commits and pushes to the PR branch
-2. Records: BRANCH=claude/my-feature, latest run=150
-3. Launches ONE background task: sleep 60 && git ls-remote ...
-4. STOPS and WAITS — does nothing until task-notification arrives
-5. [1 min later] Receives task-notification (cycle 1/45), reads output — no new branches
-6. Launches another ONE background task, WAITS again
-7. [repeats silently for many cycles — this is normal]
-8. [~20 min later, cycle 20/45] Receives task-notification — new branch: build-logs/151-...-pass!
-9. Fetches build-summary.md, confirms Branch matches
-10. Reports: "CI build passed on branch claude/my-feature."
+2. Records: BRANCH=claude/my-feature, HEAD_SHA=abc1234, latest run=150
+3. Checks run 150 — branch doesn't match, proceeds to polling
+4. Launches ONE background task: sleep 60 && git ls-remote ...
+5. STOPS and WAITS — does nothing until task-notification arrives
+6. [1 min later] Receives task-notification (cycle 1/45), reads output — no new branches
+7. Launches another ONE background task, WAITS again
+8. [repeats silently for many cycles — this is normal]
+9. [~20 min later, cycle 20/45] Receives task-notification — new branch: build-logs/151-...-pass!
+10. Fetches build-summary.md — Branch matches. Checks jobs.json head_sha — matches abc1234.
+11. Reports: "CI build passed for commit abc1234 on branch claude/my-feature."
 ```
 
 ### Non-matching branch (another PR's build)
@@ -128,6 +145,34 @@ Claude:
 5. [18 min later, cycle 18/45] Receives task-notification — new branch: build-logs/152-...-pass
 6. Fetches build-summary.md, sees Branch=claude/my-feature — match!
 7. Reports result to user
+```
+
+### Existing build already matches (resumed session)
+
+```
+User: [Resumes session] Poll for build logs.
+
+Claude:
+1. Records: BRANCH=claude/my-feature, HEAD_SHA=abc1234
+2. Snapshots existing branches — highest is build-logs/177-...-pass
+3. Fetches build-summary.md for run 177, sees Branch=claude/my-feature — branch matches
+4. Checks jobs.json head_sha for run 177 — abc1234 — commit matches!
+5. Skips polling entirely, reports: "CI build already passed for commit abc1234 on branch claude/my-feature (run #177)."
+```
+
+### Stale build (new commits pushed after previous build)
+
+```
+User: [Resumes session, pushes new commit] Poll for build logs.
+
+Claude:
+1. Records: BRANCH=claude/my-feature, HEAD_SHA=def5678
+2. Snapshots existing branches — highest is build-logs/177-...-pass
+3. Fetches build-summary.md for run 177, sees Branch=claude/my-feature — branch matches
+4. Checks jobs.json head_sha for run 177 — abc1234 — does NOT match def5678
+5. Build is stale, proceeds to polling loop for a newer build
+6. [~20 min later] New branch: build-logs/178-...-pass
+7. Verifies branch AND commit match — reports result
 ```
 
 ## Important Notes
