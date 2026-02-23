@@ -17,15 +17,19 @@ Note the current branch name for matching later:
 git branch --show-current
 ```
 
-### Step 2: Snapshot Existing Branches
+### Step 2: Snapshot Existing Branches and Check for Existing Match
 
-Record the current build-log branches so you can detect new ones:
+Record the current build-log branches:
 
 ```bash
 git ls-remote --heads origin 'refs/heads/build-logs/*'
 ```
 
 Note the highest run number (e.g., `build-logs/150-...`).
+
+**Before polling, check if the most recent build-log branch already matches the current branch.** Fetch the branch with the highest run number, read its `build-summary.md`, and check the `Branch` field. If it matches the current branch, **skip polling entirely** and proceed directly to Step 4 to analyze and report the result.
+
+This handles the common case where CI has already completed before polling starts — for example, when resuming a session where a previous push already triggered and completed a build.
 
 ### Step 3: Wait and Check Periodically
 
@@ -128,6 +132,18 @@ Claude:
 5. [18 min later, cycle 18/45] Receives task-notification — new branch: build-logs/152-...-pass
 6. Fetches build-summary.md, sees Branch=claude/my-feature — match!
 7. Reports result to user
+```
+
+### Existing build already matches (resumed session)
+
+```
+User: [Resumes session] Poll for build logs.
+
+Claude:
+1. Records: BRANCH=claude/my-feature
+2. Snapshots existing branches — highest is build-logs/177-...-pass
+3. Fetches build-summary.md for run 177, sees Branch=claude/my-feature — match!
+4. Skips polling entirely, reports: "CI build already passed on branch claude/my-feature (run #177)."
 ```
 
 ## Important Notes
