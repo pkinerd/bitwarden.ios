@@ -10,11 +10,11 @@ priority: high
 
 ## Description
 
-`makeCopy` manually copies 28 properties; new SDK properties with defaults are silently dropped.
+Manual property copying of BitwardenSdk types is **pervasive across the codebase** — not limited to offline sync. 15+ distinct methods manually call full SDK initializers, copying every property by name. New SDK properties with defaults are silently dropped (data loss risk).
 
-**What's Done:** `makeCopy` consolidation, DocC `- Important:` callouts, Mirror-based property count guard tests (28 CipherView, 7 LoginView).
+**What's Done:** `makeCopy` consolidation in offline sync, DocC `- Important:` callouts on 4 methods, Mirror-based property count guard tests (28 CipherView, 7 LoginView).
 
-**What Remains:** Underlying fragility remains inherent to external SDK types. Developers must still manually add properties to `makeCopy` when tests fail. 5 copy methods across 2 files affected.
+**What Remains:** 15+ manual copy locations across 8+ files, covering 6 SDK types. Guard tests only cover CipherView and LoginView. Cipher (27 props, 2 methods), IdentityView (16 props, 2 locations), CardView, and SshKeyView have **zero automated protection**.
 
 **Severity:** High
 **Complexity:** Medium
@@ -195,3 +195,94 @@ Mitigations verified in place:
 3. `withId(_:)` and `update(name:)` both delegate to `makeCopy` — single point of change
 
 Inherent fragility remains: external SDK types require manual property copying. Only SDK-native copy methods (Option C) would fully resolve this.
+
+### claude — 2026-02-25
+
+**Full codebase audit completed — scope is much larger than originally documented.**
+
+Manual property copying of BitwardenSdk types exists in **15+ distinct methods** across the codebase. The offline sync feature inherited this pre-existing pattern and added the most robust mitigations anywhere in the project.
+
+---
+
+#### Complete Inventory of Manual Copy Locations
+
+##### Production Code — CipherView (28 properties)
+
+| File | Method | Lines | Has DocC Warning? | Has Guard Test? |
+|------|--------|-------|-------------------|-----------------|
+| `CipherView+OfflineSync.swift` | `makeCopy()` (private) | 66-103 | Yes | Yes |
+| `CipherView+Update.swift` | `updatedView(with:timeProvider:)` | 184-212 | Yes | No |
+| `CipherView+Update.swift` | private `update()` | 362-391 | Yes | No |
+
+`withId(_:)` and `update(name:)` in OfflineSync delegate to `makeCopy`. Five `update(...)` variants in +Update delegate to private `update()`. So there are **3 distinct full-init call sites** for CipherView.
+
+##### Production Code — Cipher (27 properties) — NO MITIGATIONS
+
+| File | Method | Lines | Has DocC Warning? | Has Guard Test? |
+|------|--------|-------|-------------------|-----------------|
+| `Cipher+Update.swift` | `update(attachments:revisionDate:)` | 13-42 | **No** | **No** |
+| `Cipher+Update.swift` | `update(folderId:)` | 51-80 | **No** | **No** |
+
+##### Production Code — LoginView (7 properties)
+
+| File | Method | Lines | Has DocC Warning? | Has Guard Test? |
+|------|--------|-------|-------------------|-----------------|
+| `CipherView+Update.swift` | `LoginView.update(totp:)` | 406-413 | Yes | No (covered by OfflineSync guard test) |
+| `LoginView+Update.swift` | `init(loginView:loginState:)` | 13-21 | **No** | **No** |
+
+##### Production Code — IdentityView (16 properties) — NO MITIGATIONS
+
+| File | Method | Lines |
+|------|--------|-------|
+| `IdentityView+Update.swift` | `init(identityView:identityState:)` | 13-35 |
+| `IdentityItemState.swift` | `identityView` computed property | 108-127 |
+
+##### Production Code — CardView (6 properties) — NO MITIGATIONS
+
+| File | Method | Lines |
+|------|--------|-------|
+| `CardItemState.swift` | `cardView` computed property | 35-48 |
+
+##### Production Code — SshKeyView (3 properties) — NO MITIGATIONS
+
+| File | Method | Lines |
+|------|--------|-------|
+| `SSHKeyItemState.swift` | `sshKeyView` computed property | 25-29 |
+
+##### Fixture Files (BitwardenShared + AuthenticatorShared)
+
+`BitwardenSdk+VaultFixtures.swift` contains `.fixture()` factory methods for: `Cipher` (27), `CipherView` (28, with `.cardFixture()`, `.loginFixture()`, `.totpFixture()` variants), `LoginView` (7), `IdentityView`, `CardView` (6), `SshKeyView`, `AttachmentView`, `FieldView`, `PasswordHistoryView`. New required SDK params cause compile errors (safe), but new optional params with defaults are silently missed.
+
+---
+
+#### Mitigation Coverage Summary
+
+| Mitigation | Where Applied | Where Missing |
+|------------|---------------|---------------|
+| **Mirror-based guard tests** | CipherView (28), LoginView (7) — offline sync tests only | Cipher (27), IdentityView (16), CardView (6), SshKeyView (3), all fixtures |
+| **DocC `- Important:` callout** | 4 methods (OfflineSync + CipherView+Update) | Cipher+Update (2), LoginView+Update, IdentityView+Update, state-to-view conversions, all fixtures |
+| **Single-helper consolidation** | OfflineSync (`makeCopy`), CipherView+Update (private `update()`) | Cipher+Update has 2 independent full-init copies |
+
+---
+
+#### Risk Assessment
+
+**High Risk — No automated detection:**
+- `Cipher` (27 props, 2 methods) — completely unprotected
+- `IdentityView` (16 props, 2 locations) — completely unprotected
+
+**Medium Risk:**
+- `CipherView` (28 props, 3 methods) — guard tests catch count changes
+- `LoginView` (7 props, 2 methods) — guard test covers count but not all call sites
+
+**Lower Risk (fewer properties):**
+- `CardView` (6 props, 1 location), `SshKeyView` (3 props, 1 location) — no detection
+
+---
+
+#### Recommended Next Steps
+
+1. **Extend Mirror-based guard tests** to cover Cipher (27), IdentityView (16), CardView (6), SshKeyView (3) — highest-value, lowest-effort improvement
+2. **Add DocC warnings** to Cipher+Update.swift (2 methods) and LoginView+Update.swift
+3. **Consolidate Cipher+Update.swift** — both methods copy all 27 properties independently; a shared helper would reduce surface
+4. **Long-term:** Option C (SDK-native copy/clone methods) remains ideal
