@@ -91,17 +91,17 @@ class PendingCipherChangeData: NSManagedObject {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int = 0
+        offlinePasswordChangeCount: Int = 0,
     ) {
         self.init(context: context)
         self.id = id
         self.cipherId = cipherId
         self.userId = userId
-        self.changeTypeRaw = changeType.rawValue
+        changeTypeRaw = changeType.rawValue
         self.cipherData = cipherData
         self.originalRevisionDate = originalRevisionDate
-        self.createdDate = Date()
-        self.updatedDate = Date()
+        createdDate = Date()
+        updatedDate = Date()
         self.offlinePasswordChangeCount = Int64(offlinePasswordChangeCount)
     }
 }
@@ -131,7 +131,7 @@ extension PendingCipherChangeData {
             #keyPath(PendingCipherChangeData.userId),
             userId,
             #keyPath(PendingCipherChangeData.cipherId),
-            cipherId
+            cipherId,
         )
     }
 
@@ -164,7 +164,7 @@ extension PendingCipherChangeData {
     ///
     static func fetchByCipherIdRequest(
         userId: String,
-        cipherId: String
+        cipherId: String,
     ) -> NSFetchRequest<PendingCipherChangeData> {
         let request = NSFetchRequest<PendingCipherChangeData>(entityName: "PendingCipherChangeData")
         request.predicate = userIdAndCipherIdPredicate(userId: userId, cipherId: cipherId)

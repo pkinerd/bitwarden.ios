@@ -82,7 +82,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         cipherAPIService: CipherAPIService,
         cipherService: CipherService,
         clientService: ClientService,
-        pendingCipherChangeDataStore: PendingCipherChangeDataStore
+        pendingCipherChangeDataStore: PendingCipherChangeDataStore,
     ) {
         self.cipherAPIService = cipherAPIService
         self.cipherService = cipherService
@@ -101,7 +101,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
                 try await resolve(pendingChange: pendingChange, userId: userId)
             } catch {
                 Logger.application.error(
-                    "Failed to resolve pending change for cipher \(pendingChange.cipherId ?? "nil"): \(error)"
+                    "Failed to resolve pending change for cipher \(pendingChange.cipherId ?? "nil"): \(error)",
                 )
             }
         }
@@ -166,7 +166,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     private func resolveUpdate(
         pendingChange: PendingCipherChangeData,
         cipherId: String,
-        userId: String
+        userId: String,
     ) async throws {
         guard let localCipherData = pendingChange.cipherData else {
             throw OfflineSyncError.missingCipherData
@@ -203,7 +203,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
                 localCipher: localCipher,
                 serverCipher: serverCipher,
                 pendingChange: pendingChange,
-                userId: userId
+                userId: userId,
             )
         } else if hasSoftConflict {
             // No server-side changes, but 4+ offline password changes - backup server version
@@ -211,7 +211,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
             try await createBackupCipher(
                 from: serverCipher,
                 timestamp: serverRevisionDate,
-                userId: userId
+                userId: userId,
             )
             try await cipherService.updateCipherWithServer(localCipher, encryptedFor: userId)
         } else {
@@ -229,7 +229,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         localCipher: Cipher,
         serverCipher: Cipher,
         pendingChange: PendingCipherChangeData,
-        userId: String
+        userId: String,
     ) async throws {
         let localTimestamp = pendingChange.updatedDate ?? pendingChange.createdDate ?? Date.distantPast
         let serverTimestamp = serverCipher.revisionDate
@@ -241,7 +241,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
             try await createBackupCipher(
                 from: serverCipher,
                 timestamp: serverTimestamp,
-                userId: userId
+                userId: userId,
             )
             try await cipherService.updateCipherWithServer(localCipher, encryptedFor: userId)
         } else {
@@ -251,7 +251,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
             try await createBackupCipher(
                 from: localCipher,
                 timestamp: localTimestamp,
-                userId: userId
+                userId: userId,
             )
             try await cipherService.updateCipherWithLocalStorage(serverCipher)
         }
@@ -269,7 +269,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         pendingChange: PendingCipherChangeData,
         cipherId: String,
         userId: String,
-        permanent: Bool
+        permanent: Bool,
     ) async throws {
         // Check if the server version was modified while we were offline.
         let serverCipher: Cipher
@@ -320,7 +320,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
     private func createBackupCipher(
         from cipher: Cipher,
         timestamp: Date,
-        userId: String
+        userId: String,
     ) async throws {
         // Decrypt the cipher to modify its name
         let decryptedCipher = try await clientService.vault().ciphers().decrypt(cipher: cipher)
@@ -338,7 +338,7 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         let encryptionContext = try await clientService.vault().ciphers().encrypt(cipherView: backupCipherView)
         try await cipherService.addCipherWithServer(
             encryptionContext.cipher,
-            encryptedFor: encryptionContext.encryptedFor
+            encryptedFor: encryptionContext.encryptedFor,
         )
     }
 }

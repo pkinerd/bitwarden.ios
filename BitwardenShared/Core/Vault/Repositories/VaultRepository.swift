@@ -523,7 +523,7 @@ extension DefaultVaultRepository: VaultRepository {
             if let cipherId = cipherEncryptionContext.cipher.id {
                 try await pendingCipherChangeDataStore.deletePendingChange(
                     cipherId: cipherId,
-                    userId: cipherEncryptionContext.encryptedFor
+                    userId: cipherEncryptionContext.encryptedFor,
                 )
             }
         } catch let error as ServerError {
@@ -541,7 +541,7 @@ extension DefaultVaultRepository: VaultRepository {
             }
             try await handleOfflineAdd(
                 encryptedCipher: cipherEncryptionContext.cipher,
-                userId: cipherEncryptionContext.encryptedFor
+                userId: cipherEncryptionContext.encryptedFor,
             )
         }
     }
@@ -666,7 +666,7 @@ extension DefaultVaultRepository: VaultRepository {
             let userId = try await stateService.getActiveAccountId()
             try await pendingCipherChangeDataStore.deletePendingChange(
                 cipherId: id,
-                userId: userId
+                userId: userId,
             )
         } catch let error as ServerError {
             throw error
@@ -939,7 +939,7 @@ extension DefaultVaultRepository: VaultRepository {
             let userId = try await stateService.getActiveAccountId()
             try await pendingCipherChangeDataStore.deletePendingChange(
                 cipherId: id,
-                userId: userId
+                userId: userId,
             )
         } catch let error as ServerError {
             throw error
@@ -986,7 +986,7 @@ extension DefaultVaultRepository: VaultRepository {
             if let cipherId = cipherEncryptionContext.cipher.id {
                 try await pendingCipherChangeDataStore.deletePendingChange(
                     cipherId: cipherId,
-                    userId: cipherEncryptionContext.encryptedFor
+                    userId: cipherEncryptionContext.encryptedFor,
                 )
             }
         } catch let error as ServerError {
@@ -1005,7 +1005,7 @@ extension DefaultVaultRepository: VaultRepository {
             try await handleOfflineUpdate(
                 cipherView: cipherView,
                 encryptedCipher: cipherEncryptionContext.cipher,
-                userId: cipherEncryptionContext.encryptedFor
+                userId: cipherEncryptionContext.encryptedFor,
             )
         }
     }
@@ -1044,7 +1044,7 @@ extension DefaultVaultRepository: VaultRepository {
             changeType: .create,
             cipherData: cipherData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
     }
 
@@ -1058,7 +1058,7 @@ extension DefaultVaultRepository: VaultRepository {
     private func handleOfflineUpdate(
         cipherView: CipherView,
         encryptedCipher: Cipher,
-        userId: String
+        userId: String,
     ) async throws {
         guard let cipherId = encryptedCipher.id else {
             throw CipherAPIServiceError.updateMissingId
@@ -1067,10 +1067,10 @@ extension DefaultVaultRepository: VaultRepository {
         // Check for existing pending change to determine password change count
         let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
             cipherId: cipherId,
-            userId: userId
+            userId: userId,
         )
 
-        var passwordChangeCount: Int = Int(existing?.offlinePasswordChangeCount ?? 0)
+        var passwordChangeCount = Int(existing?.offlinePasswordChangeCount ?? 0)
 
         // Detect password change by comparing with the previous version in local storage.
         // This must happen before updateCipherWithLocalStorage overwrites the previous version.
@@ -1100,7 +1100,7 @@ extension DefaultVaultRepository: VaultRepository {
             changeType: changeType,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: passwordChangeCount
+            offlinePasswordChangeCount: passwordChangeCount,
         )
     }
 
@@ -1137,7 +1137,7 @@ extension DefaultVaultRepository: VaultRepository {
             changeType: .hardDelete,
             cipherData: nil,
             originalRevisionDate: cipher.revisionDate,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
     }
 
@@ -1165,7 +1165,7 @@ extension DefaultVaultRepository: VaultRepository {
             changeType: .softDelete,
             cipherData: nil,
             originalRevisionDate: encryptedCipher.revisionDate,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
     }
 
@@ -1184,11 +1184,11 @@ extension DefaultVaultRepository: VaultRepository {
     ///
     private func cleanUpOfflineCreatedCipherIfNeeded(
         cipherId: String,
-        userId: String
+        userId: String,
     ) async throws -> Bool {
         guard let existing = try await pendingCipherChangeDataStore.fetchPendingChange(
             cipherId: cipherId,
-            userId: userId
+            userId: userId,
         ), existing.changeType == .create else {
             return false
         }

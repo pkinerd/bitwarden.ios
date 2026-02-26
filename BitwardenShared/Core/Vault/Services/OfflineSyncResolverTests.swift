@@ -35,7 +35,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             cipherAPIService: cipherAPIService,
             cipherService: cipherService,
             clientService: clientService,
-            pendingCipherChangeDataStore: pendingCipherChangeDataStore
+            pendingCipherChangeDataStore: pendingCipherChangeDataStore,
         )
     }
 
@@ -58,7 +58,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         changeType: PendingCipherChangeType,
         cipherData: Data? = nil,
         originalRevisionDate: Date? = nil,
-        offlinePasswordChangeCount: Int = 0
+        offlinePasswordChangeCount: Int = 0,
     ) async throws {
         try await dataStore.upsertPendingChange(
             cipherId: cipherId,
@@ -66,7 +66,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: changeType,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: offlinePasswordChangeCount
+            offlinePasswordChangeCount: offlinePasswordChangeCount,
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
@@ -106,19 +106,19 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_update_noConflict() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         // Server cipher has the same revisionDate
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -135,18 +135,18 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_softDelete_noConflict() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate),
         )
         try await setupPendingChange(
             changeType: .softDelete,
             cipherData: cipherData,
-            originalRevisionDate: revisionDate
+            originalRevisionDate: revisionDate,
         )
 
         // Server cipher has the same revisionDate
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -168,13 +168,13 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
         let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: originalRevisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: originalRevisionDate),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         // Server cipher has a different revision date (triggers conflict).
@@ -182,7 +182,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // (approximately "now"), so local wins.
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -212,14 +212,14 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
         let cipherData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(
-                id: "cipher-1", name: "Local Cipher", revisionDate: originalRevisionDate
-            )
+                id: "cipher-1", name: "Local Cipher", revisionDate: originalRevisionDate,
+            ),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         // Server cipher has a different revision date (triggers conflict) and its
@@ -227,7 +227,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
             name: "Server Cipher",
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -253,19 +253,19 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_update_softConflict() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 4
+            offlinePasswordChangeCount: 4,
         )
 
         // Server cipher has the same revision date (no conflict).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -294,21 +294,21 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let localPasswordHistory = [
             CipherPasswordHistoryModel(
                 lastUsedDate: Date(year: 2024, month: 5, day: 1),
-                password: "local-old-pass"
+                password: "local-old-pass",
             ),
         ]
         let cipherData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(
                 id: "cipher-1",
                 passwordHistory: localPasswordHistory,
-                revisionDate: originalRevisionDate
-            )
+                revisionDate: originalRevisionDate,
+            ),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         // Server cipher with a different password history.
@@ -317,10 +317,10 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             passwordHistory: [
                 CipherPasswordHistoryModel(
                     lastUsedDate: Date(year: 2024, month: 6, day: 10),
-                    password: "server-old-pass"
+                    password: "server-old-pass",
                 ),
             ],
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -347,25 +347,25 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let localPasswordHistory = [
             CipherPasswordHistoryModel(
                 lastUsedDate: Date(year: 2024, month: 5, day: 1),
-                password: "local-old-pass-1"
+                password: "local-old-pass-1",
             ),
             CipherPasswordHistoryModel(
                 lastUsedDate: Date(year: 2024, month: 5, day: 15),
-                password: "local-old-pass-2"
+                password: "local-old-pass-2",
             ),
         ]
         let cipherData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(
                 id: "cipher-1",
                 passwordHistory: localPasswordHistory,
-                revisionDate: originalRevisionDate
-            )
+                revisionDate: originalRevisionDate,
+            ),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         // Server cipher with a different password history.
@@ -374,10 +374,10 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             passwordHistory: [
                 CipherPasswordHistoryModel(
                     lastUsedDate: Date(year: 2024, month: 6, day: 10),
-                    password: "server-old-pass"
+                    password: "server-old-pass",
                 ),
             ],
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -404,35 +404,35 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let localPasswordHistory = [
             CipherPasswordHistoryModel(
                 lastUsedDate: Date(year: 2024, month: 6, day: 2),
-                password: "old-pass-1"
+                password: "old-pass-1",
             ),
             CipherPasswordHistoryModel(
                 lastUsedDate: Date(year: 2024, month: 6, day: 3),
-                password: "old-pass-2"
+                password: "old-pass-2",
             ),
             CipherPasswordHistoryModel(
                 lastUsedDate: Date(year: 2024, month: 6, day: 4),
-                password: "old-pass-3"
+                password: "old-pass-3",
             ),
         ]
         let cipherData = try JSONEncoder().encode(
             CipherDetailsResponseModel.fixture(
                 id: "cipher-1",
                 passwordHistory: localPasswordHistory,
-                revisionDate: revisionDate
-            )
+                revisionDate: revisionDate,
+            ),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 4
+            offlinePasswordChangeCount: 4,
         )
 
         // Server cipher has no password history (unchanged since going offline).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -456,18 +456,18 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
         let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: originalRevisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: originalRevisionDate),
         )
         try await setupPendingChange(
             changeType: .softDelete,
             cipherData: cipherData,
-            originalRevisionDate: originalRevisionDate
+            originalRevisionDate: originalRevisionDate,
         )
 
         // Server cipher has a different revision date (triggers conflict).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -495,7 +495,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Server cipher has the same revisionDate.
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -521,7 +521,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Server cipher has a different revision date (triggers conflict).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -545,7 +545,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_hardDelete_cipherNotFound_cleansUp() async throws {
         try await setupPendingChange(
             changeType: .hardDelete,
-            originalRevisionDate: Date(year: 2024, month: 6, day: 1)
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
         )
 
         // Server returns 404 — cipher is already gone.
@@ -572,7 +572,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Server fetch succeeds with the same revisionDate (no conflict).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         // Make the hard delete API call fail.
@@ -595,7 +595,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         // Server returns 404 — cipher was deleted while offline.
@@ -622,7 +622,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         try await setupPendingChange(
             changeType: .softDelete,
             cipherData: cipherData,
-            originalRevisionDate: Date(year: 2024, month: 6, day: 1)
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
         )
 
         // Server returns 404 — cipher is already gone.
@@ -662,12 +662,12 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_update_serverFetchFailure_pendingRecordRetained() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
-            originalRevisionDate: revisionDate
+            originalRevisionDate: revisionDate,
         )
 
         // Make the server fetch fail with a non-404 error.
@@ -687,18 +687,18 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_softDelete_apiFailure_pendingRecordRetained() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate),
         )
         try await setupPendingChange(
             changeType: .softDelete,
             cipherData: cipherData,
-            originalRevisionDate: revisionDate
+            originalRevisionDate: revisionDate,
         )
 
         // Server fetch succeeds with the same revisionDate (no conflict).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         // Make the soft delete API call fail.
@@ -717,19 +717,19 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
         let serverRevisionDate = Date(year: 2024, month: 6, day: 15)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: originalRevisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: originalRevisionDate),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         // Server has a different revisionDate (triggers conflict).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         // Make the backup cipher creation fail. In the conflict path (local newer),
@@ -754,10 +754,10 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let createData = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-1"))
         let updateData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-2", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-2", revisionDate: revisionDate),
         )
         let softDeleteData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-3", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-3", revisionDate: revisionDate),
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1",
@@ -765,7 +765,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-2",
@@ -773,7 +773,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: updateData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-3",
@@ -781,7 +781,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .softDelete,
             cipherData: softDeleteData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
@@ -789,7 +789,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // Server returns same revisionDate for update and soft delete (no conflict).
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-2",
-            revisionDate: revisionDate
+            revisionDate: revisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -816,7 +816,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         // cipher-1 (.create) will succeed; cipher-2 (.update) will fail (getCipher throws).
         let createData = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-1"))
         let updateData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-2", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-2", revisionDate: revisionDate),
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-1",
@@ -824,7 +824,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-2",
@@ -832,7 +832,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .update,
             cipherData: updateData,
             originalRevisionDate: revisionDate,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
@@ -866,7 +866,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData1,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         try await dataStore.upsertPendingChange(
             cipherId: "cipher-2",
@@ -874,7 +874,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: createData2,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
@@ -898,7 +898,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_create_corruptCipherData_skipsAndRetains() async throws {
         try await setupPendingChange(
             changeType: .create,
-            cipherData: Data("not-valid-json".utf8)
+            cipherData: Data("not-valid-json".utf8),
         )
 
         try await subject.processPendingChanges(userId: "1")
@@ -917,7 +917,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             cipherId: "cipher-1",
             changeType: .update,
             cipherData: Data("not-valid-json".utf8),
-            originalRevisionDate: Date(year: 2026, month: 1, day: 1)
+            originalRevisionDate: Date(year: 2026, month: 1, day: 1),
         )
 
         try await subject.processPendingChanges(userId: "1")
@@ -939,7 +939,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: Data("{invalid".utf8),
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
 
         // Second item: valid cipherData (will succeed).
@@ -950,7 +950,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             changeType: .create,
             cipherData: validData,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
@@ -985,7 +985,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             cipherId: "cipher-1",
             changeType: .update,
             cipherData: nil,
-            originalRevisionDate: Date(year: 2024, month: 6, day: 1)
+            originalRevisionDate: Date(year: 2024, month: 6, day: 1),
         )
 
         try await subject.processPendingChanges(userId: "1")
@@ -999,19 +999,19 @@ class OfflineSyncResolverTests: BitwardenTestCase {
     func test_processPendingChanges_update_nilOriginalRevisionDate_noConflict() async throws {
         let revisionDate = Date(year: 2024, month: 6, day: 1)
         let cipherData = try JSONEncoder().encode(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: revisionDate),
         )
         try await setupPendingChange(
             cipherId: "cipher-1",
             changeType: .update,
             cipherData: cipherData,
-            originalRevisionDate: nil
+            originalRevisionDate: nil,
         )
 
         // Server has a different revision date, but originalRevisionDate is nil.
         let serverRevision = Date(year: 2024, month: 7, day: 15)
         cipherAPIService.getCipherResult = .success(
-            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: serverRevision)
+            CipherDetailsResponseModel.fixture(id: "cipher-1", revisionDate: serverRevision),
         )
 
         try await subject.processPendingChanges(userId: "1")
@@ -1021,6 +1021,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         XCTAssertTrue(cipherService.addCipherWithServerCiphers.isEmpty)
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByIdCalledWith.count, 1)
     }
+
     // MARK: Backup Naming Tests
 
     /// `createBackupCipher` produces a backup name following the pattern
@@ -1033,20 +1034,20 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             CipherDetailsResponseModel.fixture(
                 id: "cipher-1",
                 name: "My Secret Login",
-                revisionDate: originalRevisionDate
-            )
+                revisionDate: originalRevisionDate,
+            ),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
             name: "Server Version",
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -1059,7 +1060,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let backupName = try XCTUnwrap(backupCipher?.name)
         XCTAssertTrue(
             backupName.hasPrefix("My Secret Login - "),
-            "Backup name should start with original name + separator, got: \(backupName)"
+            "Backup name should start with original name + separator, got: \(backupName)",
         )
         // Verify the timestamp suffix matches the expected date format.
         let timestampSuffix = String(backupName.dropFirst("My Secret Login - ".count))
@@ -1067,7 +1068,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         XCTAssertNotNil(
             dateFormatter.date(from: timestampSuffix),
-            "Timestamp suffix '\(timestampSuffix)' should parse as yyyy-MM-dd HH:mm:ss"
+            "Timestamp suffix '\(timestampSuffix)' should parse as yyyy-MM-dd HH:mm:ss",
         )
     }
 

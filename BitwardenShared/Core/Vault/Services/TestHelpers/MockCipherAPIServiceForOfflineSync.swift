@@ -36,7 +36,7 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
             statusCode: 200,
             headers: [:],
             body: Data(),
-            requestID: UUID()
+            requestID: UUID(),
         ))
     }
 
@@ -55,7 +55,7 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
             statusCode: 200,
             headers: [:],
             body: Data(),
-            requestID: UUID()
+            requestID: UUID(),
         ))
     }
 
@@ -65,20 +65,20 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
     func archiveCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
     func addCipherWithCollections(
         _ cipher: Cipher,
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> CipherDetailsResponseModel { fatalError() }
     func bulkShareCiphers(
         _ ciphers: [Cipher],
         collectionIds: [String],
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> BulkShareCiphersResponseModel { fatalError() }
     func deleteAttachment(
         withID attachmentId: String,
-        cipherId: String
+        cipherId: String,
     ) async throws -> DeleteAttachmentResponse { fatalError() }
     func downloadAttachment(
         withId id: String,
-        cipherId: String
+        cipherId: String,
     ) async throws -> DownloadAttachmentResponse { fatalError() }
     func downloadAttachmentData(from url: URL) async throws -> URL? { fatalError() }
     func restoreCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
@@ -86,17 +86,17 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
         cipherId: String,
         fileName: String?,
         fileSize: Int?,
-        key: String?
+        key: String?,
     ) async throws -> SaveAttachmentResponse { fatalError() }
     func shareCipher(
         _ cipher: Cipher,
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> CipherDetailsResponseModel { fatalError() }
 
     func unarchiveCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
     func updateCipher(
         _ cipher: Cipher,
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> CipherDetailsResponseModel { fatalError() }
     func updateCipherCollections(_ cipher: Cipher) async throws { fatalError() }
     func updateCipherPreference(_ cipher: Cipher) async throws -> CipherDetailsResponseModel { fatalError() }

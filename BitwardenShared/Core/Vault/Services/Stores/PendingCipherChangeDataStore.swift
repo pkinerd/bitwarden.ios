@@ -40,7 +40,7 @@ protocol PendingCipherChangeDataStore: AnyObject {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int
+        offlinePasswordChangeCount: Int,
     ) async throws
     // swiftlint:enable function_parameter_count
 

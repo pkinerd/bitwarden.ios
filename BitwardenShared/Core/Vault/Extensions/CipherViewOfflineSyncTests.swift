@@ -29,11 +29,11 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
                 uris: nil,
                 totp: "totp-secret",
                 autofillOnPageLoad: nil,
-                fido2Credentials: nil
+                fido2Credentials: nil,
             ),
             name: "My Login",
             notes: "Notes here",
-            organizationId: "org-1"
+            organizationId: "org-1",
         )
 
         let result = original.withId("assigned-id")
@@ -63,7 +63,7 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
     func test_update_setsNameAndPreservesFolderId() {
         let original = CipherView.fixture(
             folderId: "original-folder",
-            name: "Old Name"
+            name: "Old Name",
         )
 
         let updated = original.update(name: "Conflict Copy")
@@ -94,7 +94,7 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
     /// are not duplicated to backup copies.
     func test_update_setsAttachmentsToNil() {
         let original = CipherView.fixture(
-            attachments: [AttachmentView.fixture(id: "att-1")]
+            attachments: [AttachmentView.fixture(id: "att-1")],
         )
 
         let updated = original.update(name: "Copy")
@@ -141,7 +141,7 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
             28,
             "CipherView property count changed from 28 to \(propertyCount). "
                 + "Update all manual CipherView copy methods listed in this test's documentation, "
-                + "then update this expected count."
+                + "then update this expected count.",
         )
     }
 
@@ -165,7 +165,7 @@ class CipherViewOfflineSyncTests: BitwardenTestCase {
             7,
             "LoginView property count changed from 7 to \(propertyCount). "
                 + "Update all manual LoginView copy methods listed in this test's documentation, "
-                + "then update this expected count."
+                + "then update this expected count.",
         )
     }
 }
