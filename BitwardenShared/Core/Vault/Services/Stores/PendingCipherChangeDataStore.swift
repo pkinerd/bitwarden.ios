@@ -33,6 +33,7 @@ protocol PendingCipherChangeDataStore: AnyObject {
     ///   - originalRevisionDate: The cipher's revision date before the first offline edit.
     ///   - offlinePasswordChangeCount: The number of offline password changes.
     ///
+    // swiftlint:disable:next function_parameter_count
     func upsertPendingChange(
         cipherId: String,
         userId: String,
@@ -88,6 +89,7 @@ extension DataStore: PendingCipherChangeDataStore {
         }
     }
 
+    // swiftlint:disable:next function_parameter_count
     func upsertPendingChange(
         cipherId: String,
         userId: String,
