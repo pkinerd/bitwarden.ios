@@ -1,0 +1,1791 @@
+﻿2026-02-26T07:47:45.7178580Z Current runner version: '2.331.0'
+2026-02-26T07:47:45.7198170Z ##[group]Runner Image Provisioner
+2026-02-26T07:47:45.7199160Z Hosted Compute Agent
+2026-02-26T07:47:45.7199810Z Version: 20260213.493
+2026-02-26T07:47:45.7200540Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-02-26T07:47:45.7201020Z Build Date: 2026-02-13T00:28:41Z
+2026-02-26T07:47:45.7201520Z Worker ID: {e6153a2c-0637-49e4-8dde-8d47960998bf}
+2026-02-26T07:47:45.7201980Z Azure Region: westus
+2026-02-26T07:47:45.7202340Z ##[endgroup]
+2026-02-26T07:47:45.7203480Z ##[group]Operating System
+2026-02-26T07:47:45.7203920Z macOS
+2026-02-26T07:47:45.7204210Z 26.3
+2026-02-26T07:47:45.7206780Z 25D125
+2026-02-26T07:47:45.7207070Z ##[endgroup]
+2026-02-26T07:47:45.7210340Z ##[group]Runner Image
+2026-02-26T07:47:45.7210730Z Image: macos-26-arm64
+2026-02-26T07:47:45.7213160Z Version: 20260218.0219.1
+2026-02-26T07:47:45.7214010Z Included Software: https://github.com/actions/runner-images/blob/macos-26-arm64/20260218.0219/images/macos/macos-26-arm64-Readme.md
+2026-02-26T07:47:45.7215040Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-26-arm64%2F20260218.0219
+2026-02-26T07:47:45.7218640Z ##[endgroup]
+2026-02-26T07:47:45.7219350Z ##[group]GITHUB_TOKEN Permissions
+2026-02-26T07:47:45.7220750Z Contents: read
+2026-02-26T07:47:45.7221130Z Metadata: read
+2026-02-26T07:47:45.7221460Z ##[endgroup]
+2026-02-26T07:47:45.7223070Z Secret source: Actions
+2026-02-26T07:47:45.7224430Z Prepare workflow directory
+2026-02-26T07:47:45.7631020Z Prepare all required actions
+2026-02-26T07:47:45.7659230Z Getting action download info
+2026-02-26T07:47:46.2409990Z Download action repository 'bitwarden/ios@main' (SHA:e796f494adf2081114cf1d72a556daad4ade7bbe)
+2026-02-26T07:47:55.0996440Z Download action repository 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' (SHA:08c6903cd8c0fde910a37f88322edcfb5dd907a8)
+2026-02-26T07:47:55.1749140Z Download action repository 'maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd' (SHA:60606e260d2fc5762a71e64e74b2174e8ea3c8bd)
+2026-02-26T07:47:55.7452510Z Download action repository 'ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb' (SHA:44511735964dcb71245e7e55f72539531f7bc0eb)
+2026-02-26T07:47:56.3556050Z Download action repository 'actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809' (SHA:0400d5f644dc74513175e3cd8d07132dd4860809)
+2026-02-26T07:47:56.4473900Z Download action repository 'actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4' (SHA:330a01c490aca151604b8cf639adc76d48f6c5d4)
+2026-02-26T07:47:56.5516910Z Download action repository 'appetizeio/github-action-appetize@v1.0.5' (SHA:ad90cd939d77bd5234ee5354ef7780e0bf4b7eaa)
+2026-02-26T07:47:57.4584110Z Complete job name: Test
+2026-02-26T07:47:57.4957490Z ##[group]Run bitwarden/ios/.github/actions/log-inputs@main
+2026-02-26T07:47:57.4957960Z with:
+2026-02-26T07:47:57.4958090Z   inputs: {}
+2026-02-26T07:47:57.4958310Z env:
+2026-02-26T07:47:57.4958430Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:47:57.4958590Z   MINT_PATH: .mint/lib
+2026-02-26T07:47:57.4958760Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:47:57.4958980Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:47:57.4959250Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:47:57.4959460Z   _SIMULATOR_NAME: 
+2026-02-26T07:47:57.4959590Z   _SIMULATOR_VERSION: 
+2026-02-26T07:47:57.4959730Z   _XCODE_VERSION: 
+2026-02-26T07:47:57.4959860Z   _COMPILER_FLAGS: 
+2026-02-26T07:47:57.4960180Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:47:57.4960520Z ##[endgroup]
+2026-02-26T07:47:57.5035610Z ##[group]Run {
+2026-02-26T07:47:57.5035830Z [36;1m{[0m
+2026-02-26T07:47:57.5036070Z [36;1m  echo "<details><summary>Job Inputs</summary>"[0m
+2026-02-26T07:47:57.5036290Z [36;1m  echo ""[0m
+2026-02-26T07:47:57.5036430Z [36;1m  echo '```json'[0m
+2026-02-26T07:47:57.5036590Z [36;1m  echo "$INPUTS"[0m
+2026-02-26T07:47:57.5036730Z [36;1m  echo '```'[0m
+2026-02-26T07:47:57.5037390Z [36;1m  echo "</details>"[0m
+2026-02-26T07:47:57.5037580Z [36;1m} >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-26T07:47:57.5081160Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-02-26T07:47:57.5081450Z env:
+2026-02-26T07:47:57.5081580Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:47:57.5081750Z   MINT_PATH: .mint/lib
+2026-02-26T07:47:57.5081930Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:47:57.5082160Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:47:57.5082420Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:47:57.5082630Z   _SIMULATOR_NAME: 
+2026-02-26T07:47:57.5082770Z   _SIMULATOR_VERSION: 
+2026-02-26T07:47:57.5083040Z   _XCODE_VERSION: 
+2026-02-26T07:47:57.5083180Z   _COMPILER_FLAGS: 
+2026-02-26T07:47:57.5083510Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:47:57.5083860Z   INPUTS: {}
+2026-02-26T07:47:57.5083980Z ##[endgroup]
+2026-02-26T07:47:57.5611250Z ##[group]Run actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+2026-02-26T07:47:57.5611640Z with:
+2026-02-26T07:47:57.5611770Z   persist-credentials: false
+2026-02-26T07:47:57.5611950Z   repository: pkinerd/bitwarden.ios
+2026-02-26T07:47:57.5612330Z   token: ***
+2026-02-26T07:47:57.5612470Z   ssh-strict: true
+2026-02-26T07:47:57.5612590Z   ssh-user: git
+2026-02-26T07:47:57.5612710Z   clean: true
+2026-02-26T07:47:57.5612850Z   sparse-checkout-cone-mode: true
+2026-02-26T07:47:57.5613020Z   fetch-depth: 1
+2026-02-26T07:47:57.5613160Z   fetch-tags: false
+2026-02-26T07:47:57.5613300Z   show-progress: true
+2026-02-26T07:47:57.5613440Z   lfs: false
+2026-02-26T07:47:57.5613560Z   submodules: false
+2026-02-26T07:47:57.5613710Z   set-safe-directory: true
+2026-02-26T07:47:57.5613880Z env:
+2026-02-26T07:47:57.5614000Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:47:57.5614160Z   MINT_PATH: .mint/lib
+2026-02-26T07:47:57.5614320Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:47:57.5614600Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:47:57.5614870Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:47:57.5615110Z   _SIMULATOR_NAME: 
+2026-02-26T07:47:57.5615260Z   _SIMULATOR_VERSION: 
+2026-02-26T07:47:57.5615390Z   _XCODE_VERSION: 
+2026-02-26T07:47:57.5615530Z   _COMPILER_FLAGS: 
+2026-02-26T07:47:57.5615830Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:47:57.5616170Z ##[endgroup]
+2026-02-26T07:47:58.0207260Z Syncing repository: pkinerd/bitwarden.ios
+2026-02-26T07:47:58.0208220Z ##[group]Getting Git version info
+2026-02-26T07:47:58.0208530Z Working directory is '/Users/runner/work/bitwarden.ios/bitwarden.ios'
+2026-02-26T07:47:58.0208960Z [command]/opt/homebrew/bin/git version
+2026-02-26T07:47:58.0928040Z git version 2.53.0
+2026-02-26T07:47:58.0938180Z ##[endgroup]
+2026-02-26T07:47:58.0944290Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/7dba9a71-6938-483a-91e6-2db9fb34bdf1/.gitconfig'
+2026-02-26T07:47:58.0951990Z Temporarily overriding HOME='/Users/runner/work/_temp/7dba9a71-6938-483a-91e6-2db9fb34bdf1' before making global git config changes
+2026-02-26T07:47:58.0952610Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-26T07:47:58.0955080Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-26T07:47:58.1067380Z Deleting the contents of '/Users/runner/work/bitwarden.ios/bitwarden.ios'
+2026-02-26T07:47:58.1070170Z ##[group]Initializing the repository
+2026-02-26T07:47:58.1074240Z [command]/opt/homebrew/bin/git init /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-26T07:47:58.1305360Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-02-26T07:47:58.1305910Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-02-26T07:47:58.1306330Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-02-26T07:47:58.1307080Z hint: call:
+2026-02-26T07:47:58.1307240Z hint:
+2026-02-26T07:47:58.1307440Z hint: 	git config --global init.defaultBranch <name>
+2026-02-26T07:47:58.1307680Z hint:
+2026-02-26T07:47:58.1307890Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-02-26T07:47:58.1308280Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-02-26T07:47:58.1308580Z hint:
+2026-02-26T07:47:58.1308720Z hint: 	git branch -m <name>
+2026-02-26T07:47:58.1308880Z hint:
+2026-02-26T07:47:58.1309780Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-02-26T07:47:58.1310270Z Initialized empty Git repository in /Users/runner/work/bitwarden.ios/bitwarden.ios/.git/
+2026-02-26T07:47:58.1316430Z [command]/opt/homebrew/bin/git remote add origin https://github.com/pkinerd/bitwarden.ios
+2026-02-26T07:47:58.1385040Z ##[endgroup]
+2026-02-26T07:47:58.1385360Z ##[group]Disabling automatic garbage collection
+2026-02-26T07:47:58.1392030Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-02-26T07:47:58.1459060Z ##[endgroup]
+2026-02-26T07:47:58.1459370Z ##[group]Setting up auth
+2026-02-26T07:47:58.1464290Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-26T07:47:58.1527850Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-26T07:47:58.2958210Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-26T07:47:58.3025830Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-26T07:47:58.3800620Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-02-26T07:47:58.3878820Z ##[endgroup]
+2026-02-26T07:47:58.3879270Z ##[group]Fetching the repository
+2026-02-26T07:47:58.3883410Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +fcb58263a424cee9ae40b6a5b4042b24a40142c9:refs/remotes/pull/82/merge
+2026-02-26T07:48:02.4900050Z From https://github.com/pkinerd/bitwarden.ios
+2026-02-26T07:48:02.5003020Z  * [new ref]         fcb58263a424cee9ae40b6a5b4042b24a40142c9 -> pull/82/merge
+2026-02-26T07:48:02.5308890Z ##[endgroup]
+2026-02-26T07:48:02.5410660Z ##[group]Determining the checkout info
+2026-02-26T07:48:02.5518410Z ##[endgroup]
+2026-02-26T07:48:02.5620120Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-02-26T07:48:02.5937640Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-02-26T07:48:02.6166520Z ##[group]Checking out the ref
+2026-02-26T07:48:02.6167160Z [command]/opt/homebrew/bin/git checkout --progress --force refs/remotes/pull/82/merge
+2026-02-26T07:48:03.5775680Z Updating files:  88% (3966/4462)
+2026-02-26T07:48:03.5903620Z Updating files:  89% (3972/4462)
+2026-02-26T07:48:03.6275410Z Updating files:  90% (4016/4462)
+2026-02-26T07:48:03.6346830Z Updating files:  91% (4061/4462)
+2026-02-26T07:48:03.6395840Z Updating files:  92% (4106/4462)
+2026-02-26T07:48:03.6460170Z Updating files:  93% (4150/4462)
+2026-02-26T07:48:03.6515760Z Updating files:  94% (4195/4462)
+2026-02-26T07:48:03.6555620Z Updating files:  95% (4239/4462)
+2026-02-26T07:48:03.6613260Z Updating files:  96% (4284/4462)
+2026-02-26T07:48:03.6659090Z Updating files:  97% (4329/4462)
+2026-02-26T07:48:03.6710150Z Updating files:  98% (4373/4462)
+2026-02-26T07:48:03.6770150Z Updating files:  99% (4418/4462)
+2026-02-26T07:48:03.6774420Z Updating files: 100% (4462/4462)
+2026-02-26T07:48:03.6774930Z Updating files: 100% (4462/4462), done.
+2026-02-26T07:48:03.6891720Z HEAD is now at fcb5826 Merge 30378047a719b9c451f144b36b360ecd1c0565bf into 3f00ac33fb8353a8f66d792cc4135500f3245791
+2026-02-26T07:48:03.7020420Z ##[endgroup]
+2026-02-26T07:48:03.7233140Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-02-26T07:48:03.7249010Z fcb58263a424cee9ae40b6a5b4042b24a40142c9
+2026-02-26T07:48:03.7250550Z ##[group]Removing auth
+2026-02-26T07:48:03.7257300Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-26T07:48:03.7281870Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-26T07:48:03.8303210Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-26T07:48:03.8310050Z http.https://github.com/.extraheader
+2026-02-26T07:48:03.8444880Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-02-26T07:48:03.8508940Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-26T07:48:03.9288650Z ##[endgroup]
+2026-02-26T07:48:03.9464590Z Prepare all required actions
+2026-02-26T07:48:03.9559480Z ##[group]Run ./.github/actions/macos-runner-tuneup
+2026-02-26T07:48:03.9559690Z env:
+2026-02-26T07:48:03.9559810Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:03.9559980Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:03.9560130Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:03.9560360Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:03.9560610Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:03.9560820Z   _SIMULATOR_NAME: 
+2026-02-26T07:48:03.9560940Z   _SIMULATOR_VERSION: 
+2026-02-26T07:48:03.9561080Z   _XCODE_VERSION: 
+2026-02-26T07:48:03.9561240Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:03.9561550Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:03.9561920Z ##[endgroup]
+2026-02-26T07:48:03.9581830Z ##[group]Run echo "🚀 Starting macOS Runner Tuneup..."
+2026-02-26T07:48:03.9582210Z [36;1mecho "🚀 Starting macOS Runner Tuneup..."[0m
+2026-02-26T07:48:03.9582440Z [36;1mecho "=================================="[0m
+2026-02-26T07:48:03.9582630Z [36;1m[0m
+2026-02-26T07:48:03.9582770Z [36;1mecho "🔍 Disabling Spotlight..."[0m
+2026-02-26T07:48:03.9583030Z [36;1msudo mdutil -a -i off # disables indexing on all volumes[0m
+2026-02-26T07:48:03.9583380Z [36;1msudo mdutil -a -d # disables spotlight activity on all volumes[0m
+2026-02-26T07:48:03.9583620Z [36;1m[0m
+2026-02-26T07:48:03.9583790Z [36;1mecho "🔍 Disabling Spotlight Knowledge Daemon..."[0m
+2026-02-26T07:48:03.9584140Z [36;1msudo launchctl disable system/com.apple.spotlightknowledged || true[0m
+2026-02-26T07:48:03.9584500Z [36;1msudo pkill -SIGKILL spotlightknowledged || true[0m
+2026-02-26T07:48:03.9584720Z [36;1m[0m
+2026-02-26T07:48:03.9584860Z [36;1mecho "🛑 Disabling metadata services..."[0m
+2026-02-26T07:48:03.9585180Z [36;1msudo launchctl disable system/com.apple.metadata.mds || true[0m
+2026-02-26T07:48:03.9585540Z [36;1msudo launchctl disable system/com.apple.metadata.mds.index || true[0m
+2026-02-26T07:48:03.9585950Z [36;1msudo launchctl disable system/com.apple.metadata.mds.scan || true[0m
+2026-02-26T07:48:03.9586220Z [36;1m[0m
+2026-02-26T07:48:03.9586370Z [36;1mecho "📦 Stopping metadata services..."[0m
+2026-02-26T07:48:03.9586650Z [36;1msudo launchctl bootout system/com.apple.metadata.mds || true[0m
+2026-02-26T07:48:03.9587010Z [36;1msudo launchctl bootout system/com.apple.metadata.mds.index || true[0m
+2026-02-26T07:48:03.9587370Z [36;1msudo launchctl bootout system/com.apple.metadata.mds.scan || true[0m
+2026-02-26T07:48:03.9587730Z [36;1msudo launchctl bootout system/com.apple.metadata.mdwrite || true[0m
+2026-02-26T07:48:03.9588010Z [36;1m[0m
+2026-02-26T07:48:03.9588160Z [36;1mecho "⚡ Killing metadata processes..."[0m
+2026-02-26T07:48:03.9588720Z [36;1msudo pkill -SIGKILL -f "Metadata.framework/Versions/A/Support/mds" || true[0m
+2026-02-26T07:48:03.9589050Z [36;1msudo pkill -SIGKILL Spotlight || true[0m
+2026-02-26T07:48:03.9589260Z [36;1mecho "✅ Spotlight disabled!"[0m
+2026-02-26T07:48:03.9589510Z [36;1m[0m
+2026-02-26T07:48:03.9589670Z [36;1mecho "💥 Disabling ReportCrash..."[0m
+2026-02-26T07:48:03.9590010Z [36;1msudo launchctl disable system/com.apple.ReportCrash || true[0m
+2026-02-26T07:48:03.9590360Z [36;1msudo launchctl disable system/com.apple.ReportCrash.Root || true[0m
+2026-02-26T07:48:03.9590720Z [36;1m[0m
+2026-02-26T07:48:03.9590860Z [36;1mecho "💥 Unloading ReportCrash..."[0m
+2026-02-26T07:48:03.9591130Z [36;1msudo launchctl bootout system/com.apple.ReportCrash || true[0m
+2026-02-26T07:48:03.9591490Z [36;1msudo launchctl bootout system/com.apple.ReportCrash.Root || true[0m
+2026-02-26T07:48:03.9591760Z [36;1m[0m
+2026-02-26T07:48:03.9591990Z [36;1msudo defaults write com.apple.CrashReporter DialogType none  || true[0m
+2026-02-26T07:48:03.9592290Z [36;1mecho "✅ ReportCrash disabled!"[0m
+2026-02-26T07:48:03.9592460Z [36;1m[0m
+2026-02-26T07:48:03.9592870Z [36;1mecho "🌱 Disabling EcosystemD..."[0m
+2026-02-26T07:48:03.9593250Z [36;1msudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.ecosystemd.plist || true[0m
+2026-02-26T07:48:03.9593850Z [36;1msudo pkill -SIGKILL -f "ecosystemd" || true[0m
+2026-02-26T07:48:03.9594200Z [36;1mecho "✅ EcosystemD disabled!"[0m
+2026-02-26T07:48:03.9594390Z [36;1m[0m
+2026-02-26T07:48:03.9594560Z [36;1mecho "🌱 Disabling EcosystemAnalyticsD..."[0m
+2026-02-26T07:48:03.9594870Z [36;1msudo launchctl bootout system/com.apple.ecosystemanalyticsd || true[0m
+2026-02-26T07:48:03.9595210Z [36;1mecho "✅ EcosystemAnalyticsD disabled!"[0m
+2026-02-26T07:48:03.9595390Z [36;1m[0m
+2026-02-26T07:48:03.9595530Z [36;1mecho "🌱 Disabling SubmitDiagInfo..."[0m
+2026-02-26T07:48:03.9595910Z [36;1msudo defaults write /Library/Preferences/com.apple.SubmitDiagInfo AutoSubmit -bool false || true[0m
+2026-02-26T07:48:03.9596270Z [36;1m[0m
+2026-02-26T07:48:03.9596410Z [36;1mecho "🌍 Disabling location services..."[0m
+2026-02-26T07:48:03.9596850Z [36;1msudo defaults write /Library/Preferences/com.apple.locationd.plist LocationServicesEnabled -int 0 || true[0m
+2026-02-26T07:48:03.9597260Z [36;1m[0m
+2026-02-26T07:48:03.9597390Z [36;1mecho "🔍 Disabling Siri..."[0m
+2026-02-26T07:48:03.9597730Z [36;1msudo defaults write com.apple.assistant.support Assistant\ Enabled -bool false || true[0m
+2026-02-26T07:48:03.9598190Z [36;1msudo defaults write com.apple.Siri StatusMenuVisible -bool false || true[0m
+2026-02-26T07:48:03.9598570Z [36;1m[0m
+2026-02-26T07:48:03.9598770Z [36;1mecho "🔒 Disabling iCloud analytics and usage tracking..."[0m
+2026-02-26T07:48:03.9599160Z [36;1msudo defaults write com.apple.UsageTracking CoreDonationsEnabled -bool false || true[0m
+2026-02-26T07:48:03.9599660Z [36;1msudo defaults write com.apple.UsageTracking UDCAutomationEnabled -bool false || true[0m
+2026-02-26T07:48:03.9600020Z [36;1m[0m
+2026-02-26T07:48:03.9600180Z [36;1mecho "🔍 Disabling Spotlight suggestions..."[0m
+2026-02-26T07:48:03.9600570Z [36;1msudo defaults write com.apple.lookup.shared LookupSuggestionsDisabled -bool true || true[0m
+2026-02-26T07:48:03.9600920Z [36;1m[0m
+2026-02-26T07:48:03.9601070Z [36;1mecho "📊 Process Information After Tuning"[0m
+2026-02-26T07:48:03.9601300Z [36;1mecho "=================================="[0m
+2026-02-26T07:48:03.9601510Z [36;1mecho "🧠 Sorted by memory usage:"[0m
+2026-02-26T07:48:03.9601750Z [36;1mhead -n20 < <(ps -emo pid,pcpu,pmem,comm)[0m
+2026-02-26T07:48:03.9601950Z [36;1mecho ""[0m
+2026-02-26T07:48:03.9602090Z [36;1mecho "🔥  Sorted by CPU usage:"[0m
+2026-02-26T07:48:03.9602310Z [36;1mhead -n20 < <(ps -ero pid,pcpu,pmem,comm)[0m
+2026-02-26T07:48:03.9602500Z [36;1mecho ""[0m
+2026-02-26T07:48:03.9602680Z [36;1mecho "🎉 macOS Runner Tuneup Complete!"[0m
+2026-02-26T07:48:03.9638610Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-02-26T07:48:03.9639000Z env:
+2026-02-26T07:48:03.9639130Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:03.9639290Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:03.9639450Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:03.9639660Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:03.9639910Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:03.9640120Z   _SIMULATOR_NAME: 
+2026-02-26T07:48:03.9640270Z   _SIMULATOR_VERSION: 
+2026-02-26T07:48:03.9640400Z   _XCODE_VERSION: 
+2026-02-26T07:48:03.9640520Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:03.9640840Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:03.9641170Z ##[endgroup]
+2026-02-26T07:48:03.9976900Z 🚀 Starting macOS Runner Tuneup...
+2026-02-26T07:48:03.9977510Z ==================================
+2026-02-26T07:48:03.9977790Z 🔍 Disabling Spotlight...
+2026-02-26T07:48:04.0398440Z 2026-02-26 07:48:04.039 mdutil[99555:413926] mdutil disabling Spotlight: / -> kMDConfigSearchLevelFSSearchOnly
+2026-02-26T07:48:04.1368200Z 2026-02-26 07:48:04.134 mdutil[99555:413926] mdutil disabling Spotlight: /System/Volumes/Data -> kMDConfigSearchLevelFSSearchOnly
+2026-02-26T07:48:04.8539860Z 2026-02-26 07:48:04.853 mdutil[99555:413926] mdutil disabling Spotlight: /System/Volumes/Preboot -> kMDConfigSearchLevelFSSearchOnly
+2026-02-26T07:48:04.9039080Z /:
+2026-02-26T07:48:04.9044280Z 	Indexing disabled.
+2026-02-26T07:48:04.9052520Z /System/Volumes/Data:
+2026-02-26T07:48:04.9052910Z 	Indexing disabled.
+2026-02-26T07:48:04.9054190Z /System/Volumes/Preboot:
+2026-02-26T07:48:04.9054560Z 	Indexing disabled.
+2026-02-26T07:48:04.9574070Z 2026-02-26 07:48:04.956 mdutil[99587:414088] mdutil disabling Spotlight: / -> kMDConfigSearchLevelOff
+2026-02-26T07:48:05.0906780Z 2026-02-26 07:48:05.055 mdutil[99587:414088] mdutil disabling Spotlight: /System/Volumes/Data -> kMDConfigSearchLevelOff
+2026-02-26T07:48:05.1008750Z 2026-02-26 07:48:05.093 mdutil[99587:414088] mdutil disabling Spotlight: /System/Volumes/Preboot -> kMDConfigSearchLevelOff
+2026-02-26T07:48:05.1424680Z /:
+2026-02-26T07:48:05.1564750Z 	Indexing and searching disabled.
+2026-02-26T07:48:05.1565220Z /System/Volumes/Data:
+2026-02-26T07:48:05.1695180Z 	Indexing and searching disabled.
+2026-02-26T07:48:05.1797490Z /System/Volumes/Preboot:
+2026-02-26T07:48:05.1896030Z 	Indexing and searching disabled.
+2026-02-26T07:48:05.1896730Z 🔍 Disabling Spotlight Knowledge Daemon...
+2026-02-26T07:48:05.4127010Z 🛑 Disabling metadata services...
+2026-02-26T07:48:05.5390800Z 📦 Stopping metadata services...
+2026-02-26T07:48:05.6668960Z Boot-out failed: 3: No such process
+2026-02-26T07:48:05.6670240Z ⚡ Killing metadata processes...
+2026-02-26T07:48:05.8629060Z ✅ Spotlight disabled!
+2026-02-26T07:48:05.8793940Z 💥 Disabling ReportCrash...
+2026-02-26T07:48:06.0679460Z 💥 Unloading ReportCrash...
+2026-02-26T07:48:06.1253090Z Boot-out failed: 3: No such process
+2026-02-26T07:48:06.3382300Z ✅ ReportCrash disabled!
+2026-02-26T07:48:06.3385710Z 🌱 Disabling EcosystemD...
+2026-02-26T07:48:06.5048280Z ✅ EcosystemD disabled!
+2026-02-26T07:48:06.5159620Z 🌱 Disabling EcosystemAnalyticsD...
+2026-02-26T07:48:06.5917190Z ✅ EcosystemAnalyticsD disabled!
+2026-02-26T07:48:06.6025040Z 🌱 Disabling SubmitDiagInfo...
+2026-02-26T07:48:06.6658250Z 🌍 Disabling location services...
+2026-02-26T07:48:06.8383070Z 🔍 Disabling Siri...
+2026-02-26T07:48:06.9743330Z 🔒 Disabling iCloud analytics and usage tracking...
+2026-02-26T07:48:07.1562460Z 🔍 Disabling Spotlight suggestions...
+2026-02-26T07:48:07.2770590Z 📊 Process Information After Tuning
+2026-02-26T07:48:07.2923050Z ==================================
+2026-02-26T07:48:07.3074020Z 🧠 Sorted by memory usage:
+2026-02-26T07:48:07.3959910Z   PID  %CPU %MEM COMM
+2026-02-26T07:48:07.4063600Z ps: stdout: Broken pipe
+2026-02-26T07:48:07.4063910Z 99076   1.2  1.9 /Users/runner/actions-runner/cached/bin/Runner.Worker
+2026-02-26T07:48:07.4177350Z   453   5.3  1.6 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/corespotlightd
+2026-02-26T07:48:07.5654150Z 99033   0.0  1.5 /Users/runner/actions-runner/cached/bin/Runner.Listener
+2026-02-26T07:48:07.5790660Z 99637 116.7  1.3 /System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight
+2026-02-26T07:48:07.6574750Z   363   3.3  1.1 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter
+2026-02-26T07:48:07.6587310Z   469   0.0  1.0 /System/Library/CoreServices/Dock.app/Contents/XPCServices/com.apple.dock.extra.xpc/Contents/MacOS/com.apple.dock.extra
+2026-02-26T07:48:07.6721320Z   365  22.7  1.0 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder
+2026-02-26T07:48:07.7580460Z   475   0.0  1.0 /usr/libexec/duetexpertd
+2026-02-26T07:48:07.7765660Z   481   0.0  0.9 /System/Library/CoreServices/AccessibilityUIServer.app/Contents/MacOS/AccessibilityUIServer
+2026-02-26T07:48:07.7880060Z ps: stdout: Broken pipe
+2026-02-26T07:48:07.7881380Z   508   0.0  0.9 /System/Applications/Weather.app/Contents/PlugIns/WeatherWidget.appex/Contents/MacOS/WeatherWidget
+2026-02-26T07:48:07.7988650Z   179   0.0  0.9 /usr/libexec/mobileassetd
+2026-02-26T07:48:07.8112500Z   302   0.0  0.9 /System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated
+2026-02-26T07:48:07.8213820Z  4418   0.0  0.8 /System/Library/PrivateFrameworks/Noticeboard.framework/Versions/A/Resources/nbagent.app/Contents/MacOS/nbagent
+2026-02-26T07:48:07.8315420Z   502   0.0  0.8 /System/Library/PrivateFrameworks/HomeKitDaemon.framework/Support/homed
+2026-02-26T07:48:07.8426190Z   929   0.0  0.8 /System/Library/PrivateFrameworks/SiriInference.framework/Versions/A/siriinferenced
+2026-02-26T07:48:07.8529790Z   447   0.0  0.8 /System/Library/CoreServices/TextInputMenuAgent.app/Contents/MacOS/TextInputMenuAgent
+2026-02-26T07:48:07.8641930Z   364   0.0  0.8 /System/Library/CoreServices/SystemUIServer.app/Contents/MacOS/SystemUIServer
+2026-02-26T07:48:07.8850930Z   385   0.0  0.8 /System/Library/PrivateFrameworks/VoiceShortcuts.framework/Versions/A/Support/siriactionsd
+2026-02-26T07:48:07.8961200Z   771   0.0  0.8 /System/Library/CoreServices/WiFiAgent.app/Contents/MacOS/WiFiAgent
+2026-02-26T07:48:07.9063960Z 
+2026-02-26T07:48:07.9181530Z 🔥  Sorted by CPU usage:
+2026-02-26T07:48:07.9301650Z   PID  %CPU %MEM COMM
+2026-02-26T07:48:07.9512610Z 99637 124.3  1.3 /System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight
+2026-02-26T07:48:07.9756130Z   365  22.7  1.0 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder
+2026-02-26T07:48:07.9890650Z   897  14.4  0.5 /var/folders/9q/g6c4ln4s4jn0548xdb_06kjr0000gn/T/provjobd1201981518
+2026-02-26T07:48:08.0002520Z   453   5.3  1.6 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/corespotlightd
+2026-02-26T07:48:08.0064680Z 99684   4.6  0.0 (ps)
+2026-02-26T07:48:08.0065330Z   363   3.3  1.1 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter
+2026-02-26T07:48:08.0066610Z   164   2.9  0.6 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+2026-02-26T07:48:08.0067280Z   371   2.4  0.2 /usr/libexec/dmd
+2026-02-26T07:48:08.0067740Z   389   2.2  0.6 /System/Library/PrivateFrameworks/CoreSuggestions.framework/Versions/A/Support/suggestd
+2026-02-26T07:48:08.0069750Z   460   2.1  0.4 /System/Library/PrivateFrameworks/ReplicatorCore.framework/Support/replicatord
+2026-02-26T07:48:08.0070170Z     1   2.0  0.3 /sbin/launchd
+2026-02-26T07:48:08.0079010Z   467   2.0  0.4 /System/Library/PrivateFrameworks/CoreParsec.framework/parsecd
+2026-02-26T07:48:08.0079650Z   442   1.9  0.5 /usr/libexec/knowledge-agent
+2026-02-26T07:48:08.0080070Z   158   1.7  0.1 /usr/sbin/cfprefsd
+2026-02-26T07:48:08.0080440Z   438   1.6  0.7 /usr/libexec/sharingd
+2026-02-26T07:48:08.0080910Z 99076   1.6  1.9 /Users/runner/actions-runner/cached/bin/Runner.Worker
+2026-02-26T07:48:08.0081330Z 99552   1.3  0.0 /bin/bash
+2026-02-26T07:48:08.0081700Z   122   1.1  0.4 /usr/libexec/coreduetd
+2026-02-26T07:48:08.0082960Z   510   1.1  0.2 /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+2026-02-26T07:48:08.0083530Z 
+2026-02-26T07:48:08.0083930Z 🎉 macOS Runner Tuneup Complete!
+2026-02-26T07:48:08.0137020Z ##[group]Run if [ -z "$_XCODE_VERSION" ]; then
+2026-02-26T07:48:08.0137370Z [36;1mif [ -z "$_XCODE_VERSION" ]; then[0m
+2026-02-26T07:48:08.0137760Z [36;1m  echo "_XCODE_VERSION=$(cat .xcode-version | tr -d '\n')" >> "$GITHUB_ENV"[0m
+2026-02-26T07:48:08.0138140Z [36;1mfi[0m
+2026-02-26T07:48:08.0138530Z [36;1mif [ -z "$_SIMULATOR_NAME" ]; then[0m
+2026-02-26T07:48:08.0138970Z [36;1m  echo "_SIMULATOR_NAME=$(cat .test-simulator-device-name | tr -d '\n')" >> "$GITHUB_ENV"[0m
+2026-02-26T07:48:08.0139290Z [36;1mfi[0m
+2026-02-26T07:48:08.0139490Z [36;1mif [ -z "$_SIMULATOR_VERSION" ]; then[0m
+2026-02-26T07:48:08.0139940Z [36;1m  echo "_SIMULATOR_VERSION=$(cat .test-simulator-ios-version | tr -d '\n')" >> "$GITHUB_ENV"[0m
+2026-02-26T07:48:08.0140360Z [36;1mfi[0m
+2026-02-26T07:48:08.0176400Z shell: /bin/bash -e {0}
+2026-02-26T07:48:08.0176730Z env:
+2026-02-26T07:48:08.0176910Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:08.0177160Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:08.0177630Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:08.0177920Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:08.0178250Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:08.0178620Z   _SIMULATOR_NAME: 
+2026-02-26T07:48:08.0178810Z   _SIMULATOR_VERSION: 
+2026-02-26T07:48:08.0179020Z   _XCODE_VERSION: 
+2026-02-26T07:48:08.0179250Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:08.0179630Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:08.0180070Z ##[endgroup]
+2026-02-26T07:48:08.1511750Z ##[group]Run maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd
+2026-02-26T07:48:08.1512190Z with:
+2026-02-26T07:48:08.1512440Z   xcode-version: 26.1.1
+2026-02-26T07:48:08.1512690Z env:
+2026-02-26T07:48:08.1512970Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:08.1513140Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:08.1513310Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:08.1513540Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:08.1513810Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:08.1514110Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:48:08.1514290Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:48:08.1514460Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:48:08.1514630Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:08.1514960Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:08.1515330Z ##[endgroup]
+2026-02-26T07:48:09.0337330Z Switching Xcode to version '26.1.1'...
+2026-02-26T07:48:09.2481830Z Xcode is set to 26.1.1 (17B100)
+2026-02-26T07:48:09.2747170Z ##[group]Run ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb
+2026-02-26T07:48:09.2747620Z with:
+2026-02-26T07:48:09.2747790Z   bundler-cache: true
+2026-02-26T07:48:09.2747960Z   ruby-version: default
+2026-02-26T07:48:09.2748100Z env:
+2026-02-26T07:48:09.2748240Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:09.2748420Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:09.2748580Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:09.2748810Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:09.2749090Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:09.2749320Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:48:09.2749490Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:48:09.2749670Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:48:09.2749830Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:09.2750160Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:09.2750620Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:48:09.2750830Z ##[endgroup]
+2026-02-26T07:48:09.6878960Z Using 3.4.2 as input from file .ruby-version
+2026-02-26T07:48:09.6957600Z ##[group]Modifying PATH
+2026-02-26T07:48:09.6958080Z Entries removed from PATH to avoid conflicts with default Ruby:
+2026-02-26T07:48:09.6958460Z   /opt/homebrew/lib/ruby/gems/3.4.0/bin
+2026-02-26T07:48:09.6958760Z   /opt/homebrew/opt/ruby@3.4/bin
+2026-02-26T07:48:09.6959130Z Entries added to PATH to use selected Ruby:
+2026-02-26T07:48:09.6959490Z   /Users/runner/hostedtoolcache/Ruby/3.4.2/arm64/bin
+2026-02-26T07:48:09.6991730Z ##[endgroup]
+2026-02-26T07:48:09.7044560Z ##[group]Downloading Ruby
+2026-02-26T07:48:09.7097960Z https://github.com/ruby/ruby-builder/releases/download/toolcache/ruby-3.4.2-macos-13-arm64.tar.gz
+2026-02-26T07:48:10.4548720Z Took   0.75 seconds
+2026-02-26T07:48:10.4549430Z ##[endgroup]
+2026-02-26T07:48:10.4549960Z ##[group]Extracting  Ruby
+2026-02-26T07:48:10.4584310Z [command]/usr/bin/tar -xz -C /Users/runner/hostedtoolcache/Ruby/3.4.2 -f /Users/runner/work/_temp/2f9e6af0-cf07-44ac-bec7-afb05ea5c52e
+2026-02-26T07:48:11.4007250Z Took   0.95 seconds
+2026-02-26T07:48:11.4007790Z ##[endgroup]
+2026-02-26T07:48:11.4008680Z ##[group]Print Ruby version
+2026-02-26T07:48:11.4019610Z [command]/Users/runner/hostedtoolcache/Ruby/3.4.2/arm64/bin/ruby --version
+2026-02-26T07:48:11.4141680Z ruby 3.4.2 (2025-02-15 revision d2930f8e7a) +PRISM [arm64-darwin23]
+2026-02-26T07:48:11.4144370Z Took   0.01 seconds
+2026-02-26T07:48:11.4144830Z ##[endgroup]
+2026-02-26T07:48:11.4145340Z ##[group]Installing Bundler
+2026-02-26T07:48:11.4149250Z Using Bundler 2.6.8 from Gemfile.lock BUNDLED WITH 2.6.8
+2026-02-26T07:48:11.4152360Z [command]/Users/runner/hostedtoolcache/Ruby/3.4.2/arm64/bin/gem install bundler -v 2.6.8
+2026-02-26T07:48:11.8168450Z Successfully installed bundler-2.6.8
+2026-02-26T07:48:11.8169060Z 1 gem installed
+2026-02-26T07:48:11.8198610Z Took   0.41 seconds
+2026-02-26T07:48:11.8205090Z ##[endgroup]
+2026-02-26T07:48:11.8208320Z > bundle install
+2026-02-26T07:48:11.8217600Z [command]/Users/runner/hostedtoolcache/Ruby/3.4.2/arm64/bin/bundle config --local path /Users/runner/work/bitwarden.ios/bitwarden.ios/vendor/bundle
+2026-02-26T07:48:11.9094400Z [command]/Users/runner/hostedtoolcache/Ruby/3.4.2/arm64/bin/bundle config --local deployment true
+2026-02-26T07:48:11.9948770Z Cache key: setup-ruby-bundler-cache-v6-macos-16-arm64-ruby-3.4.2-wd-/Users/runner/work/bitwarden.ios/bitwarden.ios-with--without--only--Gemfile.lock-eb7e1748b2f21740d6313712c801f4471537d96e9ab2c74ad07801126f1ec19f
+2026-02-26T07:48:12.1297560Z Cache hit for: setup-ruby-bundler-cache-v6-macos-16-arm64-ruby-3.4.2-wd-/Users/runner/work/bitwarden.ios/bitwarden.ios-with--without--only--Gemfile.lock-eb7e1748b2f21740d6313712c801f4471537d96e9ab2c74ad07801126f1ec19f
+2026-02-26T07:48:13.0353010Z Received 14449033 of 14449033 (100.0%), 18.6 MBs/sec
+2026-02-26T07:48:13.0356120Z Cache Size: ~14 MB (14449033 B)
+2026-02-26T07:48:13.0412170Z [command]/opt/homebrew/bin/gtar -xf /Users/runner/work/_temp/8dd73ee2-c553-4f06-848b-ad9ba64ecc4d/cache.tzst -P -C /Users/runner/work/bitwarden.ios/bitwarden.ios --delay-directory-restore --use-compress-program unzstd
+2026-02-26T07:48:13.7848470Z Cache restored successfully
+2026-02-26T07:48:13.7855690Z Found cache for key: setup-ruby-bundler-cache-v6-macos-16-arm64-ruby-3.4.2-wd-/Users/runner/work/bitwarden.ios/bitwarden.ios-with--without--only--Gemfile.lock-eb7e1748b2f21740d6313712c801f4471537d96e9ab2c74ad07801126f1ec19f
+2026-02-26T07:48:13.7864970Z [command]/Users/runner/hostedtoolcache/Ruby/3.4.2/arm64/bin/bundle install --jobs 4
+2026-02-26T07:48:14.0499880Z Bundle complete! 7 Gemfile dependencies, 96 gems now installed.
+2026-02-26T07:48:14.0500430Z Bundled gems are installed into `./vendor/bundle`
+2026-02-26T07:48:14.0835350Z Took   2.26 seconds
+2026-02-26T07:48:14.0837170Z ##[group]Print lockfile
+2026-02-26T07:48:14.0846450Z [command]/bin/cat Gemfile.lock
+2026-02-26T07:48:14.0887180Z GEM
+2026-02-26T07:48:14.0887590Z   remote: https://rubygems.org/
+2026-02-26T07:48:14.0887960Z   specs:
+2026-02-26T07:48:14.0888330Z     CFPropertyList (3.0.7)
+2026-02-26T07:48:14.0888630Z       base64
+2026-02-26T07:48:14.0889940Z       nkf
+2026-02-26T07:48:14.0890240Z       rexml
+2026-02-26T07:48:14.0890520Z     abbrev (0.1.2)
+2026-02-26T07:48:14.0890820Z     addressable (2.8.7)
+2026-02-26T07:48:14.0891510Z       public_suffix (>= 2.0.2, < 7.0)
+2026-02-26T07:48:14.0891930Z     artifactory (3.0.17)
+2026-02-26T07:48:14.0892180Z     atomos (0.1.3)
+2026-02-26T07:48:14.0892680Z     aws-eventstream (1.4.0)
+2026-02-26T07:48:14.0892960Z     aws-partitions (1.1153.0)
+2026-02-26T07:48:14.0893540Z     aws-sdk-core (3.232.0)
+2026-02-26T07:48:14.0893960Z       aws-eventstream (~> 1, >= 1.3.0)
+2026-02-26T07:48:14.0894300Z       aws-partitions (~> 1, >= 1.992.0)
+2026-02-26T07:48:14.0894550Z       aws-sigv4 (~> 1.9)
+2026-02-26T07:48:14.0894810Z       base64
+2026-02-26T07:48:14.0895110Z       bigdecimal
+2026-02-26T07:48:14.0895380Z       jmespath (~> 1, >= 1.6.1)
+2026-02-26T07:48:14.0895620Z       logger
+2026-02-26T07:48:14.0895820Z     aws-sdk-kms (1.112.0)
+2026-02-26T07:48:14.0896110Z       aws-sdk-core (~> 3, >= 3.231.0)
+2026-02-26T07:48:14.0896380Z       aws-sigv4 (~> 1.5)
+2026-02-26T07:48:14.0896540Z     aws-sdk-s3 (1.198.0)
+2026-02-26T07:48:14.0896820Z       aws-sdk-core (~> 3, >= 3.231.0)
+2026-02-26T07:48:14.0897060Z       aws-sdk-kms (~> 1)
+2026-02-26T07:48:14.0897380Z       aws-sigv4 (~> 1.5)
+2026-02-26T07:48:14.0897600Z     aws-sigv4 (1.12.1)
+2026-02-26T07:48:14.0897830Z       aws-eventstream (~> 1, >= 1.0.2)
+2026-02-26T07:48:14.0898130Z     babosa (1.0.4)
+2026-02-26T07:48:14.0898330Z     base64 (0.3.0)
+2026-02-26T07:48:14.0898530Z     bigdecimal (3.2.2)
+2026-02-26T07:48:14.0898820Z     claide (1.1.0)
+2026-02-26T07:48:14.0899010Z     colored (1.2)
+2026-02-26T07:48:14.0899210Z     colored2 (3.1.2)
+2026-02-26T07:48:14.0899410Z     commander (4.6.0)
+2026-02-26T07:48:14.0899650Z       highline (~> 2.0.0)
+2026-02-26T07:48:14.0899830Z     csv (3.3.5)
+2026-02-26T07:48:14.0900150Z     declarative (0.0.20)
+2026-02-26T07:48:14.0900320Z     digest-crc (0.7.0)
+2026-02-26T07:48:14.0900530Z       rake (>= 12.0.0, < 14.0.0)
+2026-02-26T07:48:14.0900850Z     domain_name (0.6.20240107)
+2026-02-26T07:48:14.0901050Z     dotenv (2.8.1)
+2026-02-26T07:48:14.0901250Z     emoji_regex (3.2.3)
+2026-02-26T07:48:14.0901500Z     excon (0.112.0)
+2026-02-26T07:48:14.0901710Z     faraday (1.10.4)
+2026-02-26T07:48:14.0901980Z       faraday-em_http (~> 1.0)
+2026-02-26T07:48:14.0902290Z       faraday-em_synchrony (~> 1.0)
+2026-02-26T07:48:14.0902600Z       faraday-excon (~> 1.1)
+2026-02-26T07:48:14.0902840Z       faraday-httpclient (~> 1.0)
+2026-02-26T07:48:14.0903100Z       faraday-multipart (~> 1.0)
+2026-02-26T07:48:14.0903400Z       faraday-net_http (~> 1.0)
+2026-02-26T07:48:14.0903640Z       faraday-net_http_persistent (~> 1.0)
+2026-02-26T07:48:14.0903910Z       faraday-patron (~> 1.0)
+2026-02-26T07:48:14.0904200Z       faraday-rack (~> 1.0)
+2026-02-26T07:48:14.0904390Z       faraday-retry (~> 1.0)
+2026-02-26T07:48:14.0905020Z       ruby2_keywords (>= 0.0.4)
+2026-02-26T07:48:14.0905260Z     faraday-cookie_jar (0.0.7)
+2026-02-26T07:48:14.0905510Z       faraday (>= 0.8.0)
+2026-02-26T07:48:14.0905750Z       http-cookie (~> 1.0.0)
+2026-02-26T07:48:14.0905990Z     faraday-em_http (1.0.0)
+2026-02-26T07:48:14.0906260Z     faraday-em_synchrony (1.0.1)
+2026-02-26T07:48:14.0906550Z     faraday-excon (1.1.0)
+2026-02-26T07:48:14.0906790Z     faraday-httpclient (1.0.1)
+2026-02-26T07:48:14.0907060Z     faraday-multipart (1.1.1)
+2026-02-26T07:48:14.0907280Z       multipart-post (~> 2.0)
+2026-02-26T07:48:14.0907470Z     faraday-net_http (1.0.2)
+2026-02-26T07:48:14.0907730Z     faraday-net_http_persistent (1.2.0)
+2026-02-26T07:48:14.0907960Z     faraday-patron (1.0.0)
+2026-02-26T07:48:14.0908130Z     faraday-rack (1.0.0)
+2026-02-26T07:48:14.0908300Z     faraday-retry (1.0.3)
+2026-02-26T07:48:14.0908470Z     faraday_middleware (1.2.1)
+2026-02-26T07:48:14.0908680Z       faraday (~> 1.0)
+2026-02-26T07:48:14.0908830Z     fastimage (2.4.0)
+2026-02-26T07:48:14.0908990Z     fastlane (2.228.0)
+2026-02-26T07:48:14.0909170Z       CFPropertyList (>= 2.3, < 4.0.0)
+2026-02-26T07:48:14.0909700Z       addressable (>= 2.8, < 3.0.0)
+2026-02-26T07:48:14.0909930Z       artifactory (~> 3.0)
+2026-02-26T07:48:14.0910120Z       aws-sdk-s3 (~> 1.0)
+2026-02-26T07:48:14.0910280Z       babosa (>= 1.0.3, < 2.0.0)
+2026-02-26T07:48:14.0910510Z       bundler (>= 1.12.0, < 3.0.0)
+2026-02-26T07:48:14.0910690Z       colored (~> 1.2)
+2026-02-26T07:48:14.0911060Z       commander (~> 4.6)
+2026-02-26T07:48:14.0911300Z       dotenv (>= 2.1.1, < 3.0.0)
+2026-02-26T07:48:14.0911540Z       emoji_regex (>= 0.1, < 4.0)
+2026-02-26T07:48:14.0911770Z       excon (>= 0.71.0, < 1.0.0)
+2026-02-26T07:48:14.0911950Z       faraday (~> 1.0)
+2026-02-26T07:48:14.0912110Z       faraday-cookie_jar (~> 0.0.6)
+2026-02-26T07:48:14.0912300Z       faraday_middleware (~> 1.0)
+2026-02-26T07:48:14.0942910Z       fastimage (>= 2.1.0, < 3.0.0)
+2026-02-26T07:48:14.0943140Z       fastlane-sirp (>= 1.0.0)
+2026-02-26T07:48:14.0943350Z       gh_inspector (>= 1.1.2, < 2.0.0)
+2026-02-26T07:48:14.0943600Z       google-apis-androidpublisher_v3 (~> 0.3)
+2026-02-26T07:48:14.0943920Z       google-apis-playcustomapp_v1 (~> 0.1)
+2026-02-26T07:48:14.0944130Z       google-cloud-env (>= 1.6.0, < 2.0.0)
+2026-02-26T07:48:14.0944330Z       google-cloud-storage (~> 1.31)
+2026-02-26T07:48:14.0944500Z       highline (~> 2.0)
+2026-02-26T07:48:14.0944650Z       http-cookie (~> 1.0.5)
+2026-02-26T07:48:14.0944880Z       json (< 3.0.0)
+2026-02-26T07:48:14.0945070Z       jwt (>= 2.1.0, < 3)
+2026-02-26T07:48:14.0945250Z       mini_magick (>= 4.9.4, < 5.0.0)
+2026-02-26T07:48:14.0945440Z       multipart-post (>= 2.0.0, < 3.0.0)
+2026-02-26T07:48:14.0945610Z       naturally (~> 2.2)
+2026-02-26T07:48:14.0945770Z       optparse (>= 0.1.1, < 1.0.0)
+2026-02-26T07:48:14.0945970Z       plist (>= 3.1.0, < 4.0.0)
+2026-02-26T07:48:14.0946140Z       rubyzip (>= 2.0.0, < 3.0.0)
+2026-02-26T07:48:14.0946310Z       security (= 0.1.5)
+2026-02-26T07:48:14.0946540Z       simctl (~> 1.6.3)
+2026-02-26T07:48:14.0946760Z       terminal-notifier (>= 2.0.0, < 3.0.0)
+2026-02-26T07:48:14.0947070Z       terminal-table (~> 3)
+2026-02-26T07:48:14.0947290Z       tty-screen (>= 0.6.3, < 1.0.0)
+2026-02-26T07:48:14.0947500Z       tty-spinner (>= 0.8.0, < 1.0.0)
+2026-02-26T07:48:14.0947800Z       word_wrap (~> 1.0.0)
+2026-02-26T07:48:14.0948020Z       xcodeproj (>= 1.13.0, < 2.0.0)
+2026-02-26T07:48:14.0948270Z       xcpretty (~> 0.4.1)
+2026-02-26T07:48:14.0948460Z       xcpretty-travis-formatter (>= 0.0.3, < 2.0.0)
+2026-02-26T07:48:14.0948670Z     fastlane-sirp (1.0.0)
+2026-02-26T07:48:14.0948890Z       sysrandom (~> 1.0)
+2026-02-26T07:48:14.0949120Z     gh_inspector (1.1.3)
+2026-02-26T07:48:14.0949350Z     google-apis-androidpublisher_v3 (0.54.0)
+2026-02-26T07:48:14.0949730Z       google-apis-core (>= 0.11.0, < 2.a)
+2026-02-26T07:48:14.0949930Z     google-apis-core (0.11.3)
+2026-02-26T07:48:14.0950390Z       addressable (~> 2.5, >= 2.5.1)
+2026-02-26T07:48:14.0951090Z       googleauth (>= 0.16.2, < 2.a)
+2026-02-26T07:48:14.0951490Z       httpclient (>= 2.8.1, < 3.a)
+2026-02-26T07:48:14.0951790Z       mini_mime (~> 1.0)
+2026-02-26T07:48:14.0951960Z       representable (~> 3.0)
+2026-02-26T07:48:14.0952280Z       retriable (>= 2.0, < 4.a)
+2026-02-26T07:48:14.0952490Z       rexml
+2026-02-26T07:48:14.0952630Z     google-apis-iamcredentials_v1 (0.17.0)
+2026-02-26T07:48:14.0952910Z       google-apis-core (>= 0.11.0, < 2.a)
+2026-02-26T07:48:14.0953250Z     google-apis-playcustomapp_v1 (0.13.0)
+2026-02-26T07:48:14.0953510Z       google-apis-core (>= 0.11.0, < 2.a)
+2026-02-26T07:48:14.0953950Z     google-apis-storage_v1 (0.31.0)
+2026-02-26T07:48:14.0954270Z       google-apis-core (>= 0.11.0, < 2.a)
+2026-02-26T07:48:14.0954540Z     google-cloud-core (1.8.0)
+2026-02-26T07:48:14.0954880Z       google-cloud-env (>= 1.0, < 3.a)
+2026-02-26T07:48:14.0955160Z       google-cloud-errors (~> 1.0)
+2026-02-26T07:48:14.0955450Z     google-cloud-env (1.6.0)
+2026-02-26T07:48:14.0955750Z       faraday (>= 0.17.3, < 3.0)
+2026-02-26T07:48:14.0955990Z     google-cloud-errors (1.5.0)
+2026-02-26T07:48:14.0956230Z     google-cloud-storage (1.47.0)
+2026-02-26T07:48:14.0956720Z       addressable (~> 2.8)
+2026-02-26T07:48:14.0956880Z       digest-crc (~> 0.4)
+2026-02-26T07:48:14.0957230Z       google-apis-iamcredentials_v1 (~> 0.1)
+2026-02-26T07:48:14.0957490Z       google-apis-storage_v1 (~> 0.31.0)
+2026-02-26T07:48:14.0957680Z       google-cloud-core (~> 1.6)
+2026-02-26T07:48:14.0957860Z       googleauth (>= 0.16.2, < 2.a)
+2026-02-26T07:48:14.0958020Z       mini_mime (~> 1.0)
+2026-02-26T07:48:14.0958200Z     googleauth (1.8.1)
+2026-02-26T07:48:14.0958350Z       faraday (>= 0.17.3, < 3.a)
+2026-02-26T07:48:14.0958590Z       jwt (>= 1.4, < 3.0)
+2026-02-26T07:48:14.0958850Z       multi_json (~> 1.11)
+2026-02-26T07:48:14.0959000Z       os (>= 0.9, < 2.0)
+2026-02-26T07:48:14.0959150Z       signet (>= 0.16, < 2.a)
+2026-02-26T07:48:14.0959360Z     highline (2.0.3)
+2026-02-26T07:48:14.0959560Z     http-cookie (1.0.8)
+2026-02-26T07:48:14.0959760Z       domain_name (~> 0.5)
+2026-02-26T07:48:14.0960130Z     httpclient (2.9.0)
+2026-02-26T07:48:14.0960300Z       mutex_m
+2026-02-26T07:48:14.0960450Z     jmespath (1.6.2)
+2026-02-26T07:48:14.0960660Z     json (2.13.2)
+2026-02-26T07:48:14.0960790Z     jwt (2.10.2)
+2026-02-26T07:48:14.0960980Z       base64
+2026-02-26T07:48:14.0961130Z     logger (1.7.0)
+2026-02-26T07:48:14.0961280Z     mini_magick (4.13.2)
+2026-02-26T07:48:14.0961430Z     mini_mime (1.1.5)
+2026-02-26T07:48:14.0961590Z     multi_json (1.17.0)
+2026-02-26T07:48:14.0961790Z     multipart-post (2.4.1)
+2026-02-26T07:48:14.0962000Z     mutex_m (0.3.0)
+2026-02-26T07:48:14.0962130Z     nanaimo (0.4.0)
+2026-02-26T07:48:14.0962260Z     naturally (2.3.0)
+2026-02-26T07:48:14.0962390Z     nkf (0.2.0)
+2026-02-26T07:48:14.0962590Z     optparse (0.6.0)
+2026-02-26T07:48:14.0962720Z     os (1.1.4)
+2026-02-26T07:48:14.0962850Z     ostruct (0.6.3)
+2026-02-26T07:48:14.0963040Z     plist (3.7.2)
+2026-02-26T07:48:14.0963280Z     public_suffix (6.0.2)
+2026-02-26T07:48:14.0963520Z     rake (13.3.0)
+2026-02-26T07:48:14.0963690Z     representable (3.2.0)
+2026-02-26T07:48:14.0963900Z       declarative (< 0.1.0)
+2026-02-26T07:48:14.0964230Z       trailblazer-option (>= 0.1.1, < 0.2.0)
+2026-02-26T07:48:14.0964490Z       uber (< 0.2.0)
+2026-02-26T07:48:14.0964710Z     retriable (3.1.2)
+2026-02-26T07:48:14.0964940Z     rexml (3.4.2)
+2026-02-26T07:48:14.0965160Z     rouge (3.28.0)
+2026-02-26T07:48:14.0965340Z     ruby2_keywords (0.0.5)
+2026-02-26T07:48:14.0965540Z     rubyzip (2.4.1)
+2026-02-26T07:48:14.0965720Z     security (0.1.5)
+2026-02-26T07:48:14.0965900Z     signet (0.21.0)
+2026-02-26T07:48:14.0966030Z       addressable (~> 2.8)
+2026-02-26T07:48:14.0966250Z       faraday (>= 0.17.5, < 3.a)
+2026-02-26T07:48:14.0966520Z       jwt (>= 1.5, < 4.0)
+2026-02-26T07:48:14.0966660Z       multi_json (~> 1.10)
+2026-02-26T07:48:14.0966910Z     simctl (1.6.10)
+2026-02-26T07:48:14.0967090Z       CFPropertyList
+2026-02-26T07:48:14.0967290Z       naturally
+2026-02-26T07:48:14.0970550Z     sysrandom (1.0.5)
+2026-02-26T07:48:14.0971440Z     terminal-notifier (2.0.0)
+2026-02-26T07:48:14.0972020Z     terminal-table (3.0.2)
+2026-02-26T07:48:14.0972810Z       unicode-display_width (>= 1.1.1, < 3)
+2026-02-26T07:48:14.0973610Z     trailblazer-option (0.1.2)
+2026-02-26T07:48:14.0974100Z     tty-cursor (0.7.1)
+2026-02-26T07:48:14.0974570Z     tty-screen (0.8.2)
+2026-02-26T07:48:14.0975130Z     tty-spinner (0.9.3)
+2026-02-26T07:48:14.0979100Z       tty-cursor (~> 0.7)
+2026-02-26T07:48:14.0979730Z     uber (0.1.0)
+2026-02-26T07:48:14.0980130Z     unicode-display_width (2.6.0)
+2026-02-26T07:48:14.0980650Z     word_wrap (1.0.0)
+2026-02-26T07:48:14.0981350Z     xcodeproj (1.27.0)
+2026-02-26T07:48:14.0981790Z       CFPropertyList (>= 2.3.3, < 4.0)
+2026-02-26T07:48:14.0982420Z       atomos (~> 0.1.3)
+2026-02-26T07:48:14.0983170Z       claide (>= 1.0.2, < 2.0)
+2026-02-26T07:48:14.0983720Z       colored2 (~> 3.1)
+2026-02-26T07:48:14.0984190Z       nanaimo (~> 0.4.0)
+2026-02-26T07:48:14.0985940Z       rexml (>= 3.3.6, < 4.0)
+2026-02-26T07:48:14.0986190Z     xcpretty (0.4.1)
+2026-02-26T07:48:14.0986430Z       rouge (~> 3.28.0)
+2026-02-26T07:48:14.0986950Z     xcpretty-travis-formatter (1.0.1)
+2026-02-26T07:48:14.0987200Z       xcpretty (~> 0.2, >= 0.0.7)
+2026-02-26T07:48:14.0987400Z 
+2026-02-26T07:48:14.0987530Z PLATFORMS
+2026-02-26T07:48:14.0987830Z   arm64-darwin-24
+2026-02-26T07:48:14.0987960Z   ruby
+2026-02-26T07:48:14.0988120Z 
+2026-02-26T07:48:14.0988220Z DEPENDENCIES
+2026-02-26T07:48:14.0988340Z   abbrev
+2026-02-26T07:48:14.0988500Z   csv
+2026-02-26T07:48:14.0988650Z   dotenv
+2026-02-26T07:48:14.0988800Z   fastlane
+2026-02-26T07:48:14.0989030Z   logger
+2026-02-26T07:48:14.0989930Z   mutex_m
+2026-02-26T07:48:14.0990300Z   ostruct
+2026-02-26T07:48:14.0990460Z 
+2026-02-26T07:48:14.0990580Z RUBY VERSION
+2026-02-26T07:48:14.0991070Z    ruby 3.4.2p28
+2026-02-26T07:48:14.0991160Z 
+2026-02-26T07:48:14.0991310Z BUNDLED WITH
+2026-02-26T07:48:14.0991500Z    2.6.8
+2026-02-26T07:48:14.0991930Z ##[endgroup]
+2026-02-26T07:48:14.6739050Z ##[group]Run actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
+2026-02-26T07:48:14.6739390Z with:
+2026-02-26T07:48:14.6739620Z   path: .mint
+2026-02-26T07:48:14.6739890Z   key: macOS-mint-c1610e34f72022f21476b51de3d0cac253155a79c3e3da03d74bab57d4e36b28
+2026-02-26T07:48:14.6740240Z   restore-keys: macOS-mint-
+
+2026-02-26T07:48:14.6740440Z   enableCrossOsArchive: false
+2026-02-26T07:48:14.6740630Z   fail-on-cache-miss: false
+2026-02-26T07:48:14.6740810Z   lookup-only: false
+2026-02-26T07:48:14.6740980Z   save-always: false
+2026-02-26T07:48:14.6741120Z env:
+2026-02-26T07:48:14.6741260Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:14.6741440Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:14.6741600Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:14.6741850Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:14.6742120Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:14.6742350Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:48:14.6742710Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:48:14.6742920Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:48:14.6743120Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:14.6743460Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:14.6743860Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:48:14.6745340Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T07:48:14.6746760Z ##[endgroup]
+2026-02-26T07:48:14.9480900Z Cache hit for: macOS-mint-c1610e34f72022f21476b51de3d0cac253155a79c3e3da03d74bab57d4e36b28
+2026-02-26T07:48:15.7031970Z Received 28927180 of 28927180 (100.0%), 46.3 MBs/sec
+2026-02-26T07:48:15.7037830Z Cache Size: ~28 MB (28927180 B)
+2026-02-26T07:48:15.7065390Z [command]/opt/homebrew/bin/gtar -xf /Users/runner/work/_temp/a06ce8b3-2b9e-4c53-8f9d-8ee3c9dce5b8/cache.tzst -P -C /Users/runner/work/bitwarden.ios/bitwarden.ios --delay-directory-restore --use-compress-program unzstd
+2026-02-26T07:48:15.8980810Z Cache restored successfully
+2026-02-26T07:48:15.9069520Z Cache restored from key: macOS-mint-c1610e34f72022f21476b51de3d0cac253155a79c3e3da03d74bab57d4e36b28
+2026-02-26T07:48:16.4131980Z ##[group]Run actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
+2026-02-26T07:48:16.4132280Z with:
+2026-02-26T07:48:16.4132440Z   path: build/DerivedData/SourcePackages
+2026-02-26T07:48:16.4132760Z   key: macOS-spm-8da86c265220b5a77d14b2dfc7f85846f773f74c3cf3ef94739a16fac66387e8
+2026-02-26T07:48:16.4133090Z   restore-keys: macOS-spm-
+
+2026-02-26T07:48:16.4133270Z   enableCrossOsArchive: false
+2026-02-26T07:48:16.4133450Z   fail-on-cache-miss: false
+2026-02-26T07:48:16.4133620Z   lookup-only: false
+2026-02-26T07:48:16.4133770Z   save-always: false
+2026-02-26T07:48:16.4134260Z env:
+2026-02-26T07:48:16.4134390Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:16.4134560Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:16.4134730Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:16.4134980Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:16.4135230Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:16.4135490Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:48:16.4135690Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:48:16.4135850Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:48:16.4136000Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:16.4136330Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:16.4136710Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:48:16.4137980Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T07:48:16.4139230Z ##[endgroup]
+2026-02-26T07:48:16.6760800Z Cache hit for: macOS-spm-8da86c265220b5a77d14b2dfc7f85846f773f74c3cf3ef94739a16fac66387e8
+2026-02-26T07:48:17.8658950Z Received 50331648 of 777702183 (6.5%), 48.0 MBs/sec
+2026-02-26T07:48:18.8660120Z Received 159383552 of 777702183 (20.5%), 76.0 MBs/sec
+2026-02-26T07:48:19.9154180Z Received 268435456 of 777702183 (34.5%), 83.9 MBs/sec
+2026-02-26T07:48:20.9152010Z Received 356515840 of 777702183 (45.8%), 84.0 MBs/sec
+2026-02-26T07:48:21.9171810Z Received 444596224 of 777702183 (57.2%), 83.9 MBs/sec
+2026-02-26T07:48:22.9169980Z Received 536870912 of 777702183 (69.0%), 84.6 MBs/sec
+2026-02-26T07:48:23.9199550Z Received 633339904 of 777702183 (81.4%), 85.6 MBs/sec
+2026-02-26T07:48:24.9218880Z Received 683671552 of 777702183 (87.9%), 80.9 MBs/sec
+2026-02-26T07:48:25.7631940Z Received 777702183 of 777702183 (100.0%), 83.4 MBs/sec
+2026-02-26T07:48:25.7652990Z Cache Size: ~742 MB (777702183 B)
+2026-02-26T07:48:25.7757810Z [command]/opt/homebrew/bin/gtar -xf /Users/runner/work/_temp/7020f0b5-c109-4052-8b0a-b897c7c4666e/cache.tzst -P -C /Users/runner/work/bitwarden.ios/bitwarden.ios --delay-directory-restore --use-compress-program unzstd
+2026-02-26T07:48:37.8472770Z Cache restored successfully
+2026-02-26T07:48:37.8889390Z Cache restored from key: macOS-spm-8da86c265220b5a77d14b2dfc7f85846f773f74c3cf3ef94739a16fac66387e8
+2026-02-26T07:48:37.9443190Z ##[group]Run ./Scripts/update_test_local_config.sh "${_COMPILER_FLAGS}"
+2026-02-26T07:48:37.9443790Z [36;1m./Scripts/update_test_local_config.sh "${_COMPILER_FLAGS}"[0m
+2026-02-26T07:48:37.9492260Z shell: /bin/bash -e {0}
+2026-02-26T07:48:37.9492580Z env:
+2026-02-26T07:48:37.9492730Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:37.9493040Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:37.9493230Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:37.9493590Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:37.9493940Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:37.9494320Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:48:37.9494610Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:48:37.9494780Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:48:37.9495000Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:37.9495510Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:37.9496110Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:48:37.9497540Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T07:48:37.9504340Z ##[endgroup]
+2026-02-26T07:48:38.0494870Z 🧱 Updating Test local config...
+2026-02-26T07:48:38.0495430Z 🛠️ Compiler flags: 
+2026-02-26T07:48:38.0528500Z ✅ Test local config updated successfully.
+2026-02-26T07:48:38.0561000Z ##[group]Run brew update
+2026-02-26T07:48:38.0561310Z [36;1mbrew update[0m
+2026-02-26T07:48:38.0561530Z [36;1mbrew bundle[0m
+2026-02-26T07:48:38.0561750Z [36;1m./Scripts/bootstrap.sh[0m
+2026-02-26T07:48:38.0593180Z shell: /bin/bash -e {0}
+2026-02-26T07:48:38.0593370Z env:
+2026-02-26T07:48:38.0593540Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:48:38.0593800Z   MINT_PATH: .mint/lib
+2026-02-26T07:48:38.0594070Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:48:38.0594330Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:48:38.0594690Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:48:38.0594990Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:48:38.0595320Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:48:38.0595550Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:48:38.0595840Z   _COMPILER_FLAGS: 
+2026-02-26T07:48:38.0596250Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:48:38.0597010Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:48:38.0598410Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T07:48:38.0599830Z ##[endgroup]
+2026-02-26T07:48:41.9339990Z [34m==>[0m [1mUpdating Homebrew...[0m
+2026-02-26T07:48:56.0187360Z [34m==>[0m [1mHomebrew's analytics have entirely moved to our InfluxDB instance in the EU.[0m
+2026-02-26T07:48:56.0188100Z We gather less data than before and have destroyed all Google Analytics data:
+2026-02-26T07:48:56.0188750Z   [4mhttps://docs.brew.sh/Analytics[24m[0m
+2026-02-26T07:48:56.0189420Z Please reconsider re-enabling analytics to help our volunteer maintainers with:
+2026-02-26T07:48:56.0189820Z   brew analytics on
+2026-02-26T07:48:56.0395070Z [34m==>[0m [1mHomebrew is run entirely by unpaid volunteers. Please consider donating:[0m
+2026-02-26T07:48:56.0396010Z   [4mhttps://github.com/Homebrew/brew#donations[24m
+2026-02-26T07:48:56.0396190Z 
+2026-02-26T07:48:56.9480270Z Updated 4 taps (hashicorp/tap, aws/tap, homebrew/core and homebrew/cask).
+2026-02-26T07:48:56.9490180Z [34m==>[0m [1mNew Formulae[0m
+2026-02-26T07:48:57.2763370Z apache-serf: High-performance asynchronous HTTP client library
+2026-02-26T07:48:57.2764190Z asc: Fast, lightweight CLI for App Store Connect
+2026-02-26T07:48:57.2764810Z async-profiler: Sampling CPU & HEAP profiler for Java using AsyncGetCallTrace + perf_events
+2026-02-26T07:48:57.2765420Z bitwuzla: SMT solver for bit-vectors, floating-points, arrays and uninterpreted functions
+2026-02-26T07:48:57.2766080Z claude-agent-acp: Use Claude Code from any ACP client such as Zed!
+2026-02-26T07:48:57.2766590Z clock-rs: Modern, digital clock that effortlessly runs in your terminal
+2026-02-26T07:48:57.2767820Z cwalk: Cross-platform path library for C/C++
+2026-02-26T07:48:57.2768850Z datadog-static-analyzer: Static analysis tool for code quality and security
+2026-02-26T07:48:57.2772870Z fracturedjson: JSON formatter that produces highly readable but fairly compact output
+2026-02-26T07:48:57.2781070Z git-flow-next: Modern implementation of the Git-flow branching model
+2026-02-26T07:48:57.2782330Z ironclaw: Security-first personal AI assistant with WASM sandbox channels
+2026-02-26T07:48:57.2783890Z kaf: Modern CLI for Apache Kafka
+2026-02-26T07:48:57.2787670Z letta-code: Memory-first coding agent
+2026-02-26T07:48:57.2792730Z linux-headers@6.8: Header files of the Linux kernel
+2026-02-26T07:48:57.2796890Z lld@21: LLVM Project Linker
+2026-02-26T07:48:57.2800030Z llmfit: Find what models run on your hardware
+2026-02-26T07:48:57.2803550Z llvm@21: Next-gen compiler infrastructure
+2026-02-26T07:48:57.2809190Z micasa: TUI for tracking home projects, maintenance schedules, appliances and quotes
+2026-02-26T07:48:57.2814360Z nomad-pack: Templating and packaging tool used with HashiCorp Nomad
+2026-02-26T07:48:57.2819750Z nullclaw: Tiny autonomous AI assistant infrastructure written in Zig
+2026-02-26T07:48:57.2827920Z nuls: NuShell-inspired ls with colorful table output
+2026-02-26T07:48:57.2832580Z pi-coding-agent: AI agent toolkit
+2026-02-26T07:48:57.2840760Z picoclaw: Ultra-efficient personal AI assistant in Go
+2026-02-26T07:48:57.2848760Z pyperformance: Python benchmark suite
+2026-02-26T07:48:57.2858970Z shadcn: CLI for adding components to your project
+2026-02-26T07:48:57.2869020Z structurizr: Software architecture models as code
+2026-02-26T07:48:57.2879100Z tree-sitter-go: Go grammar for tree-sitter
+2026-02-26T07:48:57.2886630Z tree-sitter-python: Python grammar for tree-sitter
+2026-02-26T07:48:57.2892460Z tree-sitter-ruby: Ruby grammar for tree-sitter
+2026-02-26T07:48:57.2899460Z zeptoclaw: Lightweight personal AI gateway with layered safety controls
+2026-02-26T07:48:57.2905960Z zeroclaw: Rust-first autonomous agent runtime
+2026-02-26T07:48:57.2928460Z [34m==>[0m [1mNew Casks[0m
+2026-02-26T07:48:57.5368190Z brewy: Simple Homebrew GUI
+2026-02-26T07:48:57.5368740Z calendr: Menu bar calendar
+2026-02-26T07:48:57.5369180Z claude-devtools: Visualise and analyse Claude Code session executions
+2026-02-26T07:48:57.5369850Z claude-island: Dynamic Island-style notifications for Claude Code CLI sessions
+2026-02-26T07:48:57.5370490Z donut: Anti-detect web browser
+2026-02-26T07:48:57.5371270Z donut@nightly: Anti-detect web browser
+2026-02-26T07:48:57.5372060Z dot: Menu bar calendar with meeting reminders
+2026-02-26T07:48:57.5373330Z extradock: Add fully customizable extra docks
+2026-02-26T07:48:57.5374360Z ferdium@nightly: Multi-platform multi-messaging app
+2026-02-26T07:48:57.5383870Z macusb: Tool to create bootable USB installers
+2026-02-26T07:48:57.5388260Z nostalgiapp: Launcher for eXoDOS and retro game collections
+2026-02-26T07:48:57.5392260Z pangolin: Identity-aware VPN and proxy for remote access
+2026-02-26T07:48:57.5395920Z pika@beta: Colour picker for colours onscreen
+2026-02-26T07:48:57.5399990Z psiphon-conduit: Psiphon network proxy tool
+2026-02-26T07:48:57.8795580Z [34m==>[0m [1mOutdated Formulae[0m
+2026-02-26T07:48:57.8796120Z certifi
+2026-02-26T07:48:57.8796550Z gh
+2026-02-26T07:48:57.8796860Z libgcrypt
+2026-02-26T07:48:57.8797240Z libgpg-error
+2026-02-26T07:48:57.8797550Z libksba
+2026-02-26T07:48:57.8797920Z libunistring
+2026-02-26T07:48:57.8798240Z node@24
+2026-02-26T07:48:57.8798610Z selenium-server
+2026-02-26T07:48:57.8798930Z simdjson
+2026-02-26T07:48:57.8799260Z 
+2026-02-26T07:48:57.8799550Z You have [1m9[0m outdated formulae installed.
+2026-02-26T07:48:57.8800040Z You can upgrade them with [1mbrew upgrade[0m
+2026-02-26T07:48:57.8800560Z or list them with [1mbrew outdated[0m.
+2026-02-26T07:49:01.2422370Z [32mInstalling fastlane[0m
+2026-02-26T07:49:20.9715770Z [32mInstalling mint[0m
+2026-02-26T07:49:23.6838780Z [32mInstalling swift-protobuf[0m
+2026-02-26T07:49:35.1520840Z Using yq
+2026-02-26T07:49:35.1537310Z [32mInstalling xcresultparser[0m
+2026-02-26T07:49:37.9426940Z [32mInstalling coreutils[0m
+2026-02-26T07:49:41.0254080Z [32m`brew bundle` complete! 6 Brewfile dependencies now installed.[0m
+2026-02-26T07:49:42.0362250Z The Brewfile's dependencies are satisfied.
+2026-02-26T07:49:42.0571530Z 🌱 6 packages up to date
+2026-02-26T07:49:42.1107860Z ⚙️  Generating plists...
+2026-02-26T07:49:42.1111540Z ⚙️  Generating project...
+2026-02-26T07:49:42.4497490Z ⚙️  Writing project...
+2026-02-26T07:49:42.4878520Z Created project at /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit.xcodeproj
+2026-02-26T07:49:42.5155970Z ⚙️  Generating plists...
+2026-02-26T07:49:42.5156590Z ⚙️  Generating project...
+2026-02-26T07:49:44.2866430Z ⚙️  Writing project...
+2026-02-26T07:49:44.3917920Z Created project at /Users/runner/work/bitwarden.ios/bitwarden.ios/Bitwarden.xcodeproj
+2026-02-26T07:49:44.4175270Z ⚙️  Generating plists...
+2026-02-26T07:49:44.4175810Z ⚙️  Generating project...
+2026-02-26T07:49:44.8409650Z ⚙️  Writing project...
+2026-02-26T07:49:44.8679870Z Created project at /Users/runner/work/bitwarden.ios/bitwarden.ios/Authenticator.xcodeproj
+2026-02-26T07:49:44.8887460Z ⚙️  Generating plists...
+2026-02-26T07:49:44.8887980Z ⚙️  Generating project...
+2026-02-26T07:49:44.9630540Z ⚙️  Writing project...
+2026-02-26T07:49:44.9720320Z Created project at /Users/runner/work/bitwarden.ios/bitwarden.ios/TestHarness.xcodeproj
+2026-02-26T07:49:44.9727930Z ✅ Bootstrapped!
+2026-02-26T07:49:44.9837040Z Setting up git hooks...
+2026-02-26T07:49:44.9915260Z   ✅ pre-commit hook installed
+2026-02-26T07:49:44.9915930Z ✅ Git hooks set up successfully
+2026-02-26T07:49:45.1204980Z ✅ Xcode version 26.1.1 matches required version
+2026-02-26T07:49:45.1316080Z Prepare all required actions
+2026-02-26T07:49:45.1368910Z ##[group]Run ./.github/actions/boot-simulator
+2026-02-26T07:49:45.1369190Z with:
+2026-02-26T07:49:45.1369380Z   simulator-name: iPhone 17 Pro
+2026-02-26T07:49:45.1369640Z   simulator-version: 26.0.1
+2026-02-26T07:49:45.1370010Z env:
+2026-02-26T07:49:45.1370170Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:49:45.1370510Z   MINT_PATH: .mint/lib
+2026-02-26T07:49:45.1370720Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:49:45.1371050Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:49:45.1371370Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:49:45.1371720Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:49:45.1371930Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:49:45.1372160Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:49:45.1372380Z   _COMPILER_FLAGS: 
+2026-02-26T07:49:45.1372780Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:49:45.1373300Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:49:45.1374710Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T07:49:45.1376060Z ##[endgroup]
+2026-02-26T07:49:45.1393410Z ##[group]Run SIMULATOR_VERSION_WITHOUT_PATCH=$(echo "$_SIMULATOR_VERSION" | cut -d. -f1,2)
+2026-02-26T07:49:45.1394090Z [36;1mSIMULATOR_VERSION_WITHOUT_PATCH=$(echo "$_SIMULATOR_VERSION" | cut -d. -f1,2)[0m
+2026-02-26T07:49:45.1394470Z [36;1mecho "Listing simulator devices:"[0m
+2026-02-26T07:49:45.1394920Z [36;1mSIMULATORS=$(xcrun simctl list devices "iOS $SIMULATOR_VERSION_WITHOUT_PATCH" available)[0m
+2026-02-26T07:49:45.1395300Z [36;1mecho "$SIMULATORS"[0m
+2026-02-26T07:49:45.1395750Z [36;1mDEVICE_ID=$(echo "$SIMULATORS" | grep "$_SIMULATOR_NAME" | head -1 | sed -E 's/.*\(([A-F0-9-]+)\).*/\1/')[0m
+2026-02-26T07:49:45.1396230Z [36;1mecho "--------------------------------"[0m
+2026-02-26T07:49:45.1396510Z [36;1mecho "👀 Updating dyld_shared_cache:"[0m
+2026-02-26T07:49:45.1396870Z [36;1mxcrun simctl runtime dyld_shared_cache update --all[0m
+2026-02-26T07:49:45.1397180Z [36;1mecho "--------------------------------"[0m
+2026-02-26T07:49:45.1397600Z [36;1mecho "👀 Booting simulator: $_SIMULATOR_NAME ($_SIMULATOR_VERSION) with ID: $DEVICE_ID"[0m
+2026-02-26T07:49:45.1398050Z [36;1mecho "device-id=$DEVICE_ID" >> "$GITHUB_OUTPUT"[0m
+2026-02-26T07:49:45.1398300Z [36;1m[0m
+2026-02-26T07:49:45.1398500Z [36;1mi=1[0m
+2026-02-26T07:49:45.1398930Z [36;1mmax=5[0m
+2026-02-26T07:49:45.1399200Z [36;1mwhile [ $i -le $max ]; do[0m
+2026-02-26T07:49:45.1399470Z [36;1m    echo "👀 Launching Simulator (Attempt $i/$max)"[0m
+2026-02-26T07:49:45.1399850Z [36;1m    # Brewfile installs coreutils which includes gtimeout[0m
+2026-02-26T07:49:45.1400230Z [36;1m    if gtimeout -s SIGKILL 2m xcrun simctl bootstatus "$DEVICE_ID" -b; then[0m
+2026-02-26T07:49:45.1400640Z [36;1m        echo "✅ Simulator booted successfully"[0m
+2026-02-26T07:49:45.1400900Z [36;1m        exit 0[0m
+2026-02-26T07:49:45.1401120Z [36;1m    else[0m
+2026-02-26T07:49:45.1401370Z [36;1m        echo "❌ Simulator boot timed out. Shutting down..."[0m
+2026-02-26T07:49:45.1401920Z [36;1m        xcrun simctl shutdown "$DEVICE_ID" || true # prevents "Unable to shutdown device in current state: Shutdown" error[0m
+2026-02-26T07:49:45.1402380Z [36;1m[0m
+2026-02-26T07:49:45.1402560Z [36;1m        echo "🔁 Retrying in 5s..."[0m
+2026-02-26T07:49:45.1402830Z [36;1m        i=$((i + 1))[0m
+2026-02-26T07:49:45.1403030Z [36;1m        sleep 5[0m
+2026-02-26T07:49:45.1403250Z [36;1m    fi[0m
+2026-02-26T07:49:45.1403670Z [36;1mdone[0m
+2026-02-26T07:49:45.1403890Z [36;1m[0m
+2026-02-26T07:49:45.1404120Z [36;1mecho "::error::Failed to boot simulator after $max attempts."[0m
+2026-02-26T07:49:45.1404460Z [36;1mexit 1[0m
+2026-02-26T07:49:45.2128440Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-02-26T07:49:45.2128820Z env:
+2026-02-26T07:49:45.2129010Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:49:45.2129300Z   MINT_PATH: .mint/lib
+2026-02-26T07:49:45.2129550Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:49:45.2129890Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:49:45.2130210Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:49:45.2130580Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:49:45.2130840Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:49:45.2131130Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:49:45.2131390Z   _COMPILER_FLAGS: 
+2026-02-26T07:49:45.2131860Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:49:45.2132330Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:49:45.2133700Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T07:49:45.2134990Z ##[endgroup]
+2026-02-26T07:49:45.2817170Z Listing simulator devices:
+2026-02-26T07:49:59.1778290Z == Devices ==
+2026-02-26T07:49:59.1885090Z -- iOS 26.0 --
+2026-02-26T07:49:59.1890260Z     iPhone 17 Pro (38C880C3-91B7-4F3B-9CD0-99320DD7B6E7) (Shutdown) 
+2026-02-26T07:49:59.1991700Z     iPhone 17 Pro Max (53DAB863-9AD9-447B-91B9-CEDF8B37A08F) (Shutdown) 
+2026-02-26T07:49:59.2068250Z     iPhone Air (9E6D3BE9-6E26-4522-BECF-D72BAFF37BF8) (Shutdown) 
+2026-02-26T07:49:59.2083460Z     iPhone 17 (8C09C4E3-713B-41B4-9F2D-62B5B6BD388F) (Shutdown) 
+2026-02-26T07:49:59.2084830Z     iPhone 16e (72651DD5-C2F4-41B1-80EA-39B0801EA8BC) (Shutdown) 
+2026-02-26T07:49:59.2089500Z     iPad Pro 13-inch (M5) (B2409080-FDD6-4735-AA93-555D06E3AD87) (Shutdown) 
+2026-02-26T07:49:59.2090230Z     iPad Pro 11-inch (M5) (EA2A5311-90A3-461B-B4C9-E79D980B3136) (Shutdown) 
+2026-02-26T07:49:59.2090740Z     iPad Pro 11-inch (M4) (4EBC1AE9-E230-4758-886B-A358D3DE1615) (Shutdown) 
+2026-02-26T07:49:59.2091380Z     iPad Pro 13-inch (M4) (345D9360-633F-4979-8A65-D74348955A5D) (Shutdown) 
+2026-02-26T07:49:59.2092260Z     iPad mini (A17 Pro) (81569EAF-F102-46D5-AB0D-FD29862BA570) (Shutdown) 
+2026-02-26T07:49:59.2092980Z     iPad (A16) (4FC94888-88A2-47B6-B6D9-755CAC192B09) (Shutdown) 
+2026-02-26T07:49:59.2093540Z     iPad Air 13-inch (M3) (6CD2D433-65EB-4C73-A419-27D0A379806B) (Shutdown) 
+2026-02-26T07:49:59.2095280Z     iPad Air 11-inch (M3) (678D1803-A3C9-474E-B0A8-E4EEC011AF95) (Shutdown) 
+2026-02-26T07:49:59.2095730Z -- iOS 26.1 --
+2026-02-26T07:49:59.2096140Z -- iOS 26.2 --
+2026-02-26T07:49:59.2096470Z -- tvOS 26.0 --
+2026-02-26T07:49:59.2096800Z -- tvOS 26.1 --
+2026-02-26T07:49:59.2097100Z -- tvOS 26.2 --
+2026-02-26T07:49:59.2097430Z -- watchOS 26.0 --
+2026-02-26T07:49:59.2097880Z -- watchOS 26.1 --
+2026-02-26T07:49:59.2098270Z -- watchOS 26.2 --
+2026-02-26T07:49:59.2098610Z -- visionOS 26.0 --
+2026-02-26T07:49:59.2098920Z -- visionOS 26.1 --
+2026-02-26T07:49:59.2099280Z -- visionOS 26.2 --
+2026-02-26T07:49:59.2099660Z --------------------------------
+2026-02-26T07:49:59.2102780Z 👀 Updating dyld_shared_cache:
+2026-02-26T07:49:59.7000930Z Updating dyld shared cache if needed for runtime: iOS 26.0 (26.0.1 - 23A8464) - com.apple.CoreSimulator.SimRuntime.iOS-26-0.
+2026-02-26T07:49:59.7007070Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.iOS-26-0.23A8464/'.
+2026-02-26T07:49:59.7008980Z Updating dyld shared cache if needed for runtime: iOS 26.1 (26.1 - 23B86) - com.apple.CoreSimulator.SimRuntime.iOS-26-1.
+2026-02-26T07:49:59.7009990Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.iOS-26-1.23B86/'.
+2026-02-26T07:49:59.7011040Z Updating dyld shared cache if needed for runtime: iOS 26.2 (26.2 - 23C54) - com.apple.CoreSimulator.SimRuntime.iOS-26-2.
+2026-02-26T07:49:59.7011940Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.iOS-26-2.23C54/'.
+2026-02-26T07:49:59.7013400Z Updating dyld shared cache if needed for runtime: tvOS 26.0 (26.0 - 23J352) - com.apple.CoreSimulator.SimRuntime.tvOS-26-0.
+2026-02-26T07:49:59.7014390Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.tvOS-26-0.23J352/'.
+2026-02-26T07:49:59.7015500Z Updating dyld shared cache if needed for runtime: tvOS 26.1 (26.1 - 23J579) - com.apple.CoreSimulator.SimRuntime.tvOS-26-1.
+2026-02-26T07:49:59.7016480Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.tvOS-26-1.23J579/'.
+2026-02-26T07:49:59.7017440Z Updating dyld shared cache if needed for runtime: tvOS 26.2 (26.2 - 23K51) - com.apple.CoreSimulator.SimRuntime.tvOS-26-2.
+2026-02-26T07:49:59.7018560Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.tvOS-26-2.23K51/'.
+2026-02-26T07:49:59.7020070Z Updating dyld shared cache if needed for runtime: watchOS 26.0 (26.0 - 23R353) - com.apple.CoreSimulator.SimRuntime.watchOS-26-0.
+2026-02-26T07:49:59.7023000Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.watchOS-26-0.23R353/'.
+2026-02-26T07:49:59.7024660Z Updating dyld shared cache if needed for runtime: watchOS 26.1 (26.1 - 23S36) - com.apple.CoreSimulator.SimRuntime.watchOS-26-1.
+2026-02-26T07:49:59.7025940Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.watchOS-26-1.23S36/'.
+2026-02-26T07:49:59.7027350Z Updating dyld shared cache if needed for runtime: watchOS 26.2 (26.2 - 23S303) - com.apple.CoreSimulator.SimRuntime.watchOS-26-2.
+2026-02-26T07:49:59.7028850Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.watchOS-26-2.23S303/'.
+2026-02-26T07:49:59.7029990Z Updating dyld shared cache if needed for runtime: visionOS 26.0 (26.0 - 23M336) - com.apple.CoreSimulator.SimRuntime.xrOS-26-0.
+2026-02-26T07:49:59.7030960Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.xrOS-26-0.23M336/'.
+2026-02-26T07:49:59.7032910Z Updating dyld shared cache if needed for runtime: visionOS 26.1 (26.1 - 23N47) - com.apple.CoreSimulator.SimRuntime.xrOS-26-1.
+2026-02-26T07:49:59.7034090Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.xrOS-26-1.23N47/'.
+2026-02-26T07:49:59.7035160Z Updating dyld shared cache if needed for runtime: visionOS 26.2 (26.2 - 23N301) - com.apple.CoreSimulator.SimRuntime.xrOS-26-2.
+2026-02-26T07:49:59.7036100Z dyld shared cache is usable at path: '/Library/Developer/CoreSimulator/Caches/dyld/25D125/com.apple.CoreSimulator.SimRuntime.xrOS-26-2.23N301/'.
+2026-02-26T07:49:59.7036950Z --------------------------------
+2026-02-26T07:49:59.7038080Z 👀 Booting simulator: iPhone 17 Pro (26.0.1) with ID: 38C880C3-91B7-4F3B-9CD0-99320DD7B6E7
+2026-02-26T07:49:59.7038630Z 👀 Launching Simulator (Attempt 1/5)
+2026-02-26T07:50:00.8358350Z Monitoring boot status for iPhone 17 Pro (38C880C3-91B7-4F3B-9CD0-99320DD7B6E7).
+2026-02-26T07:50:00.8358830Z Booting device...
+2026-02-26T07:50:00.8359220Z [2026-02-26 07:50:00 +0000] Status=0, isTerminal=NO, Elapsed=00:00.
+2026-02-26T07:50:00.8360090Z 	Booting
+2026-02-26T07:50:00.8360300Z 
+2026-02-26T07:50:05.5117620Z [2026-02-26 07:50:05 +0000] Status=1, isTerminal=NO, Elapsed=00:04.
+2026-02-26T07:50:05.5915750Z 	Waiting on BackBoard
+2026-02-26T07:50:05.6750380Z 
+2026-02-26T07:50:08.9705680Z [2026-02-26 07:50:08 +0000] Status=2, isTerminal=NO, Elapsed=00:07.
+2026-02-26T07:50:09.0513560Z 	Waiting on Data Migration
+2026-02-26T07:50:09.1360630Z 		Reason:(null)
+2026-02-26T07:50:09.1363950Z 		Migration Elapsed:00:02 seconds
+2026-02-26T07:50:09.2199940Z 
+2026-02-26T07:50:11.1875060Z [2026-02-26 07:50:11 +0000] Status=2, isTerminal=NO, Elapsed=00:10.
+2026-02-26T07:50:11.2721300Z 	Waiting on Data Migration
+2026-02-26T07:50:11.3557980Z 		Reason:Running plugin com.apple.MobileContainerManager.ContainerMigrator (ContainerMigrator.migrator, user-agnostic)
+2026-02-26T07:50:11.4389220Z 		Migration Elapsed:00:03 seconds
+2026-02-26T07:50:11.5212690Z 
+2026-02-26T07:50:11.5214020Z [2026-02-26 07:50:11 +0000] Status=2, isTerminal=NO, Elapsed=00:10.
+2026-02-26T07:50:11.5301680Z 	Waiting on Data Migration
+2026-02-26T07:50:11.6013770Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:11.6014520Z 		Migration Elapsed:00:05 seconds
+2026-02-26T07:50:11.6014970Z 
+2026-02-26T07:50:11.9392490Z [2026-02-26 07:50:11 +0000] Status=2, isTerminal=NO, Elapsed=00:10.
+2026-02-26T07:50:12.0243550Z 	Waiting on Data Migration
+2026-02-26T07:50:12.1050700Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:12.2684030Z 		Migration Elapsed:00:05 seconds
+2026-02-26T07:50:12.3474710Z 
+2026-02-26T07:50:13.0893800Z [2026-02-26 07:50:12 +0000] Status=2, isTerminal=NO, Elapsed=00:12.
+2026-02-26T07:50:13.1733280Z 	Waiting on Data Migration
+2026-02-26T07:50:13.3345880Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:13.4143710Z 		Migration Elapsed:00:06 seconds
+2026-02-26T07:50:13.4958370Z 
+2026-02-26T07:50:14.5124990Z [2026-02-26 07:50:14 +0000] Status=2, isTerminal=NO, Elapsed=00:13.
+2026-02-26T07:50:14.5968850Z 	Waiting on Data Migration
+2026-02-26T07:50:14.6801900Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:14.9254330Z 		Migration Elapsed:00:07 seconds
+2026-02-26T07:50:15.2477680Z 
+2026-02-26T07:50:15.3339310Z [2026-02-26 07:50:14 +0000] Status=2, isTerminal=NO, Elapsed=00:14.
+2026-02-26T07:50:15.3353900Z 	Waiting on Data Migration
+2026-02-26T07:50:15.5063060Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:15.8430510Z 		Migration Elapsed:00:08 seconds
+2026-02-26T07:50:15.9281660Z 
+2026-02-26T07:50:16.0950560Z [2026-02-26 07:50:15 +0000] Status=2, isTerminal=NO, Elapsed=00:15.
+2026-02-26T07:50:17.4439690Z 	Waiting on Data Migration
+2026-02-26T07:50:17.4440440Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:17.4441120Z 		Migration Elapsed:00:09 seconds
+2026-02-26T07:50:17.4441290Z 
+2026-02-26T07:50:17.4441570Z [2026-02-26 07:50:17 +0000] Status=2, isTerminal=NO, Elapsed=00:16.
+2026-02-26T07:50:17.4442010Z 	Waiting on Data Migration
+2026-02-26T07:50:17.4442560Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:17.4445040Z 		Migration Elapsed:00:10 seconds
+2026-02-26T07:50:17.4446870Z 
+2026-02-26T07:50:18.9436760Z [2026-02-26 07:50:18 +0000] Status=2, isTerminal=NO, Elapsed=00:17.
+2026-02-26T07:50:19.0250380Z 	Waiting on Data Migration
+2026-02-26T07:50:19.1071530Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:19.1889480Z 		Migration Elapsed:00:11 seconds
+2026-02-26T07:50:19.2808370Z 
+2026-02-26T07:50:19.6952990Z [2026-02-26 07:50:19 +0000] Status=2, isTerminal=NO, Elapsed=00:18.
+2026-02-26T07:50:19.8542050Z 	Waiting on Data Migration
+2026-02-26T07:50:19.8545900Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:19.8547930Z 		Migration Elapsed:00:12 seconds
+2026-02-26T07:50:19.8549170Z 
+2026-02-26T07:50:20.4289010Z [2026-02-26 07:50:20 +0000] Status=2, isTerminal=NO, Elapsed=00:19.
+2026-02-26T07:50:20.5097230Z 	Waiting on Data Migration
+2026-02-26T07:50:20.6767980Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:20.7565230Z 		Migration Elapsed:00:13 seconds
+2026-02-26T07:50:20.8391240Z 
+2026-02-26T07:50:21.7386760Z [2026-02-26 07:50:21 +0000] Status=2, isTerminal=NO, Elapsed=00:20.
+2026-02-26T07:50:21.8205730Z 	Waiting on Data Migration
+2026-02-26T07:50:21.9000510Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:21.9834920Z 		Migration Elapsed:00:14 seconds
+2026-02-26T07:50:22.0637610Z 
+2026-02-26T07:50:22.1477440Z [2026-02-26 07:50:21 +0000] Status=2, isTerminal=NO, Elapsed=00:21.
+2026-02-26T07:50:22.2334550Z 	Waiting on Data Migration
+2026-02-26T07:50:22.3950550Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:22.4779030Z 		Migration Elapsed:00:15 seconds
+2026-02-26T07:50:22.4780090Z 
+2026-02-26T07:50:23.5446390Z [2026-02-26 07:50:23 +0000] Status=2, isTerminal=NO, Elapsed=00:22.
+2026-02-26T07:50:23.5469050Z 	Waiting on Data Migration
+2026-02-26T07:50:23.6280050Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:23.7092400Z 		Migration Elapsed:00:16 seconds
+2026-02-26T07:50:23.7908000Z 
+2026-02-26T07:50:24.2119530Z [2026-02-26 07:50:24 +0000] Status=2, isTerminal=NO, Elapsed=00:23.
+2026-02-26T07:50:24.2120360Z 	Waiting on Data Migration
+2026-02-26T07:50:24.2120990Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:24.2121540Z 		Migration Elapsed:00:17 seconds
+2026-02-26T07:50:24.2121770Z 
+2026-02-26T07:50:25.6153900Z [2026-02-26 07:50:25 +0000] Status=2, isTerminal=NO, Elapsed=00:24.
+2026-02-26T07:50:25.7760670Z 	Waiting on Data Migration
+2026-02-26T07:50:25.8573610Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:25.8579710Z 		Migration Elapsed:00:18 seconds
+2026-02-26T07:50:26.0208180Z 
+2026-02-26T07:50:26.1900230Z [2026-02-26 07:50:26 +0000] Status=2, isTerminal=NO, Elapsed=00:25.
+2026-02-26T07:50:26.1902160Z 	Waiting on Data Migration
+2026-02-26T07:50:26.1902800Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:26.1903920Z 		Migration Elapsed:00:19 seconds
+2026-02-26T07:50:26.2659040Z 
+2026-02-26T07:50:27.1647420Z [2026-02-26 07:50:27 +0000] Status=2, isTerminal=NO, Elapsed=00:26.
+2026-02-26T07:50:27.1648430Z 	Waiting on Data Migration
+2026-02-26T07:50:27.3293090Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:27.4949240Z 		Migration Elapsed:00:20 seconds
+2026-02-26T07:50:27.5758600Z 
+2026-02-26T07:50:27.9840330Z [2026-02-26 07:50:27 +0000] Status=2, isTerminal=NO, Elapsed=00:27.
+2026-02-26T07:50:28.0658200Z 	Waiting on Data Migration
+2026-02-26T07:50:28.1462000Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:28.2275420Z 		Migration Elapsed:00:21 seconds
+2026-02-26T07:50:28.3909590Z 
+2026-02-26T07:50:28.9884170Z [2026-02-26 07:50:28 +0000] Status=2, isTerminal=NO, Elapsed=00:28.
+2026-02-26T07:50:29.0689910Z 	Waiting on Data Migration
+2026-02-26T07:50:29.0691570Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:29.1520560Z 		Migration Elapsed:00:22 seconds
+2026-02-26T07:50:29.2321810Z 
+2026-02-26T07:50:30.3254490Z [2026-02-26 07:50:29 +0000] Status=2, isTerminal=NO, Elapsed=00:28.
+2026-02-26T07:50:30.5514940Z 	Waiting on Data Migration
+2026-02-26T07:50:30.6203940Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:30.6860070Z 		Migration Elapsed:00:23 seconds
+2026-02-26T07:50:30.7439880Z 
+2026-02-26T07:50:30.9071120Z [2026-02-26 07:50:30 +0000] Status=2, isTerminal=NO, Elapsed=00:30.
+2026-02-26T07:50:30.9538220Z 	Waiting on Data Migration
+2026-02-26T07:50:30.9705500Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:30.9867950Z 		Migration Elapsed:00:24 seconds
+2026-02-26T07:50:31.0003730Z 
+2026-02-26T07:50:31.8267490Z [2026-02-26 07:50:31 +0000] Status=2, isTerminal=NO, Elapsed=00:30.
+2026-02-26T07:50:31.8267980Z 	Waiting on Data Migration
+2026-02-26T07:50:31.8268550Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:31.8269060Z 		Migration Elapsed:00:25 seconds
+2026-02-26T07:50:31.8269240Z 
+2026-02-26T07:50:32.9727210Z [2026-02-26 07:50:32 +0000] Status=2, isTerminal=NO, Elapsed=00:31.
+2026-02-26T07:50:32.9893470Z 	Waiting on Data Migration
+2026-02-26T07:50:32.9993580Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:33.0081270Z 		Migration Elapsed:00:26 seconds
+2026-02-26T07:50:33.0081730Z 
+2026-02-26T07:50:33.9111340Z [2026-02-26 07:50:33 +0000] Status=2, isTerminal=NO, Elapsed=00:32.
+2026-02-26T07:50:34.0024360Z 	Waiting on Data Migration
+2026-02-26T07:50:34.0841780Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:34.0842350Z 		Migration Elapsed:00:27 seconds
+2026-02-26T07:50:34.1708580Z 
+2026-02-26T07:50:35.2132120Z [2026-02-26 07:50:34 +0000] Status=2, isTerminal=NO, Elapsed=00:34.
+2026-02-26T07:50:35.4172610Z 	Waiting on Data Migration
+2026-02-26T07:50:35.6082670Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:35.6267460Z 		Migration Elapsed:00:28 seconds
+2026-02-26T07:50:35.7956880Z 
+2026-02-26T07:50:35.9647630Z [2026-02-26 07:50:35 +0000] Status=2, isTerminal=NO, Elapsed=00:34.
+2026-02-26T07:50:36.0134390Z 	Waiting on Data Migration
+2026-02-26T07:50:36.2860560Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:36.3440170Z 		Migration Elapsed:00:29 seconds
+2026-02-26T07:50:36.6069510Z 
+2026-02-26T07:50:36.9364890Z [2026-02-26 07:50:36 +0000] Status=2, isTerminal=NO, Elapsed=00:35.
+2026-02-26T07:50:37.1184890Z 	Waiting on Data Migration
+2026-02-26T07:50:37.1553420Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:37.1553960Z 		Migration Elapsed:00:30 seconds
+2026-02-26T07:50:37.1554180Z 
+2026-02-26T07:50:37.8438030Z [2026-02-26 07:50:37 +0000] Status=2, isTerminal=NO, Elapsed=00:37.
+2026-02-26T07:50:37.8562950Z 	Waiting on Data Migration
+2026-02-26T07:50:37.8567120Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:37.8735100Z 		Migration Elapsed:00:31 seconds
+2026-02-26T07:50:37.8742840Z 
+2026-02-26T07:50:38.8507800Z [2026-02-26 07:50:38 +0000] Status=2, isTerminal=NO, Elapsed=00:38.
+2026-02-26T07:50:38.8638590Z 	Waiting on Data Migration
+2026-02-26T07:50:38.8639670Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:38.8740950Z 		Migration Elapsed:00:32 seconds
+2026-02-26T07:50:38.8970890Z 
+2026-02-26T07:50:39.8297130Z [2026-02-26 07:50:39 +0000] Status=2, isTerminal=NO, Elapsed=00:38.
+2026-02-26T07:50:39.8300140Z 	Waiting on Data Migration
+2026-02-26T07:50:39.8575880Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:39.8576900Z 		Migration Elapsed:00:33 seconds
+2026-02-26T07:50:39.8577110Z 
+2026-02-26T07:50:40.8322540Z [2026-02-26 07:50:40 +0000] Status=2, isTerminal=NO, Elapsed=00:39.
+2026-02-26T07:50:40.8323100Z 	Waiting on Data Migration
+2026-02-26T07:50:40.8323830Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:40.8324510Z 		Migration Elapsed:00:34 seconds
+2026-02-26T07:50:40.8324930Z 
+2026-02-26T07:50:41.8584970Z [2026-02-26 07:50:41 +0000] Status=2, isTerminal=NO, Elapsed=00:41.
+2026-02-26T07:50:41.8585830Z 	Waiting on Data Migration
+2026-02-26T07:50:41.8586450Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:41.8587110Z 		Migration Elapsed:00:35 seconds
+2026-02-26T07:50:41.8587380Z 
+2026-02-26T07:50:42.8805210Z [2026-02-26 07:50:42 +0000] Status=2, isTerminal=NO, Elapsed=00:42.
+2026-02-26T07:50:42.8917210Z 	Waiting on Data Migration
+2026-02-26T07:50:42.9150840Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:42.9289990Z 		Migration Elapsed:00:36 seconds
+2026-02-26T07:50:42.9427680Z 
+2026-02-26T07:50:43.8576620Z [2026-02-26 07:50:43 +0000] Status=2, isTerminal=NO, Elapsed=00:43.
+2026-02-26T07:50:43.8588580Z 	Waiting on Data Migration
+2026-02-26T07:50:43.8711800Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:43.8826510Z 		Migration Elapsed:00:37 seconds
+2026-02-26T07:50:43.8907990Z 
+2026-02-26T07:50:44.8356080Z [2026-02-26 07:50:44 +0000] Status=2, isTerminal=NO, Elapsed=00:43.
+2026-02-26T07:50:44.8370340Z 	Waiting on Data Migration
+2026-02-26T07:50:44.8371170Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:44.8378230Z 		Migration Elapsed:00:38 seconds
+2026-02-26T07:50:44.8382820Z 
+2026-02-26T07:50:45.9171700Z [2026-02-26 07:50:45 +0000] Status=2, isTerminal=NO, Elapsed=00:45.
+2026-02-26T07:50:45.9267590Z 	Waiting on Data Migration
+2026-02-26T07:50:45.9293620Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:45.9294440Z 		Migration Elapsed:00:39 seconds
+2026-02-26T07:50:45.9399960Z 
+2026-02-26T07:50:46.8598420Z [2026-02-26 07:50:46 +0000] Status=2, isTerminal=NO, Elapsed=00:46.
+2026-02-26T07:50:46.8607810Z 	Waiting on Data Migration
+2026-02-26T07:50:46.8608670Z 		Reason:Running plugin com.apple.-0LaunchServicesMigrator (00LaunchServicesMigrator.migrator, user-agnostic)
+2026-02-26T07:50:46.8609380Z 		Migration Elapsed:00:40 seconds
+2026-02-26T07:50:46.8609930Z 
+2026-02-26T07:50:50.3480650Z [2026-02-26 07:50:50 +0000] Status=2, isTerminal=NO, Elapsed=00:49.
+2026-02-26T07:50:51.0055230Z 	Waiting on Data Migration
+2026-02-26T07:50:51.0056140Z 		Reason:Running plugin com.apple.securityd.KeychainMigrator (KeychainMigrator.migrator, user-agnostic)
+2026-02-26T07:50:51.0056920Z 		Migration Elapsed:00:42 seconds
+2026-02-26T07:50:51.0059360Z 
+2026-02-26T07:50:51.0059640Z [2026-02-26 07:50:50 +0000] Status=2, isTerminal=NO, Elapsed=00:49.
+2026-02-26T07:50:51.0060050Z 	Waiting on Data Migration
+2026-02-26T07:50:51.0060680Z 		Reason:Running plugin com.apple.managedconfiguration.migrator (MCProfile.migrator, user-agnostic)
+2026-02-26T07:50:51.0061200Z 		Migration Elapsed:00:44 seconds
+2026-02-26T07:50:51.0061530Z 
+2026-02-26T07:50:51.7366490Z [2026-02-26 07:50:51 +0000] Status=2, isTerminal=NO, Elapsed=00:50.
+2026-02-26T07:50:51.8162800Z 	Waiting on Data Migration
+2026-02-26T07:50:51.9810150Z 		Reason:Running plugin com.apple.managedconfiguration.migrator (MCProfile.migrator, user-agnostic)
+2026-02-26T07:50:52.0639400Z 		Migration Elapsed:00:44 seconds
+2026-02-26T07:50:52.2264330Z 
+2026-02-26T07:50:52.7998400Z [2026-02-26 07:50:52 +0000] Status=2, isTerminal=NO, Elapsed=00:51.
+2026-02-26T07:50:53.2945600Z 	Waiting on Data Migration
+2026-02-26T07:50:53.2946960Z 		Reason:Running plugin com.apple.managedconfiguration.migrator (MCProfile.migrator, user-agnostic)
+2026-02-26T07:50:53.2948120Z 		Migration Elapsed:00:45 seconds
+2026-02-26T07:50:53.2949380Z 
+2026-02-26T07:50:53.2949600Z [2026-02-26 07:50:52 +0000] Status=2, isTerminal=NO, Elapsed=00:51.
+2026-02-26T07:50:53.2950000Z 	Waiting on Data Migration
+2026-02-26T07:50:53.2952140Z 		Reason:Running plugin com.apple.managedconfiguration.migrator (MCProfile.migrator, user-agnostic)
+2026-02-26T07:50:53.2952620Z 		Migration Elapsed:00:46 seconds
+2026-02-26T07:50:53.2952800Z 
+2026-02-26T07:50:53.9464590Z [2026-02-26 07:50:53 +0000] Status=2, isTerminal=NO, Elapsed=00:53.
+2026-02-26T07:50:54.1146240Z 	Waiting on Data Migration
+2026-02-26T07:50:54.1980790Z 		Reason:Running plugin com.apple.managedconfiguration.migrator (MCProfile.migrator, user-agnostic)
+2026-02-26T07:50:54.1982860Z 		Migration Elapsed:00:47 seconds
+2026-02-26T07:50:54.2045670Z 
+2026-02-26T07:50:55.1707600Z [2026-02-26 07:50:55 +0000] Status=2, isTerminal=NO, Elapsed=00:54.
+2026-02-26T07:50:55.4257490Z 	Waiting on Data Migration
+2026-02-26T07:50:55.5079970Z 		Reason:Running plugin com.apple.managedconfiguration.migrator (MCProfile.migrator, user-agnostic)
+2026-02-26T07:50:55.5924010Z 		Migration Elapsed:00:48 seconds
+2026-02-26T07:50:55.6727280Z 
+2026-02-26T07:50:56.2464290Z [2026-02-26 07:50:56 +0000] Status=2, isTerminal=NO, Elapsed=00:55.
+2026-02-26T07:50:56.2464950Z 	Waiting on Data Migration
+2026-02-26T07:50:56.4245160Z 		Reason:Running plugin com.apple.MobileSafari.migrator (MobileSafari.migrator)
+2026-02-26T07:50:56.5081630Z 		Migration Elapsed:00:49 seconds
+2026-02-26T07:50:56.5878440Z 
+2026-02-26T07:50:58.1140540Z [2026-02-26 07:50:57 +0000] Status=2, isTerminal=NO, Elapsed=00:56.
+2026-02-26T07:50:58.1982530Z 	Waiting on Data Migration
+2026-02-26T07:50:58.2758130Z 		Reason:Running plugin com.apple.VideosMigrator (TVMigrator.migrator)
+2026-02-26T07:50:58.3640810Z 		Migration Elapsed:00:50 seconds
+2026-02-26T07:50:58.5278630Z 
+2026-02-26T07:50:58.6951840Z [2026-02-26 07:50:58 +0000] Status=4, isTerminal=NO, Elapsed=00:57.
+2026-02-26T07:50:58.7777900Z 	Waiting on System App
+2026-02-26T07:50:58.8586210Z 
+2026-02-26T07:50:59.3499100Z [2026-02-26 07:50:59 +0000] Status=4, isTerminal=NO, Elapsed=00:58.
+2026-02-26T07:50:59.6768540Z 	Waiting on System App
+2026-02-26T07:50:59.7613690Z 
+2026-02-26T07:51:00.4103460Z [2026-02-26 07:51:00 +0000] Status=4, isTerminal=NO, Elapsed=00:59.
+2026-02-26T07:51:00.4930760Z 	Waiting on System App
+2026-02-26T07:51:00.5724120Z 
+2026-02-26T07:51:01.1430410Z [2026-02-26 07:51:00 +0000] Status=4, isTerminal=NO, Elapsed=01:00.
+2026-02-26T07:51:01.2613600Z 	Waiting on System App
+2026-02-26T07:51:01.3742450Z 
+2026-02-26T07:51:02.4617700Z [2026-02-26 07:51:01 +0000] Status=4, isTerminal=NO, Elapsed=01:01.
+2026-02-26T07:51:02.4685180Z 	Waiting on System App
+2026-02-26T07:51:02.4867680Z 
+2026-02-26T07:51:04.4183830Z [2026-02-26 07:51:03 +0000] Status=4, isTerminal=NO, Elapsed=01:02.
+2026-02-26T07:51:05.2043890Z 	Waiting on System App
+2026-02-26T07:51:05.9218780Z 
+2026-02-26T07:51:06.9545290Z [2026-02-26 07:51:06 +0000] Status=4, isTerminal=NO, Elapsed=01:05.
+2026-02-26T07:51:07.2254760Z 	Waiting on System App
+2026-02-26T07:51:07.3234060Z 
+2026-02-26T07:51:12.6542270Z [2026-02-26 07:51:12 +0000] Status=4294967295, isTerminal=YES, Elapsed=01:11.
+2026-02-26T07:51:12.7381200Z 	Finished
+2026-02-26T07:51:12.8593800Z 
+2026-02-26T07:51:14.2184680Z ✅ Simulator booted successfully
+2026-02-26T07:51:17.0265710Z ##[group]Run python Scripts/pyeetd/main.py & PYEETD_PID=$!
+2026-02-26T07:51:17.0266390Z [36;1mpython Scripts/pyeetd/main.py & PYEETD_PID=$![0m
+2026-02-26T07:51:17.0266840Z [36;1mxcrun xcodebuild build-for-testing \[0m
+2026-02-26T07:51:17.0267420Z [36;1m  -workspace Bitwarden.xcworkspace \[0m
+2026-02-26T07:51:17.0270300Z [36;1m  -scheme Bitwarden \[0m
+2026-02-26T07:51:17.0270760Z [36;1m  -configuration Debug \[0m
+2026-02-26T07:51:17.0271380Z [36;1m  -destination "platform=iOS Simulator,id=$_SIMULATOR_ID" \[0m
+2026-02-26T07:51:17.0271790Z [36;1m  -derivedDataPath build/DerivedData \[0m
+2026-02-26T07:51:17.0272750Z [36;1m  -resultBundlePath "$_BUILD_RESULT_BUNDLE_PATH" \[0m
+2026-02-26T07:51:17.0273210Z [36;1m  ONLY_ACTIVE_ARCH=YES \[0m
+2026-02-26T07:51:17.0273640Z [36;1m  -quiet[0m
+2026-02-26T07:51:17.0274000Z [36;1mkill "$PYEETD_PID"[0m
+2026-02-26T07:51:18.6113730Z shell: /bin/bash -e {0}
+2026-02-26T07:51:18.6114770Z env:
+2026-02-26T07:51:18.6116180Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T07:51:18.6117110Z   MINT_PATH: .mint/lib
+2026-02-26T07:51:18.6117710Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T07:51:18.6118840Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T07:51:18.6120010Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T07:51:18.6120830Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T07:51:18.6121680Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T07:51:18.6123030Z   _XCODE_VERSION: 26.1.1
+2026-02-26T07:51:18.6123510Z   _COMPILER_FLAGS: 
+2026-02-26T07:51:18.6123950Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T07:51:18.6124700Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T07:51:18.6126220Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T07:51:18.6127880Z   _SIMULATOR_ID: 38C880C3-91B7-4F3B-9CD0-99320DD7B6E7
+2026-02-26T07:51:18.6128190Z ##[endgroup]
+2026-02-26T07:53:16.7450700Z Writing result bundle at path:
+2026-02-26T07:53:16.7454110Z 	/Users/runner/work/bitwarden.ios/bitwarden.ios/build/bwpm-build.xcresult
+2026-02-26T07:53:16.7455210Z 
+2026-02-26T07:53:16.7935180Z --- xcodebuild: WARNING: Using the first of multiple matching destinations:
+2026-02-26T07:53:16.7938980Z { platform:iOS Simulator, arch:arm64, id:38C880C3-91B7-4F3B-9CD0-99320DD7B6E7, OS:26.0.1, name:iPhone 17 Pro }
+2026-02-26T07:53:16.7941510Z { platform:iOS Simulator, arch:x86_64, id:38C880C3-91B7-4F3B-9CD0-99320DD7B6E7, OS:26.0.1, name:iPhone 17 Pro }
+2026-02-26T07:57:09.0091270Z /Users/runner/work/bitwarden.ios/bitwarden.ios/TestHelpers/API/MockHTTPClient.swift:10:16: warning: stored property 'downloadRequests' of 'Sendable'-conforming class 'MockHTTPClient' is mutable; this is an error in the Swift 6 language mode
+2026-02-26T07:57:09.0177240Z     public var downloadRequests: [URLRequest] = []
+2026-02-26T07:57:09.0324350Z                ^
+2026-02-26T07:57:09.0428430Z /Users/runner/work/bitwarden.ios/bitwarden.ios/TestHelpers/API/MockHTTPClient.swift:10:16: warning: stored property 'downloadRequests' of 'Sendable'-conforming class 'MockHTTPClient' is mutable; this is an error in the Swift 6 language mode
+2026-02-26T07:57:09.0549980Z     public var downloadRequests: [URLRequest] = []
+2026-02-26T07:57:09.0654570Z                ^
+2026-02-26T08:00:13.8201900Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:13.8284630Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:13.8290580Z          ^
+2026-02-26T08:00:13.8291850Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: candidate has non-matching type '(Date.Type) throws -> Date'
+2026-02-26T08:00:13.8295290Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:13.8295770Z          ^
+2026-02-26T08:00:13.8297830Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:13.8299570Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:13.8303780Z          ^
+2026-02-26T08:00:13.8304690Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:13.8306110Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:13.8306750Z          ^
+2026-02-26T08:00:13.8307100Z     private 
+2026-02-26T08:00:13.8307710Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:13.8308310Z   func decode(_ type: Int128.Type) throws -> Int128}
+2026-02-26T08:00:13.8310230Z        ^
+2026-02-26T08:00:13.8312780Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:13.8316350Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:13.8317220Z          ^
+2026-02-26T08:00:13.8324950Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: candidate has non-matching type '(Data.Type) throws -> Data'
+2026-02-26T08:00:13.8330250Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:13.8330670Z          ^
+2026-02-26T08:00:13.8341270Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:13.8346470Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:13.8347990Z          ^
+2026-02-26T08:00:13.8349580Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:13.8366900Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:13.8368080Z          ^
+2026-02-26T08:00:13.8371140Z     private 
+2026-02-26T08:00:13.8372920Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:13.8384260Z   func decode(_ type: UInt128.Type) throws -> UInt128}
+2026-02-26T08:00:13.8385850Z        ^
+2026-02-26T08:00:13.8388700Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:13.8390170Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:13.8418110Z          ^
+2026-02-26T08:00:13.8421250Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: candidate has non-matching type '(Date) throws -> ()'
+2026-02-26T08:00:13.8424110Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:13.8427150Z          ^
+2026-02-26T08:00:13.8428880Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:13.8431800Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:13.8462920Z          ^
+2026-02-26T08:00:13.8464960Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:13.8468650Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:13.8472030Z          ^
+2026-02-26T08:00:13.8476450Z     private 
+2026-02-26T08:00:13.8478160Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:13.8479540Z   mutating func encode(_ value: Int128) throws}
+2026-02-26T08:00:13.8482790Z                 ^
+2026-02-26T08:00:13.8488730Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:13.8490050Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:13.8490400Z          ^
+2026-02-26T08:00:13.8493310Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: candidate has non-matching type '(Data) throws -> ()'
+2026-02-26T08:00:13.8494740Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:13.8496680Z          ^
+2026-02-26T08:00:13.8499120Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:13.8500710Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:13.8501290Z          ^
+2026-02-26T08:00:13.8502070Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:13.8505280Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:13.8506060Z          ^
+2026-02-26T08:00:13.8507010Z     private 
+2026-02-26T08:00:13.8507420Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:13.8511010Z   mutating func encode(_ value: UInt128) throws}
+2026-02-26T08:00:13.8511460Z                 ^
+2026-02-26T08:00:15.4750430Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:15.4858380Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:15.4962200Z          ^
+2026-02-26T08:00:15.5065560Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: candidate has non-matching type '(Date.Type) throws -> Date'
+2026-02-26T08:00:15.5172330Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:15.5272170Z          ^
+2026-02-26T08:00:15.5378740Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:15.5427030Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:15.5429030Z          ^
+2026-02-26T08:00:15.5430880Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:15.5435600Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:15.5436700Z          ^
+2026-02-26T08:00:15.5439060Z     private 
+2026-02-26T08:00:15.5440400Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:15.5444880Z   func decode(_ type: Int128.Type) throws -> Int128}
+2026-02-26T08:00:15.5447200Z        ^
+2026-02-26T08:00:15.5453120Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:15.5455570Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:15.5456350Z          ^
+2026-02-26T08:00:15.5457230Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: candidate has non-matching type '(Data.Type) throws -> Data'
+2026-02-26T08:00:15.5458620Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:15.5459160Z          ^
+2026-02-26T08:00:15.5460520Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:15.5467530Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:15.5468170Z          ^
+2026-02-26T08:00:15.5468950Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:15.5472780Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:15.5474160Z          ^
+2026-02-26T08:00:15.5474690Z     private 
+2026-02-26T08:00:15.5475720Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:15.5476540Z   func decode(_ type: UInt128.Type) throws -> UInt128}
+2026-02-26T08:00:15.5476830Z        ^
+2026-02-26T08:00:15.5477660Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:15.5478710Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:15.5940030Z          ^
+2026-02-26T08:00:15.5941170Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: candidate has non-matching type '(Date) throws -> ()'
+2026-02-26T08:00:15.5942170Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:15.5942870Z          ^
+2026-02-26T08:00:15.5943660Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:15.5944740Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:15.5945200Z          ^
+2026-02-26T08:00:15.5945930Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:15.5946590Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:15.5947400Z          ^
+2026-02-26T08:00:15.5947550Z     private 
+2026-02-26T08:00:15.5948390Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:15.5949100Z   mutating func encode(_ value: Int128) throws}
+2026-02-26T08:00:15.5969830Z                 ^
+2026-02-26T08:00:15.5970920Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:15.5972680Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:15.5973070Z          ^
+2026-02-26T08:00:15.5974570Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: candidate has non-matching type '(Data) throws -> ()'
+2026-02-26T08:00:15.5975410Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:15.5975970Z          ^
+2026-02-26T08:00:15.5977200Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:15.5978240Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:15.5978510Z          ^
+2026-02-26T08:00:15.5979240Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:15.5980120Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:15.5980500Z          ^
+2026-02-26T08:00:15.5980700Z     private 
+2026-02-26T08:00:15.5981260Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:15.5981720Z   mutating func encode(_ value: UInt128) throws}
+2026-02-26T08:00:15.5982200Z                 ^
+2026-02-26T08:00:20.7400410Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:20.7497950Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:20.7569260Z          ^
+2026-02-26T08:00:20.7673820Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: candidate has non-matching type '(Date.Type) throws -> Date'
+2026-02-26T08:00:20.7780660Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:20.7883120Z          ^
+2026-02-26T08:00:20.7987130Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:20.8102930Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:20.8202880Z          ^
+2026-02-26T08:00:20.8314580Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:20.8408880Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:20.8511840Z          ^
+2026-02-26T08:00:20.8615200Z     private 
+2026-02-26T08:00:20.8716790Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:20.8819100Z   func decode(_ type: Int128.Type) throws -> Int128}
+2026-02-26T08:00:20.9041830Z        ^
+2026-02-26T08:00:20.9145930Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:20.9249620Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:20.9358260Z          ^
+2026-02-26T08:00:20.9460520Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: candidate has non-matching type '(Data.Type) throws -> Data'
+2026-02-26T08:00:20.9561190Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:20.9642970Z          ^
+2026-02-26T08:00:20.9645070Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:20.9647260Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:20.9647960Z          ^
+2026-02-26T08:00:20.9648870Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:20.9649940Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:20.9650590Z          ^
+2026-02-26T08:00:20.9651060Z     private 
+2026-02-26T08:00:20.9651470Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:20.9655620Z   func decode(_ type: UInt128.Type) throws -> UInt128}
+2026-02-26T08:00:20.9655990Z        ^
+2026-02-26T08:00:20.9657110Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:20.9759110Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:20.9933660Z          ^
+2026-02-26T08:00:21.0123720Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: candidate has non-matching type '(Date) throws -> ()'
+2026-02-26T08:00:21.0227960Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:21.0278590Z          ^
+2026-02-26T08:00:21.0385240Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:21.0489630Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:21.0593900Z          ^
+2026-02-26T08:00:21.0697550Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:21.0802050Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:21.0844930Z          ^
+2026-02-26T08:00:21.0948050Z     private 
+2026-02-26T08:00:21.1049720Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:21.1151440Z   mutating func encode(_ value: Int128) throws}
+2026-02-26T08:00:21.1259690Z                 ^
+2026-02-26T08:00:21.1361950Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:21.1497230Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:21.1633580Z          ^
+2026-02-26T08:00:21.1776620Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: candidate has non-matching type '(Data) throws -> ()'
+2026-02-26T08:00:21.1892440Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:21.2032230Z          ^
+2026-02-26T08:00:21.2174490Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:21.2294600Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:21.2423930Z          ^
+2026-02-26T08:00:21.2528770Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:21.2652710Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:21.2754840Z          ^
+2026-02-26T08:00:21.2856340Z     private 
+2026-02-26T08:00:21.2957480Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:21.3059010Z   mutating func encode(_ value: UInt128) throws}
+2026-02-26T08:00:21.3175260Z                 ^
+2026-02-26T08:00:36.9621070Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:36.9719540Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:36.9834470Z          ^
+2026-02-26T08:00:36.9975260Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: candidate has non-matching type '(Date.Type) throws -> Date'
+2026-02-26T08:00:37.0082500Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:37.0187230Z          ^
+2026-02-26T08:00:37.0287360Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:37.0386350Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:37.0405820Z          ^
+2026-02-26T08:00:37.0406500Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:168:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:37.0407520Z     func decode(_: Date.Type) throws -> Date {
+2026-02-26T08:00:37.0410440Z          ^
+2026-02-26T08:00:37.0411530Z     private 
+2026-02-26T08:00:37.0412160Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:37.0414040Z   func decode(_ type: Int128.Type) throws -> Int128}
+2026-02-26T08:00:37.0415450Z        ^
+2026-02-26T08:00:37.0417700Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: warning: instance method 'decode' nearly matches defaulted requirement 'decode' of protocol 'SingleValueDecodingContainer'
+2026-02-26T08:00:37.0419120Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:37.0421230Z          ^
+2026-02-26T08:00:37.0428280Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: candidate has non-matching type '(Data.Type) throws -> Data'
+2026-02-26T08:00:37.0432740Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:37.0433900Z          ^
+2026-02-26T08:00:37.0437340Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: move 'decode' to another extension to silence this warning
+2026-02-26T08:00:37.0440090Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:37.0442190Z          ^
+2026-02-26T08:00:37.0442920Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Decoder/SingleValueDecodingContainer.swift:199:10: note: make 'decode' private to silence this warning
+2026-02-26T08:00:37.0444900Z     func decode(_: Data.Type) throws -> Data {
+2026-02-26T08:00:37.0451020Z          ^
+2026-02-26T08:00:37.0452450Z     private 
+2026-02-26T08:00:37.0454420Z Swift.SingleValueDecodingContainer.decode:3:8: note: requirement 'decode' declared here
+2026-02-26T08:00:37.0454940Z   func decode(_ type: UInt128.Type) throws -> UInt128}
+2026-02-26T08:00:37.0458560Z        ^
+2026-02-26T08:00:37.0563670Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:37.0662320Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:37.0768640Z          ^
+2026-02-26T08:00:37.0873690Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: candidate has non-matching type '(Date) throws -> ()'
+2026-02-26T08:00:37.0976860Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:37.1078630Z          ^
+2026-02-26T08:00:37.1196560Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:37.1300170Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:37.1420710Z          ^
+2026-02-26T08:00:37.1422330Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:205:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:37.1423420Z     func encode(_ value: Date) throws {
+2026-02-26T08:00:37.1705970Z          ^
+2026-02-26T08:00:37.1706280Z     private 
+2026-02-26T08:00:37.1707450Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:37.1707960Z   mutating func encode(_ value: Int128) throws}
+2026-02-26T08:00:37.1708310Z                 ^
+2026-02-26T08:00:37.1709250Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: warning: instance method 'encode' nearly matches defaulted requirement 'encode' of protocol 'SingleValueEncodingContainer'
+2026-02-26T08:00:37.1710320Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:37.1710600Z          ^
+2026-02-26T08:00:37.1711290Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: candidate has non-matching type '(Data) throws -> ()'
+2026-02-26T08:00:37.1712050Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:37.1712380Z          ^
+2026-02-26T08:00:37.1713000Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: move 'encode' to another extension to silence this warning
+2026-02-26T08:00:37.1713810Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:37.1714140Z          ^
+2026-02-26T08:00:37.1714770Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenWatchShared/MessagePack/Encoder/SingleValueEncodingContainer.swift:232:10: note: make 'encode' private to silence this warning
+2026-02-26T08:00:37.1715520Z     func encode(_ value: Data) throws {
+2026-02-26T08:00:37.1715810Z          ^
+2026-02-26T08:00:37.1716080Z     private 
+2026-02-26T08:00:37.1716430Z Swift.SingleValueEncodingContainer.encode:3:17: note: requirement 'encode' declared here
+2026-02-26T08:00:37.1716960Z   mutating func encode(_ value: UInt128) throws}
+2026-02-26T08:00:37.1717270Z                 ^
+2026-02-26T08:00:51.2226110Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/UI/Platform/DebugMenu/DebugMenuModule.swift:1:8: warning: file 'DebugMenuModule.swift' is part of module 'BitwardenKit'; ignoring import
+2026-02-26T08:00:51.2262800Z import BitwardenKit
+2026-02-26T08:00:51.2263200Z        ^
+2026-02-26T08:00:53.5948430Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/UI/Platform/DebugMenu/DebugMenuModule.swift:1:8: warning: File 'DebugMenuModule.swift' is part of module 'BitwardenKit'; ignoring import
+2026-02-26T08:00:53.6069520Z import BitwardenKit
+2026-02-26T08:00:53.6206580Z        ^ (in target 'BitwardenKit' from project 'BitwardenKit')
+2026-02-26T08:01:04.0792220Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/UI/Platform/DebugMenu/DebugMenuModule.swift:1:8: warning: file 'DebugMenuModule.swift' is part of module 'BitwardenKit'; ignoring import
+2026-02-26T08:01:04.0802580Z import BitwardenKit
+2026-02-26T08:01:04.0911140Z        ^
+2026-02-26T08:01:17.2236600Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/UI/Platform/DebugMenu/DebugMenuModule.swift:1:8: warning: file 'DebugMenuModule.swift' is part of module 'BitwardenKit'; ignoring import
+2026-02-26T08:01:17.2256130Z import BitwardenKit
+2026-02-26T08:01:17.2259260Z        ^
+2026-02-26T08:01:30.1725710Z /Users/runner/work/bitwarden.ios/bitwarden.ios/AuthenticatorBridgeKit/AuthenticatorBridgeItemService.swift:244:31: warning: capture of 'self' with non-Sendable type 'DefaultAuthenticatorBridgeItemService' in a '@Sendable' closure
+2026-02-26T08:01:30.1833890Z             let results = try dataStore.backgroundContext.fetch(fetchRequest)
+2026-02-26T08:01:30.1962860Z                               ^
+2026-02-26T08:01:30.2065350Z /Users/runner/work/bitwarden.ios/bitwarden.ios/AuthenticatorBridgeKit/AuthenticatorBridgeItemService.swift:84:14: note: class 'DefaultAuthenticatorBridgeItemService' does not conform to the 'Sendable' protocol
+2026-02-26T08:01:30.2168960Z public class DefaultAuthenticatorBridgeItemService: AuthenticatorBridgeItemService {
+2026-02-26T08:01:30.2278090Z              ^
+2026-02-26T08:01:31.7411440Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/Core/Platform/Utilities/Mocks/MockSystemDevice.swift:3:14: warning: non-final class 'MockSystemDevice' cannot conform to 'Sendable'; use '@unchecked Sendable'; this is an error in the Swift 6 language mode
+2026-02-26T08:01:31.7490150Z public class MockSystemDevice: SystemDevice {
+2026-02-26T08:01:31.7592830Z              ^
+2026-02-26T08:01:31.7710450Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/Core/Platform/Utilities/Mocks/MockSystemDevice.swift:4:16: warning: stored property 'model' of 'Sendable'-conforming class 'MockSystemDevice' is mutable; this is an error in the Swift 6 language mode
+2026-02-26T08:01:31.7828800Z     public var model: String
+2026-02-26T08:01:31.7912830Z                ^
+2026-02-26T08:01:32.7744530Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/Core/Platform/Utilities/Mocks/MockSystemDevice.swift:3:14: warning: non-final class 'MockSystemDevice' cannot conform to 'Sendable'; use '@unchecked Sendable'; this is an error in the Swift 6 language mode
+2026-02-26T08:01:32.7847350Z public class MockSystemDevice: SystemDevice {
+2026-02-26T08:01:32.7948690Z              ^
+2026-02-26T08:01:32.8050310Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenKit/Core/Platform/Utilities/Mocks/MockSystemDevice.swift:4:16: warning: stored property 'model' of 'Sendable'-conforming class 'MockSystemDevice' is mutable; this is an error in the Swift 6 language mode
+2026-02-26T08:01:32.8153560Z     public var model: String
+2026-02-26T08:01:32.8255500Z                ^
+2026-02-26T08:02:31.7178820Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:5:18: warning: file 'PendingCipherChangeDataStoreTests+Validation.swift' is part of module 'BitwardenShared'; ignoring import
+2026-02-26T08:02:31.7196840Z @testable import BitwardenShared
+2026-02-26T08:02:31.7197220Z                  ^
+2026-02-26T08:02:31.7206400Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:3:8: error: Compilation search paths unable to resolve module dependency: 'XCTest'
+2026-02-26T08:02:31.7207240Z import XCTest
+2026-02-26T08:02:31.7207650Z        ^
+2026-02-26T08:02:31.7210770Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:3:8: note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation.
+2026-02-26T08:02:31.7223110Z import XCTest
+2026-02-26T08:02:31.7701880Z        ^
+2026-02-26T08:02:31.7706730Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:3:8: note: a dependency of main module 'BitwardenShared'
+2026-02-26T08:02:31.7710550Z import XCTest
+2026-02-26T08:02:31.7711800Z        ^
+2026-02-26T08:02:31.7712760Z error: Compilation search paths unable to resolve module dependency: 'XCTest'
+2026-02-26T08:02:31.7716790Z note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation.
+2026-02-26T08:02:31.7727590Z note: a dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7730470Z note: a dependency of main module 'BitwardenShared'
+2026-02-26T08:02:31.7731910Z error: Compilation search paths unable to resolve module dependency: 'XCTest'
+2026-02-26T08:02:31.7745380Z note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation.
+2026-02-26T08:02:31.7751280Z note: a dependency of Swift module 'TestHelpers': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/TestHelpers.framework/Modules/TestHelpers.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7755760Z note: a dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7758570Z note: a dependency of main module 'BitwardenShared'
+2026-02-26T08:02:31.7760100Z error: Compilation search paths unable to resolve module dependency: 'Testing'
+2026-02-26T08:02:31.7763570Z note: 'Testing' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/Testing.framework/Modules/Testing.swiftmodule'). This search path was not explicitly specified on the current compilation.
+2026-02-26T08:02:31.7781410Z note: a dependency of Swift module 'SnapshotTesting': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/PackageFrameworks/SnapshotTesting.framework/Modules/SnapshotTesting.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7785910Z note: a dependency of Swift module 'TestHelpers': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/TestHelpers.framework/Modules/TestHelpers.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7790720Z note: a dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7793700Z note: a dependency of main module 'BitwardenShared'
+2026-02-26T08:02:31.7795040Z error: Compilation search paths unable to resolve module dependency: 'XCTest'
+2026-02-26T08:02:31.7798220Z note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation.
+2026-02-26T08:02:31.7800310Z note: a dependency of Swift module 'SnapshotTesting': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/PackageFrameworks/SnapshotTesting.framework/Modules/SnapshotTesting.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7802600Z note: a dependency of Swift module 'TestHelpers': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/TestHelpers.framework/Modules/TestHelpers.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7804980Z note: a dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule'
+2026-02-26T08:02:31.7806150Z note: a dependency of main module 'BitwardenShared'
+2026-02-26T08:02:34.1988880Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:5:18: warning: File 'PendingCipherChangeDataStoreTests+Validation.swift' is part of module 'BitwardenShared'; ignoring import
+2026-02-26T08:02:34.2116930Z @testable import BitwardenShared
+2026-02-26T08:02:34.2223050Z                  ^ (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2296830Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:3:8: error: Compilation search paths unable to resolve module dependency: 'XCTest'
+2026-02-26T08:02:34.2299820Z import XCTest
+2026-02-26T08:02:34.2304810Z        ^ (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2306570Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:3:8: note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation.
+2026-02-26T08:02:34.2310630Z import XCTest
+2026-02-26T08:02:34.2311260Z        ^ (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2312140Z /Users/runner/work/bitwarden.ios/bitwarden.ios/BitwardenShared/Core/Vault/Services/Stores/PendingCipherChangeDataStoreTests+Validation.swift:3:8: note: A dependency of main module 'BitwardenShared'
+2026-02-26T08:02:34.2313320Z import XCTest
+2026-02-26T08:02:34.2313740Z        ^ (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2314550Z error: Compilation search paths unable to resolve module dependency: 'XCTest' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2317010Z note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation. (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2319920Z note: A dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2321300Z note: A dependency of main module 'BitwardenShared' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2322080Z error: Compilation search paths unable to resolve module dependency: 'XCTest' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2323720Z note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation. (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2325770Z note: A dependency of Swift module 'TestHelpers': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/TestHelpers.framework/Modules/TestHelpers.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2328440Z note: A dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2329750Z note: A dependency of main module 'BitwardenShared' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2331230Z error: Compilation search paths unable to resolve module dependency: 'Testing' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2333510Z note: 'Testing' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/Testing.framework/Modules/Testing.swiftmodule'). This search path was not explicitly specified on the current compilation. (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2335630Z note: A dependency of Swift module 'SnapshotTesting': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/PackageFrameworks/SnapshotTesting.framework/Modules/SnapshotTesting.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2337620Z note: A dependency of Swift module 'TestHelpers': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/TestHelpers.framework/Modules/TestHelpers.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2339640Z note: A dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2340970Z note: A dependency of main module 'BitwardenShared' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2342050Z error: Compilation search paths unable to resolve module dependency: 'XCTest' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2343670Z note: 'XCTest' can be found using a search path that was specified when building module 'AuthenticatorBridgeKit' ('/Applications/Xcode_26.1.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/XCTest.swiftmodule'). This search path was not explicitly specified on the current compilation. (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2346150Z note: A dependency of Swift module 'SnapshotTesting': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/PackageFrameworks/SnapshotTesting.framework/Modules/SnapshotTesting.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2348160Z note: A dependency of Swift module 'TestHelpers': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/TestHelpers.framework/Modules/TestHelpers.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2350480Z note: A dependency of Swift module 'BitwardenKitMocks': '/Users/runner/work/bitwarden.ios/bitwarden.ios/build/DerivedData/Build/Products/Debug-iphonesimulator/BitwardenKitMocks.framework/Modules/BitwardenKitMocks.swiftmodule/arm64-apple-ios-simulator.swiftmodule' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.2351800Z note: A dependency of main module 'BitwardenShared' (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.9020120Z note: Run script build phase 'SwiftGen' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'BitwardenResources' from project 'BitwardenKit')
+2026-02-26T08:02:34.9152540Z ** TEST BUILD FAILED **
+2026-02-26T08:02:34.9154510Z note: Run script build phase 'Sourcery' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.9274120Z 
+2026-02-26T08:02:34.9275970Z note: Run script build phase 'SwiftGen' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'BitwardenShared' from project 'Bitwarden')
+2026-02-26T08:02:34.9428050Z note: Run script build phase 'Sourcery' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'BitwardenKit' from project 'BitwardenKit')
+2026-02-26T08:02:34.9550260Z note: Run script build phase 'Swiftlint' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Bitwarden' from project 'Bitwarden')
+2026-02-26T08:02:34.9674660Z note: Run script build phase 'Settings.bundle: Update Version Number' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Bitwarden' from project 'Bitwarden')
+2026-02-26T08:02:34.9814790Z note: Run script build phase 'SwiftFormat Lint' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Bitwarden' from project 'Bitwarden')
+2026-02-26T08:02:41.5795360Z ##[error]Process completed with exit code 65.
+2026-02-26T08:02:41.6580900Z ##[group]Run xcresultparser -o cli "$_TESTS_RESULT_BUNDLE_PATH"
+2026-02-26T08:02:41.6582060Z [36;1mxcresultparser -o cli "$_TESTS_RESULT_BUNDLE_PATH"[0m
+2026-02-26T08:02:41.6582650Z [36;1mecho "# Test Summary" >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-26T08:02:41.6583220Z [36;1mxcresultparser -f -o txt "$_TESTS_RESULT_BUNDLE_PATH" | grep "Number of" >> "$GITHUB_STEP_SUMMARY"[0m
+2026-02-26T08:02:42.6038890Z shell: /bin/bash -e {0}
+2026-02-26T08:02:42.6039330Z env:
+2026-02-26T08:02:42.6039830Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T08:02:42.6040260Z   MINT_PATH: .mint/lib
+2026-02-26T08:02:42.6041170Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T08:02:42.6041470Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T08:02:42.6042020Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T08:02:42.6042430Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T08:02:42.6042990Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T08:02:42.6043480Z   _XCODE_VERSION: 26.1.1
+2026-02-26T08:02:42.6044040Z   _COMPILER_FLAGS: 
+2026-02-26T08:02:42.6045040Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T08:02:42.6045960Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T08:02:42.6048210Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T08:02:42.6049870Z ##[endgroup]
+2026-02-26T08:02:49.7963840Z Error: Failed to create a new result bundle reader, underlying error: Info.plist at /Users/runner/work/bitwarden.ios/bitwarden.ios/build/bwpm-tests.xcresult/Info.plist does not exist, the result bundle might be corrupted or the provided path is not a result bundle
+2026-02-26T08:02:50.0019330Z Error: argumentError
+2026-02-26T08:02:50.0192490Z ##[error]Process completed with exit code 1.
+2026-02-26T08:02:50.0709400Z ##[group]Run actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+2026-02-26T08:02:50.0711680Z with:
+2026-02-26T08:02:50.0712190Z   name: test-reports
+2026-02-26T08:02:50.0713090Z   compression-level: 9
+2026-02-26T08:02:50.0714160Z   path: build/coverage.xml
+build/bwpm-tests.xcresult
+build/bwpm-build.xcresult
+
+2026-02-26T08:02:50.0715320Z   if-no-files-found: warn
+2026-02-26T08:02:50.0715940Z   overwrite: false
+2026-02-26T08:02:50.0716630Z   include-hidden-files: false
+2026-02-26T08:02:50.0717400Z env:
+2026-02-26T08:02:50.0717950Z   MINT_LINK_PATH: .mint/bin
+2026-02-26T08:02:50.0718500Z   MINT_PATH: .mint/lib
+2026-02-26T08:02:50.0719090Z   _COVERAGE_PATH: build/coverage.xml
+2026-02-26T08:02:50.0719940Z   _BUILD_RESULT_BUNDLE_PATH: build/bwpm-build.xcresult
+2026-02-26T08:02:50.0720310Z   _TESTS_RESULT_BUNDLE_PATH: build/bwpm-tests.xcresult
+2026-02-26T08:02:50.0720680Z   _SIMULATOR_NAME: iPhone 17 Pro
+2026-02-26T08:02:50.0720930Z   _SIMULATOR_VERSION: 26.0.1
+2026-02-26T08:02:50.0721230Z   _XCODE_VERSION: 26.1.1
+2026-02-26T08:02:50.0721480Z   _COMPILER_FLAGS: 
+2026-02-26T08:02:50.0721930Z   _GITHUB_ACTION_RUN_URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/attempts/1
+2026-02-26T08:02:50.0722400Z   MD_APPLE_SDK_ROOT: /Applications/Xcode_26.1.1.app
+2026-02-26T08:02:50.0723910Z   PATH: /Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools
+2026-02-26T08:02:50.0725290Z ##[endgroup]
+2026-02-26T08:02:51.0386760Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-02-26T08:02:51.0390690Z The least common ancestor is /Users/runner/work/bitwarden.ios/bitwarden.ios/build. This will be the root directory of the artifact
+2026-02-26T08:02:51.0391700Z With the provided path, there will be 7 files uploaded
+2026-02-26T08:02:51.0393420Z Artifact name is valid!
+2026-02-26T08:02:51.0395200Z Root directory input is valid!
+2026-02-26T08:02:51.3994700Z Beginning upload of artifact content to blob storage
+2026-02-26T08:02:52.1183860Z Uploaded bytes 677603
+2026-02-26T08:02:52.1731230Z Finished uploading artifact content to blob storage!
+2026-02-26T08:02:52.1985660Z SHA256 digest of uploaded artifact zip is 270fb525819d32909ba1fb4741ed209ba100d338d2a66622268706204e0cd25b
+2026-02-26T08:02:52.1986700Z Finalizing artifact upload
+2026-02-26T08:02:52.3364270Z Artifact test-reports.zip successfully finalized. Artifact ID 5668237335
+2026-02-26T08:02:52.3365030Z Artifact test-reports has been successfully uploaded! Final size is 677603 bytes. Artifact ID is 5668237335
+2026-02-26T08:02:52.3422690Z Artifact download URL: https://github.com/pkinerd/bitwarden.ios/actions/runs/22432772958/artifacts/5668237335
+2026-02-26T08:02:52.4269120Z Post job cleanup.
+2026-02-26T08:02:54.2732830Z [command]/opt/homebrew/bin/git version
+2026-02-26T08:02:54.4016530Z git version 2.53.0
+2026-02-26T08:02:54.4258620Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/a9ae2edf-024f-4c0a-8c8e-2dc077d4842c/.gitconfig'
+2026-02-26T08:02:54.4260110Z Temporarily overriding HOME='/Users/runner/work/_temp/a9ae2edf-024f-4c0a-8c8e-2dc077d4842c' before making global git config changes
+2026-02-26T08:02:54.4361760Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-26T08:02:54.4378790Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/bitwarden.ios/bitwarden.ios
+2026-02-26T08:02:54.4568340Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-26T08:02:54.4694040Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-26T08:02:54.7131880Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-26T08:02:54.7303100Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-26T08:02:54.9133630Z Cleaning up orphan processes
+2026-02-26T08:02:55.1136720Z Terminate orphan process: pid (19084) (ibtoold)
+2026-02-26T08:02:55.2464710Z Terminate orphan process: pid (19064) (ibtoold)
+2026-02-26T08:03:01.4029080Z Terminate orphan process: pid (6740) (Python)
