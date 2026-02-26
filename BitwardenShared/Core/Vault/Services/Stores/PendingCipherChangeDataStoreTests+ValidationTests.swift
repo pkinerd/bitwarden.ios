@@ -15,7 +15,7 @@ extension PendingCipherChangeDataStoreTests {
             changeType: .create,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
 
         // Manually set changeTypeRaw to nil via the background context.
@@ -38,7 +38,7 @@ extension PendingCipherChangeDataStoreTests {
             changeType: .create,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
 
         // Manually set changeTypeRaw to an invalid value.
@@ -63,7 +63,7 @@ extension PendingCipherChangeDataStoreTests {
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
 
         // Small delay to ensure different createdDate timestamps.
@@ -75,7 +75,7 @@ extension PendingCipherChangeDataStoreTests {
             changeType: .create,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
 
         let changes = try await subject.fetchPendingChanges(userId: "1")
@@ -104,7 +104,7 @@ extension PendingCipherChangeDataStoreTests {
                 changeType: changeType,
                 cipherData: nil,
                 originalRevisionDate: nil,
-                offlinePasswordChangeCount: 0
+                offlinePasswordChangeCount: 0,
             )
         }
 
@@ -113,7 +113,7 @@ extension PendingCipherChangeDataStoreTests {
             XCTAssertEqual(
                 change?.changeType,
                 expectedType,
-                "Expected \(expectedType) for \(cipherId), got \(String(describing: change?.changeType))"
+                "Expected \(expectedType) for \(cipherId), got \(String(describing: change?.changeType))",
             )
         }
     }
@@ -129,7 +129,7 @@ extension PendingCipherChangeDataStoreTests {
             changeType: .update,
             cipherData: Data("cipher1".utf8),
             originalRevisionDate: Date(year: 2024, month: 1, day: 1),
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-2",
@@ -137,7 +137,7 @@ extension PendingCipherChangeDataStoreTests {
             changeType: .create,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
         try await subject.upsertPendingChange(
             cipherId: "cipher-3",
@@ -145,7 +145,7 @@ extension PendingCipherChangeDataStoreTests {
             changeType: .softDelete,
             cipherData: nil,
             originalRevisionDate: nil,
-            offlinePasswordChangeCount: 0
+            offlinePasswordChangeCount: 0,
         )
 
         try await subject.deleteDataForUser(userId: "1")

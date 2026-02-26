@@ -1081,19 +1081,19 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             CipherDetailsResponseModel.fixture(
                 id: "cipher-1",
                 name: "",
-                revisionDate: originalRevisionDate
-            )
+                revisionDate: originalRevisionDate,
+            ),
         )
         try await setupPendingChange(
             changeType: .update,
             cipherData: cipherData,
             originalRevisionDate: originalRevisionDate,
-            offlinePasswordChangeCount: 1
+            offlinePasswordChangeCount: 1,
         )
 
         cipherAPIService.getCipherResult = .success(.fixture(
             id: "cipher-1",
-            revisionDate: serverRevisionDate
+            revisionDate: serverRevisionDate,
         ))
 
         try await subject.processPendingChanges(userId: "1")
@@ -1102,7 +1102,7 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let backupName = try XCTUnwrap(encryptedCiphers.first?.name)
         XCTAssertTrue(
             backupName.hasPrefix(" - "),
-            "Empty name backup should start with ' - ', got: \(backupName)"
+            "Empty name backup should start with ' - ', got: \(backupName)",
         )
     }
 } // swiftlint:disable:this file_length

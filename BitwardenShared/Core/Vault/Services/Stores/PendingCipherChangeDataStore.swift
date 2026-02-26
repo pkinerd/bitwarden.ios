@@ -23,6 +23,8 @@ protocol PendingCipherChangeDataStore: AnyObject {
     ///
     func fetchPendingChange(cipherId: String, userId: String) async throws -> PendingCipherChangeData?
 
+    // swiftlint:disable function_parameter_count
+
     /// Inserts or updates a pending change record. Upserts by (cipherId, userId).
     ///
     /// - Parameters:
@@ -33,7 +35,6 @@ protocol PendingCipherChangeDataStore: AnyObject {
     ///   - originalRevisionDate: The cipher's revision date before the first offline edit.
     ///   - offlinePasswordChangeCount: The number of offline password changes.
     ///
-    // swiftlint:disable function_parameter_count
     func upsertPendingChange(
         cipherId: String,
         userId: String,
@@ -97,7 +98,7 @@ extension DataStore: PendingCipherChangeDataStore {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int
+        offlinePasswordChangeCount: Int,
     ) async throws {
         try await backgroundContext.performAndSave {
             let request = PendingCipherChangeData.fetchByCipherIdRequest(userId: userId, cipherId: cipherId)
@@ -119,7 +120,7 @@ extension DataStore: PendingCipherChangeDataStore {
                     changeType: changeType,
                     cipherData: cipherData,
                     originalRevisionDate: originalRevisionDate,
-                    offlinePasswordChangeCount: offlinePasswordChangeCount
+                    offlinePasswordChangeCount: offlinePasswordChangeCount,
                 )
             }
         }

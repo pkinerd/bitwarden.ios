@@ -421,7 +421,7 @@ extension DefaultSyncService {
         let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
         if remainingCount > 0 {
             Logger.application.info(
-                "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
+                "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved",
             )
             return false
         }
