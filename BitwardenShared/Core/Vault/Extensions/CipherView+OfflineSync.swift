@@ -63,7 +63,7 @@ extension CipherView {
     /// - Returns: A `CipherView` with the specified properties overridden and all others
     ///   copied from the receiver.
     ///
-    private func makeCopy( // swiftlint:disable:this function_parameter_count
+    private func makeCopy(
         id: String?,
         key: String?,
         name: String,
