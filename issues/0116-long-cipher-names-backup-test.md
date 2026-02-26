@@ -99,3 +99,35 @@ If the original cipher name is very long (hundreds or thousands of characters), 
 Added `test_processPendingChanges_update_conflict_backupNameFormat` and `test_processPendingChanges_update_conflict_emptyNameBackup` to `OfflineSyncResolverTests`.
 
 ## Comments
+
+### claude — 2026-02-26
+
+**This issue's original assessment was incomplete — the concern was real and has
+now been fixed.**
+
+The original analysis concluded "Accept As-Is" based on the assumption that long
+backup names were harmless string concatenation and any server rejection would be
+caught by existing error handling. Security review in #0122 revealed two problems
+with that reasoning:
+
+1. **The server does enforce a limit.** The Bitwarden server validates
+   `[EncryptedStringLength(1000)]` on the cipher `Name` field
+   (`CipherRequestModel.cs`). `EncryptedStringLengthAttribute` extends .NET's
+   `StringLengthAttribute` and checks the encrypted `EncString` representation,
+   not plaintext.
+
+2. **A 4xx rejection during backup creation would block sync resolution** for
+   that pending change. The `processPendingChanges` catch block logs the error
+   and moves on to the next change, but the failed change remains in the pending
+   queue indefinitely — it would fail again on every subsequent sync attempt.
+
+**Fix applied:** `createBackupCipher` now truncates names exceeding 400 UTF-8
+bytes before appending the timestamp suffix. This produces at most 648 encrypted
+characters (35% headroom). UTF-8 byte count is used instead of Swift character
+count to handle multi-byte Unicode safely.
+
+See #0122 for full encryption overhead math and server validation details.
+
+**Commits:** `4c89b91`, `4b7a779`
+**Tests:** `test_processPendingChanges_update_conflict_longAsciiNameTruncated`,
+`test_processPendingChanges_update_conflict_longUnicodeNameTruncated`
