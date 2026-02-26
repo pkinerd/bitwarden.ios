@@ -307,6 +307,11 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         }
     }
 
+    /// The maximum plaintext name length before the timestamp suffix is appended.
+    /// Names longer than this are truncated to avoid exceeding the server's
+    /// encrypted-value length limit on the `Name` field.
+    static let maxBackupNameLength = 500
+
     /// Creates a backup copy of a cipher with a conflict-suffixed name.
     ///
     /// The backup retains the original cipher's folder assignment and all fields
@@ -329,7 +334,11 @@ actor DefaultOfflineSyncResolver: OfflineSyncResolver {
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let timestampString = dateFormatter.string(from: timestamp)
 
-        let backupName = "\(decryptedCipher.name) - \(timestampString)"
+        var name = decryptedCipher.name
+        if name.count > Self.maxBackupNameLength {
+            name = String(name.prefix(Self.maxBackupNameLength))
+        }
+        let backupName = "\(name) - \(timestampString)"
 
         // Create the backup cipher view with the modified name
         let backupCipherView = decryptedCipher.update(name: backupName)

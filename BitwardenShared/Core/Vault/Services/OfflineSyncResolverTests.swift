@@ -1076,4 +1076,48 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             "Empty name backup should start with ' - ', got: \(backupName)"
         )
     }
+
+    /// `createBackupCipher` truncates the original name to `maxBackupNameLength`
+    /// characters before appending the timestamp suffix when the name exceeds the limit.
+    func test_processPendingChanges_update_conflict_longNameTruncated() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+        let longName = String(repeating: "A", count: 600)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "cipher-1",
+                name: longName,
+                revisionDate: originalRevisionDate
+            )
+        )
+        try await setupPendingChange(
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        let encryptedCiphers = clientService.mockVault.clientCiphers.encryptedCiphers
+        let backupName = try XCTUnwrap(encryptedCiphers.first?.name)
+
+        let expectedPrefix = String(repeating: "A", count: DefaultOfflineSyncResolver.maxBackupNameLength)
+        XCTAssertTrue(
+            backupName.hasPrefix("\(expectedPrefix) - "),
+            "Long name should be truncated to \(DefaultOfflineSyncResolver.maxBackupNameLength) chars before suffix"
+        )
+        // " - yyyy-MM-dd HH:mm:ss" is 22 characters.
+        let expectedLength = DefaultOfflineSyncResolver.maxBackupNameLength + " - yyyy-MM-dd HH:mm:ss".count
+        XCTAssertEqual(
+            backupName.count,
+            expectedLength,
+            "Backup name should be truncated name + timestamp suffix"
+        )
+    }
 } // swiftlint:disable:this file_length
