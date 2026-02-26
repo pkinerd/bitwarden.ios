@@ -33,7 +33,7 @@ protocol PendingCipherChangeDataStore: AnyObject {
     ///   - originalRevisionDate: The cipher's revision date before the first offline edit.
     ///   - offlinePasswordChangeCount: The number of offline password changes.
     ///
-    // swiftlint:disable:next function_parameter_count
+    // swiftlint:disable function_parameter_count
     func upsertPendingChange(
         cipherId: String,
         userId: String,
@@ -42,6 +42,7 @@ protocol PendingCipherChangeDataStore: AnyObject {
         originalRevisionDate: Date?,
         offlinePasswordChangeCount: Int
     ) async throws
+    // swiftlint:enable function_parameter_count
 
     /// Deletes a pending change record by its record ID.
     ///
