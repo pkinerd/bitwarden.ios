@@ -2397,7 +2397,10 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         // Should clean up any orphaned pending change from a prior offline operation.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.count, 1)
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.cipherId, "123")
-        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId, "13512467-9cfe-43b0-969f-07534084764b")
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId,
+            "13512467-9cfe-43b0-969f-07534084764b"
+        )
 
         // Offline fallback should NOT have been triggered.
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)

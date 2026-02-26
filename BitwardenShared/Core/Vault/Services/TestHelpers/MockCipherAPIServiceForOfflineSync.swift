@@ -15,21 +15,21 @@ import Networking
 /// compilation. Consider adding `// sourcery: AutoMockable` to `CipherAPIService` to eliminate
 /// this manual maintenance.
 class MockCipherAPIServiceForOfflineSync: CipherAPIService {
+    // MARK: Properties
+
+    var deleteCipherError: Error?
+    var deleteCipherId: String?
     var getCipherResult: Result<CipherDetailsResponseModel, Error>!
     var getCipherCalledWith = [String]()
-
-    func getCipher(withId id: String) async throws -> CipherDetailsResponseModel {
-        getCipherCalledWith.append(id)
-        return try getCipherResult.get()
-    }
-
     var softDeleteCipherError: Error?
     var softDeleteCipherId: String?
 
-    func softDeleteCipher(withID id: String) async throws -> EmptyResponse {
-        softDeleteCipherId = id
-        if let softDeleteCipherError {
-            throw softDeleteCipherError
+    // MARK: Methods
+
+    func deleteCipher(withID id: String) async throws -> EmptyResponse {
+        deleteCipherId = id
+        if let deleteCipherError {
+            throw deleteCipherError
         }
         return try EmptyResponse(response: HTTPResponse(
             url: URL(string: "https://example.com")!,
@@ -40,13 +40,15 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
         ))
     }
 
-    var deleteCipherError: Error?
-    var deleteCipherId: String?
+    func getCipher(withId id: String) async throws -> CipherDetailsResponseModel {
+        getCipherCalledWith.append(id)
+        return try getCipherResult.get()
+    }
 
-    func deleteCipher(withID id: String) async throws -> EmptyResponse {
-        deleteCipherId = id
-        if let deleteCipherError {
-            throw deleteCipherError
+    func softDeleteCipher(withID id: String) async throws -> EmptyResponse {
+        softDeleteCipherId = id
+        if let softDeleteCipherError {
+            throw softDeleteCipherError
         }
         return try EmptyResponse(response: HTTPResponse(
             url: URL(string: "https://example.com")!,

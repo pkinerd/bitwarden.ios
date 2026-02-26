@@ -15,7 +15,7 @@ class MockPendingCipherChangeDataStore: PendingCipherChangeDataStore {
         changeType: PendingCipherChangeType,
         cipherData: Data?,
         originalRevisionDate: Date?,
-        offlinePasswordChangeCount: Int
+        offlinePasswordChangeCount: Int,
     )]()
     var upsertPendingChangeResult: Result<Void, Error> = .success(())
 
@@ -37,6 +37,7 @@ class MockPendingCipherChangeDataStore: PendingCipherChangeDataStore {
         return fetchPendingChangeResult
     }
 
+    // swiftlint:disable:next function_parameter_count
     func upsertPendingChange(
         cipherId: String,
         userId: String,

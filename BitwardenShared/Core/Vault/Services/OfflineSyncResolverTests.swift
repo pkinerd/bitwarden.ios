@@ -760,16 +760,28 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             CipherDetailsResponseModel.fixture(id: "cipher-3", revisionDate: revisionDate)
         )
         try await dataStore.upsertPendingChange(
-            cipherId: "cipher-1", userId: "1", changeType: .create,
-            cipherData: createData, originalRevisionDate: nil, offlinePasswordChangeCount: 0
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
         )
         try await dataStore.upsertPendingChange(
-            cipherId: "cipher-2", userId: "1", changeType: .update,
-            cipherData: updateData, originalRevisionDate: revisionDate, offlinePasswordChangeCount: 0
+            cipherId: "cipher-2",
+            userId: "1",
+            changeType: .update,
+            cipherData: updateData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
         )
         try await dataStore.upsertPendingChange(
-            cipherId: "cipher-3", userId: "1", changeType: .softDelete,
-            cipherData: softDeleteData, originalRevisionDate: revisionDate, offlinePasswordChangeCount: 0
+            cipherId: "cipher-3",
+            userId: "1",
+            changeType: .softDelete,
+            cipherData: softDeleteData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
@@ -807,12 +819,20 @@ class OfflineSyncResolverTests: BitwardenTestCase {
             CipherDetailsResponseModel.fixture(id: "cipher-2", revisionDate: revisionDate)
         )
         try await dataStore.upsertPendingChange(
-            cipherId: "cipher-1", userId: "1", changeType: .create,
-            cipherData: createData, originalRevisionDate: nil, offlinePasswordChangeCount: 0
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
         )
         try await dataStore.upsertPendingChange(
-            cipherId: "cipher-2", userId: "1", changeType: .update,
-            cipherData: updateData, originalRevisionDate: revisionDate, offlinePasswordChangeCount: 0
+            cipherId: "cipher-2",
+            userId: "1",
+            changeType: .update,
+            cipherData: updateData,
+            originalRevisionDate: revisionDate,
+            offlinePasswordChangeCount: 0
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
@@ -841,12 +861,20 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let createData1 = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-1"))
         let createData2 = try JSONEncoder().encode(CipherDetailsResponseModel.fixture(id: "cipher-2"))
         try await dataStore.upsertPendingChange(
-            cipherId: "cipher-1", userId: "1", changeType: .create,
-            cipherData: createData1, originalRevisionDate: nil, offlinePasswordChangeCount: 0
+            cipherId: "cipher-1",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData1,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
         )
         try await dataStore.upsertPendingChange(
-            cipherId: "cipher-2", userId: "1", changeType: .create,
-            cipherData: createData2, originalRevisionDate: nil, offlinePasswordChangeCount: 0
+            cipherId: "cipher-2",
+            userId: "1",
+            changeType: .create,
+            cipherData: createData2,
+            originalRevisionDate: nil,
+            offlinePasswordChangeCount: 0
         )
         pendingCipherChangeDataStore.fetchPendingChangesResult =
             try await dataStore.fetchPendingChanges(userId: "1")
