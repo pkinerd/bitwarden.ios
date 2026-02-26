@@ -1077,9 +1077,9 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         )
     }
 
-    /// `createBackupCipher` truncates the original name to `maxBackupNameLength`
-    /// characters before appending the timestamp suffix when the name exceeds the limit.
-    func test_processPendingChanges_update_conflict_longNameTruncated() async throws {
+    /// `createBackupCipher` truncates the original name to `maxBackupNameByteCount`
+    /// UTF-8 bytes before appending the timestamp suffix when the name exceeds the limit.
+    func test_processPendingChanges_update_conflict_longAsciiNameTruncated() async throws {
         let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
         let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
         let longName = String(repeating: "A", count: 600)
@@ -1107,17 +1107,53 @@ class OfflineSyncResolverTests: BitwardenTestCase {
         let encryptedCiphers = clientService.mockVault.clientCiphers.encryptedCiphers
         let backupName = try XCTUnwrap(encryptedCiphers.first?.name)
 
-        let expectedPrefix = String(repeating: "A", count: DefaultOfflineSyncResolver.maxBackupNameLength)
+        let expectedPrefix = String(repeating: "A", count: DefaultOfflineSyncResolver.maxBackupNameByteCount)
         XCTAssertTrue(
             backupName.hasPrefix("\(expectedPrefix) - "),
-            "Long name should be truncated to \(DefaultOfflineSyncResolver.maxBackupNameLength) chars before suffix"
+            "Long ASCII name should be truncated to \(DefaultOfflineSyncResolver.maxBackupNameByteCount) chars before suffix"
         )
-        // " - yyyy-MM-dd HH:mm:ss" is 22 characters.
-        let expectedLength = DefaultOfflineSyncResolver.maxBackupNameLength + " - yyyy-MM-dd HH:mm:ss".count
-        XCTAssertEqual(
-            backupName.count,
-            expectedLength,
-            "Backup name should be truncated name + timestamp suffix"
+    }
+
+    /// `createBackupCipher` truncates multi-byte Unicode names on a character boundary
+    /// that fits within `maxBackupNameByteCount` UTF-8 bytes.
+    func test_processPendingChanges_update_conflict_longUnicodeNameTruncated() async throws {
+        let originalRevisionDate = Date(year: 2024, month: 6, day: 1)
+        let serverRevisionDate = Date(year: 2099, month: 1, day: 1)
+        // Each CJK character is 3 UTF-8 bytes; 200 chars = 600 bytes, exceeding the 400-byte limit.
+        let longName = String(repeating: "\u{4E16}", count: 200)
+        let cipherData = try JSONEncoder().encode(
+            CipherDetailsResponseModel.fixture(
+                id: "cipher-1",
+                name: longName,
+                revisionDate: originalRevisionDate
+            )
         )
+        try await setupPendingChange(
+            changeType: .update,
+            cipherData: cipherData,
+            originalRevisionDate: originalRevisionDate,
+            offlinePasswordChangeCount: 1
+        )
+
+        cipherAPIService.getCipherResult = .success(.fixture(
+            id: "cipher-1",
+            revisionDate: serverRevisionDate
+        ))
+
+        try await subject.processPendingChanges(userId: "1")
+
+        let encryptedCiphers = clientService.mockVault.clientCiphers.encryptedCiphers
+        let backupName = try XCTUnwrap(encryptedCiphers.first?.name)
+
+        // Extract name portion before the " - " suffix.
+        let suffixRange = backupName.range(of: " - ", options: .backwards)
+        let namePortion = suffixRange.map { String(backupName[backupName.startIndex..<$0.lowerBound]) } ?? backupName
+        XCTAssertLessThanOrEqual(
+            namePortion.utf8.count,
+            DefaultOfflineSyncResolver.maxBackupNameByteCount,
+            "Truncated name UTF-8 bytes should not exceed the byte limit"
+        )
+        // 400 bytes / 3 bytes per char = 133 full CJK characters.
+        XCTAssertEqual(namePortion.count, 133, "Should fit exactly 133 CJK characters in 400 bytes")
     }
 } // swiftlint:disable:this file_length
