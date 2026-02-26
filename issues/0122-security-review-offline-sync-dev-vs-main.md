@@ -71,9 +71,20 @@ No critical or high-severity security issues identified.
 
 Between `getCipher(withId:)` and `updateCipherWithServer()`, server state could theoretically change. Mitigated by server-side `revisionDate` validation in PUT, extremely small window, and same pattern used by all other API interactions.
 
-### LOW RISK: Backup Cipher Name Length (`OfflineSyncResolver.swift:332`)
+### FIXED: Backup Cipher Name Length (`OfflineSyncResolver.swift:332`)
 
-Names constructed as `name - timestamp` with no truncation. Very long names could exceed server limits, resulting in logged 4xx error. Consider adding truncation guard as minor robustness improvement.
+**Status:** Resolved via truncation guard (see comments for full analysis).
+
+Names in `createBackupCipher` are constructed as `name - timestamp`. The server
+enforces `[EncryptedStringLength(1000)]` on the `Name` field (validated in
+`CipherRequestModel.cs`), which checks the length of the full `EncString`
+representation (`2.base64(iv)|base64(ct)|base64(mac)`). Because the cipher name
+is encrypted client-side (zero-knowledge), the server cannot inspect the
+plaintext — it only validates the encrypted blob length.
+
+A fix was implemented to truncate names exceeding 400 UTF-8 bytes before
+appending the 22-byte timestamp suffix. See comments below for the full
+analysis of why 400 bytes is a safe threshold.
 
 ### NOT A REGRESSION: GetCipherRequest Path Interpolation (`GetCipherRequest.swift:14`)
 
@@ -98,8 +109,79 @@ Same `/ciphers/\(cipherId)` pattern used by all other cipher requests. CipherIDs
 
 ### Recommendation
 
-**Approve for merge** with optional consideration of name truncation in backup cipher creation.
+**Approve for merge.** The backup name truncation finding has been resolved
+(see comments).
 
-Test coverage confirmed: ~1,079 lines in OfflineSyncResolverTests, ~842 lines in VaultRepositoryTests, ~439 lines in PendingCipherChangeDataStoreTests.
+Test coverage confirmed: ~1,079 lines in OfflineSyncResolverTests, ~842 lines
+in VaultRepositoryTests, ~439 lines in PendingCipherChangeDataStoreTests.
 
 ## Comments
+
+### claude — 2026-02-26
+
+**Backup name length analysis and fix**
+
+During the review, the backup cipher name length was flagged as low risk. Further
+investigation confirmed it is a real concern that warranted a code fix.
+
+#### The problem
+
+`createBackupCipher` constructs backup names as `"\(name) - yyyy-MM-dd HH:mm:ss"`.
+The Bitwarden server enforces `[EncryptedStringLength(1000)]` on the cipher
+`Name` field (`CipherRequestModel.cs`). This is a standard .NET `StringLengthAttribute`
+subclass with a custom error message — it validates the length of the encrypted
+string **as received**, not the plaintext (the server cannot see plaintext due to
+zero-knowledge architecture).
+
+The `EncString` format is `2.<base64(iv)>|<base64(ciphertext)>|<base64(mac)>`.
+Without truncation, a very long cipher name could produce an encrypted string
+exceeding 1,000 characters, causing a 4xx rejection that would block sync
+resolution for that pending change.
+
+#### Why character count was unsafe
+
+The initial fix used `String.count > 500` (Swift character count). This is unsafe
+for multi-byte Unicode because Swift characters can be 1–4 UTF-8 bytes:
+
+- 500 ASCII chars = 500 bytes → ~748 encrypted chars (safe)
+- 500 CJK chars (3 bytes each) = 1,500 bytes → ~2,072 encrypted chars (exceeds limit)
+
+#### The fix
+
+Switched to **400 UTF-8 bytes** as the truncation threshold with character-boundary-safe
+truncation (`OfflineSyncResolver.swift:maxBackupNameByteCount`).
+
+#### Proof that 400 bytes is safe
+
+EncString overhead calculation for `2.iv|ciphertext|mac`:
+
+- Type prefix `2.` = 2 chars
+- base64(16-byte IV) = 24 chars
+- `|` separator = 1 char
+- `|` separator = 1 char
+- base64(32-byte MAC) = 44 chars
+- **Fixed overhead: 72 chars**
+
+Ciphertext for 400 + 22 = 422 byte plaintext:
+
+- AES-CBC padded: ceil(423/16) × 16 = **432 bytes**
+- base64(432 bytes): 432 / 3 × 4 = **576 chars**
+
+**Total: 72 + 576 = 648 encrypted chars** — 35% headroom under the 1,000 limit.
+
+#### Server validation confirmed
+
+`EncryptedStringLengthAttribute` in the Bitwarden server
+(`src/Core/Utilities/EncryptedStringLengthAttribute.cs`) extends .NET's
+`StringLengthAttribute`. It validates the string length of the encrypted value
+as-is (the full `2.iv|ct|mac` representation). The `Name` field is annotated
+with `[EncryptedStringLength(1000)]` in `CipherRequestModel.cs`.
+
+#### Commits
+
+- `4c89b91` — Initial truncation at 500 characters
+- `4b7a779` — Switched to 400 UTF-8 bytes with Unicode-safe truncation
+
+Tests added:
+- `test_processPendingChanges_update_conflict_longAsciiNameTruncated` — 600 ASCII chars truncated to 400
+- `test_processPendingChanges_update_conflict_longUnicodeNameTruncated` — 200 CJK chars (600 bytes) truncated to 133 chars (399 bytes)
