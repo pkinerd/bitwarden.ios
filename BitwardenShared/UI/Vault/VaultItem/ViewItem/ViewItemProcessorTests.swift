@@ -244,7 +244,7 @@ class ViewItemProcessorTests: BitwardenTestCase { // swiftlint:disable:this type
         XCTAssertEqual(errorReporter.errors.last as? BitwardenTestError, .example)
         XCTAssertEqual(
             subject.state.loadingState,
-            .error(errorMessage: Localizations.anErrorHasOccurred)
+            .error(errorMessage: Localizations.anErrorHasOccurred),
         )
     }
 
@@ -261,9 +261,9 @@ class ViewItemProcessorTests: BitwardenTestCase { // swiftlint:disable:this type
                 uris: nil,
                 totp: nil,
                 autofillOnPageLoad: nil,
-                fido2Credentials: nil
+                fido2Credentials: nil,
             ),
-            name: "Offline Item"
+            name: "Offline Item",
         )
         vaultRepository.fetchCipherResult = .success(cipherItem)
         vaultRepository.fetchCollectionsResult = .success([])
@@ -300,7 +300,7 @@ class ViewItemProcessorTests: BitwardenTestCase { // swiftlint:disable:this type
 
         XCTAssertEqual(
             subject.state.loadingState,
-            .error(errorMessage: Localizations.anErrorHasOccurred)
+            .error(errorMessage: Localizations.anErrorHasOccurred),
         )
     }
 
@@ -320,7 +320,7 @@ class ViewItemProcessorTests: BitwardenTestCase { // swiftlint:disable:this type
 
         XCTAssertEqual(
             subject.state.loadingState,
-            .error(errorMessage: Localizations.anErrorHasOccurred)
+            .error(errorMessage: Localizations.anErrorHasOccurred),
         )
         // Two errors logged: one from the stream failure, one from the fallback fetch failure.
         XCTAssertEqual(errorReporter.errors.count, 2)

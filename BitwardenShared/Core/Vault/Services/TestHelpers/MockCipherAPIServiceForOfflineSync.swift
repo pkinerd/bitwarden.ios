@@ -15,33 +15,16 @@ import Networking
 /// compilation. Consider adding `// sourcery: AutoMockable` to `CipherAPIService` to eliminate
 /// this manual maintenance.
 class MockCipherAPIServiceForOfflineSync: CipherAPIService {
-    var getCipherResult: Result<CipherDetailsResponseModel, Error>!
-    var getCipherCalledWith = [String]()
-
-    func getCipher(withId id: String) async throws -> CipherDetailsResponseModel {
-        getCipherCalledWith.append(id)
-        return try getCipherResult.get()
-    }
-
-    var softDeleteCipherError: Error?
-    var softDeleteCipherId: String?
-
-    func softDeleteCipher(withID id: String) async throws -> EmptyResponse {
-        softDeleteCipherId = id
-        if let softDeleteCipherError {
-            throw softDeleteCipherError
-        }
-        return try EmptyResponse(response: HTTPResponse(
-            url: URL(string: "https://example.com")!,
-            statusCode: 200,
-            headers: [:],
-            body: Data(),
-            requestID: UUID()
-        ))
-    }
+    // MARK: Properties
 
     var deleteCipherError: Error?
     var deleteCipherId: String?
+    var getCipherResult: Result<CipherDetailsResponseModel, Error>!
+    var getCipherCalledWith = [String]()
+    var softDeleteCipherError: Error?
+    var softDeleteCipherId: String?
+
+    // MARK: Methods
 
     func deleteCipher(withID id: String) async throws -> EmptyResponse {
         deleteCipherId = id
@@ -53,7 +36,26 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
             statusCode: 200,
             headers: [:],
             body: Data(),
-            requestID: UUID()
+            requestID: UUID(),
+        ))
+    }
+
+    func getCipher(withId id: String) async throws -> CipherDetailsResponseModel {
+        getCipherCalledWith.append(id)
+        return try getCipherResult.get()
+    }
+
+    func softDeleteCipher(withID id: String) async throws -> EmptyResponse {
+        softDeleteCipherId = id
+        if let softDeleteCipherError {
+            throw softDeleteCipherError
+        }
+        return try EmptyResponse(response: HTTPResponse(
+            url: URL(string: "https://example.com")!,
+            statusCode: 200,
+            headers: [:],
+            body: Data(),
+            requestID: UUID(),
         ))
     }
 
@@ -63,20 +65,20 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
     func archiveCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
     func addCipherWithCollections(
         _ cipher: Cipher,
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> CipherDetailsResponseModel { fatalError() }
     func bulkShareCiphers(
         _ ciphers: [Cipher],
         collectionIds: [String],
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> BulkShareCiphersResponseModel { fatalError() }
     func deleteAttachment(
         withID attachmentId: String,
-        cipherId: String
+        cipherId: String,
     ) async throws -> DeleteAttachmentResponse { fatalError() }
     func downloadAttachment(
         withId id: String,
-        cipherId: String
+        cipherId: String,
     ) async throws -> DownloadAttachmentResponse { fatalError() }
     func downloadAttachmentData(from url: URL) async throws -> URL? { fatalError() }
     func restoreCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
@@ -84,17 +86,17 @@ class MockCipherAPIServiceForOfflineSync: CipherAPIService {
         cipherId: String,
         fileName: String?,
         fileSize: Int?,
-        key: String?
+        key: String?,
     ) async throws -> SaveAttachmentResponse { fatalError() }
     func shareCipher(
         _ cipher: Cipher,
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> CipherDetailsResponseModel { fatalError() }
 
     func unarchiveCipher(withID id: String) async throws -> EmptyResponse { fatalError() }
     func updateCipher(
         _ cipher: Cipher,
-        encryptedFor: String?
+        encryptedFor: String?,
     ) async throws -> CipherDetailsResponseModel { fatalError() }
     func updateCipherCollections(_ cipher: Cipher) async throws { fatalError() }
     func updateCipherPreference(_ cipher: Cipher) async throws -> CipherDetailsResponseModel { fatalError() }

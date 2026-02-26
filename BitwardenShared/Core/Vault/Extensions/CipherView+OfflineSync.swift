@@ -19,7 +19,7 @@ extension CipherView {
             key: key,
             name: name,
             attachments: attachments,
-            attachmentDecryptionFailures: attachmentDecryptionFailures
+            attachmentDecryptionFailures: attachmentDecryptionFailures,
         )
     }
 
@@ -37,7 +37,7 @@ extension CipherView {
             key: nil,
             name: name,
             attachments: nil,
-            attachmentDecryptionFailures: nil
+            attachmentDecryptionFailures: nil,
         )
     }
 
@@ -63,12 +63,12 @@ extension CipherView {
     /// - Returns: A `CipherView` with the specified properties overridden and all others
     ///   copied from the receiver.
     ///
-    private func makeCopy( // swiftlint:disable:this function_parameter_count
+    private func makeCopy(
         id: String?,
         key: String?,
         name: String,
         attachments: [AttachmentView]?,
-        attachmentDecryptionFailures: [AttachmentView]?
+        attachmentDecryptionFailures: [AttachmentView]?,
     ) -> CipherView {
         CipherView(
             id: id,
@@ -98,7 +98,7 @@ extension CipherView {
             creationDate: creationDate,
             deletedDate: deletedDate,
             revisionDate: revisionDate,
-            archivedDate: archivedDate
+            archivedDate: archivedDate,
         )
     }
 }

@@ -54,15 +54,7 @@ class SyncServiceTests: BitwardenTestCase {
         settingsService = MockSettingsService()
         stateService = MockStateService()
         syncServiceDelegate = MockSyncServiceDelegate()
-        timeProvider = MockTimeProvider(
-            .mockTime(
-                Date(
-                    year: 2024,
-                    month: 2,
-                    day: 14,
-                ),
-            ),
-        )
+        timeProvider = MockTimeProvider(.mockTime(Date(year: 2024, month: 2, day: 14)))
         userSessionStateService = MockUserSessionStateService()
         vaultTimeoutService = MockVaultTimeoutService()
 

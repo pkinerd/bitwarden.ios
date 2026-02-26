@@ -221,7 +221,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
     func test_addCipher_offlineFallback_responseValidationError5xx() async throws {
         cipherService.addCipherWithServerResult = .failure(
-            ResponseValidationError(response: .failure(statusCode: 502))
+            ResponseValidationError(response: .failure(statusCode: 502)),
         )
 
         let cipher = CipherView.fixture()
@@ -272,7 +272,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// because it indicates the server is reachable but rejected the request.
     func test_addCipher_serverError_rethrows() async throws {
         let error = ServerError.error(
-            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request"),
         )
         cipherService.addCipherWithServerResult = .failure(error)
 
@@ -909,7 +909,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             userId: "1",
             changeType: .create,
             cipherData: nil,
-            originalRevisionDate: nil
+            originalRevisionDate: nil,
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
 
@@ -942,7 +942,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     func test_deleteCipher_offlineFallback_responseValidationError5xx() async throws {
         stateService.activeAccount = .fixture()
         cipherService.deleteCipherWithServerResult = .failure(
-            ResponseValidationError(response: .failure(statusCode: 502))
+            ResponseValidationError(response: .failure(statusCode: 502)),
         )
         cipherService.fetchCipherResult = .success(.fixture(id: "123"))
 
@@ -1012,7 +1012,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// because it indicates the server is reachable but rejected the request.
     func test_deleteCipher_serverError_rethrows() async throws {
         let error = ServerError.error(
-            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request"),
         )
         cipherService.deleteCipherWithServerResult = .failure(error)
 
@@ -1912,7 +1912,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             userId: "1",
             changeType: .create,
             cipherData: nil,
-            originalRevisionDate: nil
+            originalRevisionDate: nil,
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
 
@@ -1939,7 +1939,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
         // The pre-offline cipher in local storage has "old-pw".
         cipherService.fetchCipherResult = .success(
-            Cipher.fixture(id: "123", login: .fixture(password: "old-pw"))
+            Cipher.fixture(id: "123", login: .fixture(password: "old-pw")),
         )
 
         // The user is saving with a new password.
@@ -1950,7 +1950,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         XCTAssertEqual(
             pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
-            1
+            1,
         )
     }
 
@@ -1964,7 +1964,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
 
         // The pre-offline cipher in local storage has "same-pw".
         cipherService.fetchCipherResult = .success(
-            Cipher.fixture(id: "123", login: .fixture(password: "same-pw"))
+            Cipher.fixture(id: "123", login: .fixture(password: "same-pw")),
         )
 
         // The user is saving with the same password.
@@ -1975,7 +1975,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         XCTAssertEqual(
             pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
-            0
+            0,
         )
     }
 
@@ -1993,13 +1993,13 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            offlinePasswordChangeCount: 2
+            offlinePasswordChangeCount: 2,
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
 
         // The previous version in local storage has "old-pw".
         cipherService.fetchCipherResult = .success(
-            Cipher.fixture(id: "123", login: .fixture(password: "old-pw"))
+            Cipher.fixture(id: "123", login: .fixture(password: "old-pw")),
         )
 
         // The user is saving with a new password.
@@ -2010,7 +2010,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         XCTAssertEqual(
             pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
-            3
+            3,
         )
     }
 
@@ -2028,13 +2028,13 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             changeType: .update,
             cipherData: nil,
             originalRevisionDate: Date(year: 2024, month: 6, day: 1),
-            offlinePasswordChangeCount: 2
+            offlinePasswordChangeCount: 2,
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
 
         // The previous version in local storage has "same-pw".
         cipherService.fetchCipherResult = .success(
-            Cipher.fixture(id: "123", login: .fixture(password: "same-pw"))
+            Cipher.fixture(id: "123", login: .fixture(password: "same-pw")),
         )
 
         // The user is saving with the same password.
@@ -2045,7 +2045,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         XCTAssertEqual(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.count, 1)
         XCTAssertEqual(
             pendingCipherChangeDataStore.upsertPendingChangeCalledWith.first?.offlinePasswordChangeCount,
-            2
+            2,
         )
     }
 
@@ -2087,7 +2087,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// `ResponseValidationError`, such as a 502 from a CDN/proxy.
     func test_updateCipher_offlineFallback_responseValidationError5xx() async throws {
         cipherService.updateCipherWithServerResult = .failure(
-            ResponseValidationError(response: .failure(statusCode: 502))
+            ResponseValidationError(response: .failure(statusCode: 502)),
         )
 
         let cipher = CipherView.fixture(id: "123")
@@ -2141,7 +2141,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
     /// because it indicates the server is reachable but rejected the request.
     func test_updateCipher_serverError_rethrows() async throws {
         let error = ServerError.error(
-            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request"),
         )
         cipherService.updateCipherWithServerResult = .failure(error)
 
@@ -2397,7 +2397,10 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         // Should clean up any orphaned pending change from a prior offline operation.
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.count, 1)
         XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.cipherId, "123")
-        XCTAssertEqual(pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId, "13512467-9cfe-43b0-969f-07534084764b")
+        XCTAssertEqual(
+            pendingCipherChangeDataStore.deletePendingChangeByCipherIdCalledWith.first?.userId,
+            "13512467-9cfe-43b0-969f-07534084764b",
+        )
 
         // Offline fallback should NOT have been triggered.
         XCTAssertTrue(pendingCipherChangeDataStore.upsertPendingChangeCalledWith.isEmpty)
@@ -2451,7 +2454,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
             userId: "1",
             changeType: .create,
             cipherData: nil,
-            originalRevisionDate: nil
+            originalRevisionDate: nil,
         )
         pendingCipherChangeDataStore.fetchPendingChangeResult = existingChange
 
@@ -2511,7 +2514,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()
         cipherService.softDeleteWithServerResult = .failure(
-            ResponseValidationError(response: .failure(statusCode: 502))
+            ResponseValidationError(response: .failure(statusCode: 502)),
         )
 
         let cipherView: CipherView = .fixture(id: "123")
@@ -2571,7 +2574,7 @@ class VaultRepositoryTests: BitwardenTestCase { // swiftlint:disable:this type_b
         stateService.accounts = [.fixtureAccountLogin()]
         stateService.activeAccount = .fixtureAccountLogin()
         let error = ServerError.error(
-            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request")
+            errorResponse: ErrorResponseModel(validationErrors: nil, message: "Bad request"),
         )
         cipherService.softDeleteWithServerResult = .failure(error)
 
