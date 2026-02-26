@@ -327,31 +327,8 @@ extension DefaultSyncService {
         let account = try await stateService.getActiveAccount()
         let userId = account.profile.userId
 
-        // Resolve any pending offline changes before syncing. If pending changes
-        // remain after resolution, abort to prevent replaceCiphers from overwriting
-        // local offline edits. Resolution is skipped when the vault is locked since
-        // the SDK crypto context is needed for conflict resolution.
-        //
-        // The enableOfflineSyncResolution flag controls whether this entire block
-        // runs. When disabled, resolution is skipped and replaceCiphers proceeds
-        // normally — pending change records stay in the database for future
-        // resolution when the flag is re-enabled. The offlineSync flag (which gates
-        // new offline saves in VaultRepository) is also implicitly disabled when
-        // resolution is off, so no new pending changes accumulate.
-        let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
-        if await configService.getFeatureFlag(.offlineSyncEnableResolution),
-           !isVaultLocked {
-            let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-            if pendingCount > 0 {
-                try await offlineSyncResolver.processPendingChanges(userId: userId)
-                let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
-                if remainingCount > 0 {
-                    Logger.application.info(
-                        "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
-                    )
-                    return
-                }
-            }
+        guard try await resolveOfflineChangesBeforeSync(userId: userId) else {
+            return
         }
 
         guard try await needsSync(forceSync: forceSync, isPeriodic: isPeriodic, userId: userId) else {
@@ -368,7 +345,7 @@ extension DefaultSyncService {
         }
 
         if let organizations = response.profile?.organizations {
-            if !isVaultLocked {
+            if await !vaultTimeoutService.isLocked(userId: userId) {
                 try await organizationService.initializeOrganizationCrypto(
                     organizations: organizations.compactMap(Organization.init),
                 )
@@ -406,6 +383,49 @@ extension DefaultSyncService {
         }
 
         await delegate?.onFetchSyncSucceeded(userId: userId)
+    }
+
+    /// Resolves any pending offline changes before a full sync.
+    ///
+    /// When offline sync resolution is enabled and the vault is unlocked,
+    /// this method processes pending changes via the `offlineSyncResolver`.
+    /// If unresolved changes remain after processing, the caller should
+    /// abort the sync to prevent `replaceCiphers` from overwriting local
+    /// offline edits.
+    ///
+    /// Resolution is skipped when the vault is locked since the SDK crypto
+    /// context is needed for conflict resolution.
+    ///
+    /// The `offlineSyncEnableResolution` feature flag controls whether this
+    /// method runs. When disabled, resolution is skipped and `replaceCiphers`
+    /// proceeds normally — pending change records stay in the database for
+    /// future resolution when the flag is re-enabled.
+    ///
+    /// - Parameter userId: The user whose pending changes to resolve.
+    /// - Returns: `true` if the sync should proceed (no pending changes
+    ///   remain), `false` if the sync should be aborted.
+    ///
+    private func resolveOfflineChangesBeforeSync(userId: String) async throws -> Bool {
+        let isVaultLocked = await vaultTimeoutService.isLocked(userId: userId)
+        guard await configService.getFeatureFlag(.offlineSyncEnableResolution),
+              !isVaultLocked else {
+            return true
+        }
+
+        let pendingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+        guard pendingCount > 0 else {
+            return true
+        }
+
+        try await offlineSyncResolver.processPendingChanges(userId: userId)
+        let remainingCount = try await pendingCipherChangeDataStore.pendingChangeCount(userId: userId)
+        if remainingCount > 0 {
+            Logger.application.info(
+                "SyncService: Sync aborted — \(remainingCount) pending offline changes remain unresolved"
+            )
+            return false
+        }
+        return true
     }
 
     func deleteCipher(data: SyncCipherNotification) async throws {
